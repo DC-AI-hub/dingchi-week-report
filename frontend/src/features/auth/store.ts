@@ -1,0 +1,116 @@
+import { computed, ref } from "vue"
+import { defineStore } from "pinia"
+
+import { getMe, login, logout, switchRole } from "./api"
+import type { Role, Session, UserAccount } from "./types"
+
+const TOKEN_KEY = "dingchi.access_token"
+const SESSION_KEY = "dingchi.session"
+
+function loadSession(): Session | null {
+  const raw = localStorage.getItem(SESSION_KEY)
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as Session
+  } catch {
+    localStorage.removeItem(SESSION_KEY)
+    return null
+  }
+}
+
+export const useAuthStore = defineStore("auth", () => {
+  const session = ref<Session | null>(loadSession())
+  const isBootstrapped = ref(false)
+  const isLoading = ref(false)
+  const errorMessage = ref("")
+
+  const token = computed(() => session.value?.access_token || localStorage.getItem(TOKEN_KEY) || "")
+  const user = computed<UserAccount | null>(() => session.value?.user || null)
+  const roles = computed<Role[]>(() => session.value?.roles || [])
+  const activeRole = computed<Role | null>(() => session.value?.active_role || null)
+  const isAuthenticated = computed(() => Boolean(token.value && user.value))
+
+  function persist(value: Session) {
+    session.value = value
+    localStorage.setItem(TOKEN_KEY, value.access_token)
+    localStorage.setItem(SESSION_KEY, JSON.stringify(value))
+  }
+
+  function clear() {
+    session.value = null
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(SESSION_KEY)
+  }
+
+  async function bootstrap() {
+    if (isBootstrapped.value) return
+    if (!token.value) {
+      isBootstrapped.value = true
+      return
+    }
+    try {
+      const current = await getMe()
+      const existing = session.value
+      if (existing) {
+        persist({ ...existing, ...current })
+      }
+    } catch {
+      clear()
+    } finally {
+      isBootstrapped.value = true
+    }
+  }
+
+  async function signIn(username: string, password: string, roleCode?: string) {
+    isLoading.value = true
+    errorMessage.value = ""
+    try {
+      persist(await login(username, password, roleCode))
+    } catch (error) {
+      errorMessage.value = error instanceof Error ? error.message : "登录失败，请稍后重试。"
+      throw error
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function changeRole(roleCode: string) {
+    isLoading.value = true
+    errorMessage.value = ""
+    try {
+      persist(await switchRole(roleCode))
+    } catch (error) {
+      errorMessage.value = error instanceof Error ? error.message : "角色切换失败。"
+      throw error
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function signOut() {
+    try {
+      if (token.value) await logout()
+    } catch {
+      // 即使网络不可用也清理本地令牌，避免将失效会话留在浏览器。
+    } finally {
+      clear()
+    }
+  }
+
+  return {
+    session,
+    isBootstrapped,
+    isLoading,
+    errorMessage,
+    token,
+    user,
+    roles,
+    activeRole,
+    isAuthenticated,
+    bootstrap,
+    signIn,
+    changeRole,
+    signOut,
+    clear,
+  }
+})

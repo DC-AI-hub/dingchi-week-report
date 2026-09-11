@@ -1,0 +1,14 @@
+.report-edit-page { display: grid; gap: 1rem; }
+.loading-card { padding: 3rem; color: var(--muted); text-align: center; }
+.page-alert, .page-success { margin: 0; padding: 0.75rem 0.9rem; border-radius: 10px; font-size: 0.8rem; }
+.page-alert { border: 1px solid #ffd0ce; color: #a84343; background: #fff2f1; }
+.page-success { border: 1px solid #bdeedb; color: #087b54; background: #effcf6; }
+.form-card { display: grid; gap: 1rem; padding: 1.25rem 1.35rem; }
+.base-form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.8rem; }
+.base-form-grid label { display: grid; gap: 0.35rem; color: var(--muted); font-size: 0.75rem; }
+.base-form-grid input, .base-form-grid textarea { box-sizing: border-box; width: 100%; border: 1px solid #dce8f7; border-radius: 8px; padding: 0.55rem 0.6rem; color: var(--text); background: #fbfdff; font: inherit; }
+.base-form-grid textarea { resize: vertical; }
+.summary-field { grid-column: span 3; }
+.form-actions { display: flex; justify-content: flex-end; gap: 0.65rem; padding-bottom: 1rem; }
+button:disabled { cursor: not-allowed; opacity: 0.55; }
+@media (max-width: 700px) { .base-form-grid { grid-template-columns: 1fr; } .summary-field { grid-column: span 1; } .form-actions { justify-content: stretch; } .form-actions button { flex: 1; } }

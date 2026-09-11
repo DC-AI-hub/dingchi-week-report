@@ -1,0 +1,34 @@
+.composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 0.8rem;
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid var(--line);
+  background: var(--surface-strong);
+}
+
+.composer textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 76px;
+  max-height: 220px;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  outline: none;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.composer textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+@media (max-width: 540px) {
+  .composer {
+    padding: 1rem;
+  }
+}
+

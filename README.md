@@ -1,2 +1,112 @@
-# dingchi-week-report
-周报系统
+# 鼎驰周报本地开发项目
+
+本目录包含相互独立的前端、后端和本地基础设施配置，不需要初始化或提交 Git。
+
+## 目录
+
+- `frontend/`：Vue 3、Vite 6、Vue Router、Pinia、Axios、TypeScript。
+- `backend/`：Python 3.12+、Django 6、MCP 2、OpenAI-compatible SDK、MySQL、Redis。
+- `docker-compose.yml`：本地 MySQL 8.4 与 Redis 7.4。
+
+前后端对接统一遵循 [API 对接规范](docs/frontend-backend-api-conventions.md)：接口是唯一边界，双方只按
+版本化 JSON 契约协作；每个接口必须提供中文用途、请求参数、响应数据和错误码说明。
+
+后端框架已内置统一 `X-Trace-ID` 请求追踪、`.env.*` 驱动的滚动日志、雪花主键工具和
+RSA-OAEP-SHA256 密码传输/存储工具。首次使用后端时，在 `backend/` 下显式执行
+`python scripts/generate_crypto_keys.py` 生成本地密钥；项目启动不会自动生成密钥或执行数据库迁移。
+
+## 本地启动
+
+### 1. 启动 MySQL 和 Redis
+
+在项目根目录执行（配置从 `backend/.env.development` 注入）：
+
+```powershell
+docker compose --env-file backend/.env.development up -d mysql redis
+```
+
+如果本机已经有 MySQL/Redis，可直接修改 `backend/.env.development` 的连接信息。
+
+当前本地配置按现有服务填写：MySQL `root / aa-123456`，Redis URL 使用
+`redis://:aa-123456@127.0.0.1:6379/0`。如果 Redis 实例未启用密码，请删除 URL 中的密码段。
+
+### 2. 启动后端
+
+```powershell
+cd backend
+python -m venv .venv
+./.venv/Scripts/Activate.ps1
+python -m pip install -e ".[dev]"
+python -m uvicorn config.asgi:application --reload --host 127.0.0.1 --port 8000
+```
+
+项目启动不会自动执行数据库迁移。需要变更数据库结构时，单独审核并手动执行：
+
+```powershell
+cd backend
+python manage.py makemigrations
+python manage.py migrate --plan
+python manage.py migrate
+```
+
+首次初始化演示数据（项目启动不会自动执行）：
+
+```powershell
+mysql -uroot -p dingchi_week_report < scripts/seed_weekly_report.sql
+```
+
+演示账号：`delivery.specialist / Worker@123`、`recruiter / Worker@123`、
+`delivery.manager / Manager@123`、`recruitment.manager / Manager@123`、
+`president / President@123`、`admin / Admin@123`。总裁账号同时拥有总裁和系统管理员角色，可在页面右上角切换。
+
+必须使用 ASGI 命令启动，MCP 的 Streamable HTTP 生命周期才会同时运行。后端入口：
+
+- API 索引：`http://127.0.0.1:8000/api/v1/`
+- 存活检查：`http://127.0.0.1:8000/api/v1/health/live/`
+- 就绪检查：`http://127.0.0.1:8000/api/v1/health/ready/`
+- AI 对话：`POST http://127.0.0.1:8000/api/v1/ai/chat/`
+- MCP：`http://127.0.0.1:8000/mcp/`
+- 加密公钥：`http://127.0.0.1:8000/api/v1/security/public-key/`
+
+### 3. 配置大模型
+
+编辑 `backend/.env.development`：
+
+```dotenv
+AI_API_KEY=your-api-key
+AI_BASE_URL=https://your-provider.example/v1
+AI_MODEL=your-model-name
+```
+
+`AI_BASE_URL` 留空时使用 OpenAI SDK 默认地址；也可以填写兼容 OpenAI Chat Completions 的服务地址。
+
+### 4. 启动前端
+
+打开另一个 PowerShell：
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+访问 `http://127.0.0.1:5173`。Vite 会把 `/api` 请求代理到 `http://127.0.0.1:8000`。
+
+## 校验
+
+```powershell
+cd frontend
+npm run type-check
+npm run build
+
+cd ../backend
+python manage.py check --settings=config.settings.test
+python manage.py test --settings=config.settings.test
+# 后端启动后，还可执行：python scripts/smoke_test.py
+```
+
+后端运行时还可在 `backend/` 下执行 `python scripts/smoke_test.py`，同时检查真实的 API 与 MCP HTTP 通路。
+
+## 分层约定
+
+前端按 `app → views/layouts → features → shared` 分层；后端按 `config → apps` 分层，业务模块内部使用 `views → services → dao/integrations`，所有 MCP 工具统一位于 `apps/mcp_server/modules/<capability>/`。新增业务时优先创建独立 feature/app，不把领域逻辑堆在路由或视图函数中。

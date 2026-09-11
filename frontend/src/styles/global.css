@@ -1,0 +1,139 @@
+.page-stack {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.surface-card {
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.dashboard-card {
+  border: 1px solid rgba(109, 169, 239, 0.2);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.icon-button,
+.text-button {
+  border: 0;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.primary-button,
+.secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.7rem 1.2rem;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ghost-button {
+  min-height: 40px;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--accent-dark);
+  background: transparent;
+  cursor: pointer;
+}
+
+.ghost-button:hover {
+  background: var(--surface-soft);
+}
+
+.field-control,
+.field-textarea,
+.field-select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  background: var(--surface-strong);
+  outline: none;
+}
+
+.field-control,
+.field-select {
+  min-height: 42px;
+  padding: 0.6rem 0.75rem;
+}
+
+.field-textarea {
+  min-height: 92px;
+  padding: 0.7rem 0.75rem;
+  resize: vertical;
+}
+
+.field-control:focus,
+.field-textarea:focus,
+.field-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.12);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.status-pill--draft,
+.status-pill--in_progress {
+  color: #8b5b08;
+  background: #fff2d6;
+}
+
+.status-pill--submitted {
+  color: #1f63c7;
+  background: #e1efff;
+}
+
+.status-pill--approved,
+.status-pill--on_time {
+  color: #07825d;
+  background: #dff8ef;
+}
+
+.status-pill--returned,
+.status-pill--overdue,
+.status-pill--late {
+  color: #c13f47;
+  background: #ffe5e7;
+}
+
+.primary-button {
+  border: 1px solid var(--accent);
+  color: white;
+  background: var(--accent);
+}
+
+.primary-button:hover {
+  background: var(--accent-dark);
+}
+
+.secondary-button {
+  border: 1px solid var(--line);
+  color: var(--text);
+  background: var(--surface-strong);
+}

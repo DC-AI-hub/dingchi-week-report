@@ -1,0 +1,324 @@
+"""JSON views for authentication and organization administration."""
+
+from __future__ import annotations
+
+import json
+from typing import Any
+
+from django.http import HttpRequest, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
+
+from apps.core.http import api_error, api_success
+
+from .dao import list_groups, list_users
+from .models import OrganizationGroup, UserAccount
+from .services.auth import (
+    AuthenticationError,
+    AuthorizationError,
+    create_user,
+    get_user_roles,
+    login,
+    require_request_user,
+    serialize_role,
+    serialize_user,
+    switch_role,
+    update_user,
+)
+from .services.organization import (
+    RoleConflictError,
+    RoleNotFoundError,
+    can_manage_directory,
+    create_group,
+    create_role,
+    delete_role,
+    get_role_list,
+    serialize_group,
+    update_group,
+    update_role,
+)
+
+
+def _json_payload(request: HttpRequest) -> dict[str, Any]:
+    if not request.body:
+        return {}
+    value = json.loads(request.body)
+    if not isinstance(value, dict):
+        raise ValueError("请求体必须是 JSON 对象。")
+    return value
+
+
+def _error_from_exception(exc: Exception) -> JsonResponse:
+    if isinstance(exc, AuthenticationError):
+        return api_error(exc.code, str(exc), status=401)
+    if isinstance(exc, AuthorizationError):
+        return api_error(exc.code, str(exc), status=403)
+    if isinstance(exc, RoleNotFoundError):
+        return api_error(exc.code, str(exc), status=404)
+    if isinstance(exc, RoleConflictError):
+        return api_error(exc.code, str(exc), status=409)
+    if isinstance(exc, json.JSONDecodeError):
+        return api_error("INVALID_JSON", "请求体不是有效的 JSON。", status=400)
+    if isinstance(exc, ValueError):
+        return api_error("INVALID_REQUEST", str(exc), status=400)
+    return api_error("INTERNAL_ERROR", "服务暂时不可用。", status=500)
+
+
+@csrf_exempt
+@require_POST
+def login_view(request: HttpRequest) -> JsonResponse:
+    """用户登录并返回当前角色与访问令牌。
+
+    方法/路径：POST /api/v1/auth/login/；认证：公开；幂等：否。
+    请求参数：username、password（RSA-OAEP-SHA256 密文）、可选 role_code。
+    成功响应：data.access_token、user、roles、active_role、expires_in。
+    失败响应：400 INVALID_JSON/INVALID_REQUEST；401 AUTHENTICATION_FAILED。
+    安全/追踪/兼容：密码只接受加密值；响应带 X-Trace-ID；新增会话字段向后兼容。
+    """
+    try:
+        payload = _json_payload(request)
+        return api_success(
+            login(
+                username=str(payload.get("username") or "").strip(),
+                password_ciphertext=str(payload.get("password") or ""),
+                requested_role_code=str(payload.get("role_code") or "") or None,
+            )
+        )
+    except Exception as exc:
+        return _error_from_exception(exc)
+
+
+@require_GET
+def me_view(request: HttpRequest) -> JsonResponse:
+    """获取登录用户、上下级关系、所属分组和可切换角色。
+
+    方法/路径：GET /api/v1/auth/me/；认证：Bearer；幂等：是；请求参数：无。
+    成功响应：data.user、data.roles、data.active_role；失败：401 AUTHENTICATION_FAILED。
+    追踪/兼容：响应带 X-Trace-ID，ID 以字符串返回，字段只增不删。
+    """
+    try:
+        user, role_code = require_request_user(request)
+        roles = get_user_roles(user.id)
+        role = next(role for role in roles if role.role_code == role_code)
+        return api_success(
+            {
+                "user": serialize_user(user),
+                "roles": [serialize_role(item) for item in roles],
+                "active_role": serialize_role(role),
+            }
+        )
+    except Exception as exc:
+        return _error_from_exception(exc)
+
+
+@csrf_exempt
+@require_POST
+def switch_role_view(request: HttpRequest) -> JsonResponse:
+    """切换当前用户的工作角色并签发带新角色声明的令牌。
+
+    方法/路径：POST /api/v1/auth/switch-role/；认证：Bearer；幂等：是。
+    请求参数：role_code；成功响应：同登录会话结构；失败：401/403/400。
+    安全/追踪/兼容：仅允许已分配角色；响应带 X-Trace-ID；旧令牌仍可自然过期。
+    """
+    try:
+        user, _ = require_request_user(request)
+        payload = _json_payload(request)
+        return api_success(
+            switch_role(user=user, role_code=str(payload.get("role_code") or "").strip())
+        )
+    except Exception as exc:
+        return _error_from_exception(exc)
+
+
+@csrf_exempt
+@require_POST
+def logout_view(request: HttpRequest) -> JsonResponse:
+    """结束浏览器当前会话（客户端删除令牌，服务端令牌按时效自然失效）。
+
+    方法/路径：POST /api/v1/auth/logout/；认证：Bearer；请求参数：无；幂等：是。
+    成功响应：data.logged_out=true；失败：401 AUTHENTICATION_FAILED；响应带 X-Trace-ID。
+    """
+    try:
+        require_request_user(request)
+        return api_success({"logged_out": True})
+    except Exception as exc:
+        return _error_from_exception(exc)
+
+
+@require_GET
+def roles_view(request: HttpRequest) -> JsonResponse:
+    """查询角色管理列表。
+
+    方法/路径：GET /api/v1/roles/；认证：总裁或系统管理员；请求参数：无；幂等：是。
+    成功响应：data.items 为角色数组；失败：401/403；响应带 X-Trace-ID。
+    """
+    try:
+        _, role_code = require_request_user(request)
+        if not can_manage_directory(role_code):
+            raise AuthorizationError("仅总裁和系统管理员可以管理角色。")
+        return api_success({"items": get_role_list()})
+    except Exception as exc:
+        return _error_from_exception(exc)
+
+
+@csrf_exempt
+@require_POST
+def role_create_view(request: HttpRequest) -> JsonResponse:
+    """新增角色定义，供系统管理员维护角色模板映射。
+
+    方法/路径：POST /api/v1/roles/new/；认证：总裁或系统管理员；幂等：否。
+    请求体：role_code、role_name、scope、report_template_code 必填，description 可为空；
+    scope 只能为 self/team/all，role_code 使用小写字母、数字和下划线。
+    成功响应：201 角色对象，ID 为字符串；失败：400 INVALID_REQUEST、401、403，
+    编码重复返回 409 ROLE_CONFLICT；响应带 X-Trace-ID，新增字段保持向后兼容。
+    """
+    try:
+        _, role_code = require_request_user(request)
+        if not can_manage_directory(role_code):
+            raise AuthorizationError("无权维护角色。")
+        return api_success(serialize_role(create_role(payload=_json_payload(request))), status=201)
+    except Exception as exc:
+        return _error_from_exception(exc)
+
+
+@csrf_exempt
+@require_http_methods(["PATCH", "DELETE"])
+def role_detail_view(request: HttpRequest, role_id: str) -> JsonResponse:
+    """修改或删除一个角色配置。
+
+    方法/路径：PATCH、DELETE /api/v1/roles/{id}/；认证：总裁或系统管理员。
+    PATCH 请求体：可选 role_name、scope、description、report_template_code、status、sort_order；
+    role_code 不可修改。响应为更新后的角色对象。
+    DELETE 请求体：无；执行软删除并停用用户角色分配，历史周报保留；响应包含字符串 id 和
+    deleted=true。系统管理员角色及调用方当前角色禁止删除。
+    失败响应：400 INVALID_REQUEST、401、403、404 ROLE_NOT_FOUND、409 ROLE_CONFLICT；
+    响应带 X-Trace-ID，删除操作不自动迁移或改表。
+    """
+    try:
+        _, role_code = require_request_user(request)
+        if not can_manage_directory(role_code):
+            raise AuthorizationError("无权维护角色。")
+        parsed_role_id = int(role_id)
+        if request.method == "DELETE":
+            deleted_role = delete_role(role_id=parsed_role_id, acting_role_code=role_code)
+            return api_success({"id": str(deleted_role.id), "deleted": True})
+        updated_role = update_role(role_id=parsed_role_id, payload=_json_payload(request))
+        return api_success(serialize_role(updated_role))
+    except Exception as exc:
+        return _error_from_exception(exc)
+
+
+@require_GET
+def groups_view(request: HttpRequest) -> JsonResponse:
+    """查询组织分组列表。
+
+    方法/路径：GET /api/v1/groups/；认证：Bearer；请求参数：无；幂等：是。
+    成功响应：data.items 为分组数组；失败：401；响应带 X-Trace-ID。
+    """
+    try:
+        require_request_user(request)
+        return api_success({"items": list_groups()})
+    except Exception as exc:
+        return _error_from_exception(exc)
+
+
+@csrf_exempt
+@require_POST
+def group_create_view(request: HttpRequest) -> JsonResponse:
+    """新增组织分组。
+
+    方法/路径：POST /api/v1/groups/new/；认证：总裁或系统管理员；
+    请求参数：group_code/group_name 等。
+    成功响应：201 分组对象；失败：400/401/403；响应带 X-Trace-ID。
+    """
+    try:
+        _, role_code = require_request_user(request)
+        if not can_manage_directory(role_code):
+            raise AuthorizationError("无权维护组织分组。")
+        return api_success(
+            serialize_group(create_group(payload=_json_payload(request))), status=201
+        )
+    except Exception as exc:
+        return _error_from_exception(exc)
+
+
+@csrf_exempt
+@require_http_methods(["PATCH"])
+def group_update_view(request: HttpRequest, group_id: str) -> JsonResponse:
+    """修改组织分组名称、上级分组或状态。
+
+    方法/路径：PATCH /api/v1/groups/{id}/；认证：总裁或系统管理员；请求参数：部分分组字段。
+    成功响应：更新后的分组；失败：400/401/403/404；响应带 X-Trace-ID。
+    """
+    try:
+        _, role_code = require_request_user(request)
+        if not can_manage_directory(role_code):
+            raise AuthorizationError("无权维护组织分组。")
+        group = OrganizationGroup.objects.filter(id=int(group_id)).first()
+        if group is None:
+            return api_error("NOT_FOUND", "分组不存在。", status=404)
+        return api_success(
+            serialize_group(update_group(group=group, payload=_json_payload(request)))
+        )
+    except Exception as exc:
+        return _error_from_exception(exc)
+
+
+@require_GET
+def users_view(request: HttpRequest) -> JsonResponse:
+    """查询用户、上下级和分组信息，供组织管理页面使用。
+
+    方法/路径：GET /api/v1/users/；认证：总裁或系统管理员；参数：可选 role_code、group_id。
+    成功响应：data.items 为用户数组；失败：401/403；响应带 X-Trace-ID；ID 均为字符串。
+    """
+    try:
+        _, role_code = require_request_user(request)
+        if not can_manage_directory(role_code):
+            raise AuthorizationError("仅总裁和系统管理员可以查看全量用户。")
+        return api_success(
+            {
+                "items": list_users(
+                    role_code=request.GET.get("role_code"), group_id=request.GET.get("group_id")
+                )
+            }
+        )
+    except Exception as exc:
+        return _error_from_exception(exc)
+
+
+@csrf_exempt
+@require_POST
+def user_create_view(request: HttpRequest) -> JsonResponse:
+    """新增用户并一次性分配角色、上级和主分组。
+
+    方法/路径：POST /api/v1/users/new/；认证：总裁或系统管理员；
+    参数：用户 JSON，password 必须 RSA 密文。
+    成功响应：201 用户对象；失败：400/401/403；响应带 X-Trace-ID，绝不返回密码。
+    """
+    try:
+        _, role_code = require_request_user(request)
+        if not can_manage_directory(role_code):
+            raise AuthorizationError("无权维护用户。")
+        return api_success(serialize_user(create_user(payload=_json_payload(request))), status=201)
+    except Exception as exc:
+        return _error_from_exception(exc)
+
+
+@csrf_exempt
+@require_http_methods(["PATCH"])
+def user_update_view(request: HttpRequest, user_id: str) -> JsonResponse:
+    """修改用户资料、上下级、分组、状态和角色集合。
+
+    方法/路径：PATCH /api/v1/users/{id}/；认证：总裁或系统管理员；参数：部分用户字段。
+    成功响应：更新后的用户对象；失败：400/401/403/404；响应带 X-Trace-ID。
+    """
+    try:
+        _, role_code = require_request_user(request)
+        if not can_manage_directory(role_code):
+            raise AuthorizationError("无权维护用户。")
+        user = UserAccount.objects.filter(id=int(user_id)).first()
+        if user is None:
+            return api_error("NOT_FOUND", "用户不存在。", status=404)
+        return api_success(serialize_user(update_user(user=user, payload=_json_payload(request))))
+    except Exception as exc:
+        return _error_from_exception(exc)

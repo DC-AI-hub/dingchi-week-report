@@ -1,0 +1,88 @@
+from __future__ import annotations
+
+import json
+from unittest.mock import patch
+
+import pytest
+from django.urls import reverse
+
+from apps.accounts.models import Role, UserRole
+
+
+@pytest.mark.django_db
+def test_patch_role_uses_unified_detail_endpoint(client) -> None:
+    role = Role.objects.create(
+        role_code="project_specialist",
+        role_name="项目专员",
+        scope="self",
+        report_template_code="general_v1",
+    )
+
+    with patch(
+        "apps.accounts.views.require_request_user",
+        return_value=(object(), "system_admin"),
+    ):
+        response = client.patch(
+            reverse("accounts:role-detail", args=[str(role.id)]),
+            data=json.dumps(
+                {
+                    "role_code": role.role_code,
+                    "role_name": "高级项目专员",
+                    "scope": "team",
+                    "description": "负责项目交付管理",
+                    "report_template_code": "project_v1",
+                }
+            ),
+            content_type="application/json",
+        )
+
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+    assert response.json()["data"]["role_name"] == "高级项目专员"
+    role.refresh_from_db()
+    assert role.scope == "team"
+    assert role.report_template_code == "project_v1"
+
+
+@pytest.mark.django_db
+def test_delete_role_soft_deletes_role_and_assignments(client) -> None:
+    role = Role.objects.create(
+        role_code="temporary_reviewer",
+        role_name="临时审核人",
+        scope="team",
+    )
+    assignment = UserRole.objects.create(user_id=101, role_id=role.id, is_default=True)
+
+    with patch(
+        "apps.accounts.views.require_request_user",
+        return_value=(object(), "system_admin"),
+    ):
+        response = client.delete(reverse("accounts:role-detail", args=[str(role.id)]))
+
+    assert response.status_code == 200
+    assert response.json()["data"] == {"id": str(role.id), "deleted": True}
+    role.refresh_from_db()
+    assignment.refresh_from_db()
+    assert role.status == "deleted"
+    assert assignment.status == "inactive"
+    assert assignment.is_default is False
+
+
+@pytest.mark.django_db
+def test_delete_system_admin_role_returns_conflict(client) -> None:
+    role = Role.objects.create(
+        role_code="system_admin",
+        role_name="系统管理员",
+        scope="all",
+    )
+
+    with patch(
+        "apps.accounts.views.require_request_user",
+        return_value=(object(), "president"),
+    ):
+        response = client.delete(reverse("accounts:role-detail", args=[str(role.id)]))
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "ROLE_CONFLICT"
+    role.refresh_from_db()
+    assert role.status == "active"
