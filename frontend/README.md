@@ -89,5 +89,5 @@ npm run preview
 - `/login`：RSA-OAEP-SHA256 密码传输登录，支持本地演示账号。
 - `/`：蓝白风格周报驾驶舱，趋势图和环形图使用 ECharts Canvas 渲染。
 - `/weekly-reports`、`/weekly-reports/new`：周报列表、角色模板驱动填写、保存草稿和提交。
-- `/weekly-reports/review`：经理、总裁和系统管理员审核下属或全量周报。
+- `/weekly-reports/all`：总裁和系统管理员查看全量周报。
 - `/users`、`/roles`：用户上下级/分组、角色和模板范围管理。

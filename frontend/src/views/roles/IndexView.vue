@@ -41,7 +41,10 @@ async function confirmDelete() {
   if (isDeleted) deletingRole.value = null
 }
 
-onMounted(() => void roleManagement.loadRoles())
+onMounted(() => {
+  void roleManagement.loadRoles()
+  void roleManagement.loadDictionaries()
+})
 </script>
 
 <template>
@@ -54,19 +57,27 @@ onMounted(() => void roleManagement.loadRoles())
     <p v-if="roleManagement.successMessage.value" class="page-success" role="status">
       {{ roleManagement.successMessage.value }}
     </p>
+    <p v-if="roleManagement.dictionaryErrorMessage.value" class="page-alert" role="alert">
+      {{ roleManagement.dictionaryErrorMessage.value }}
+    </p>
 
     <RoleCatalog
       :active-role-code="authStore.activeRole?.role_code"
       :is-loading="roleManagement.isLoading.value"
       :roles="roleManagement.roles.value"
+      :scope-options="roleManagement.scopeOptions.value"
+      :template-options="roleManagement.templateOptions.value"
       @delete="deletingRole = $event"
       @edit="openEditDialog"
     />
 
     <RoleEditorDialog
+      :is-dictionary-loading="roleManagement.isDictionaryLoading.value"
       :is-saving="roleManagement.isSaving.value"
       :open="isEditorOpen"
       :role="editingRole"
+      :scope-options="roleManagement.scopeOptions.value"
+      :template-options="roleManagement.templateOptions.value"
       @close="closeEditorDialog"
       @submit="submitRole"
     />

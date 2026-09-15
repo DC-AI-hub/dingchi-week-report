@@ -1,0 +1,130 @@
+<script setup lang="ts">
+import { ref } from "vue"
+
+import type { DirectoryGroup } from "@/features/directory/types"
+
+withDefaults(
+  defineProps<{
+    monthKey: string
+    periodStart: string
+    periodEnd: string
+    groupId?: string
+    groupOptions?: DirectoryGroup[]
+    showGroup?: boolean
+  }>(),
+  { groupId: "", groupOptions: () => [], showGroup: false },
+)
+
+const emit = defineEmits<{
+  "update:monthKey": [value: string]
+  "update:periodStart": [value: string]
+  "update:periodEnd": [value: string]
+  "update:groupId": [value: string]
+  search: []
+  reset: []
+}>()
+const periodInput = ref<HTMLInputElement | null>(null)
+
+function openPeriodPicker() {
+  const input = periodInput.value
+  if (!input) return
+  const picker = input as HTMLInputElement & { showPicker?: () => void }
+  if (picker.showPicker) {
+    picker.showPicker()
+  } else {
+    input.focus()
+    input.click()
+  }
+}
+
+function toLocalDate(value: string) {
+  return new Date(value + "T00:00:00")
+}
+
+function formatDate(value: Date) {
+  const month = String(value.getMonth() + 1).padStart(2, "0")
+  const day = String(value.getDate()).padStart(2, "0")
+  return `${value.getFullYear()}-${month}-${day}`
+}
+
+function mondayOf(value: string) {
+  const date = toLocalDate(value)
+  const day = date.getDay() || 7
+  date.setDate(date.getDate() - day + 1)
+  return formatDate(date)
+}
+
+function sundayOf(value: string) {
+  const date = toLocalDate(value)
+  date.setDate(date.getDate() + 6)
+  return formatDate(date)
+}
+
+function updatePeriodStart(value: string) {
+  if (!value) {
+    emit("update:periodStart", "")
+    emit("update:periodEnd", "")
+    return
+  }
+  const start = mondayOf(value)
+  emit("update:periodStart", start)
+  emit("update:periodEnd", sundayOf(start))
+}
+</script>
+
+<template>
+  <form class="report-filter-bar" @submit.prevent="emit('search')">
+    <label>
+      所属月度
+      <input
+        :value="monthKey"
+        type="month"
+        @input="emit('update:monthKey', ($event.target as HTMLInputElement).value)"
+      />
+    </label>
+    <label class="period-range-field">
+      周报周期
+      <div class="period-range-picker">
+        <button
+          class="period-range-picker__trigger"
+          type="button"
+          aria-label="选择周报周期"
+          @click="openPeriodPicker"
+        >
+          <output class="period-range-picker__display">
+            {{ periodStart && periodEnd ? `${periodStart} 至 ${periodEnd}` : "选择周期" }}
+          </output>
+        </button>
+        <input
+          ref="periodInput"
+          class="period-range-picker__input"
+          :value="periodStart"
+          min="1900-01-01"
+          step="7"
+          type="date"
+          tabindex="-1"
+          aria-hidden="true"
+          @change="updatePeriodStart(($event.target as HTMLInputElement).value)"
+        />
+      </div>
+    </label>
+    <label v-if="showGroup">
+      分组
+      <select
+        :value="groupId"
+        @change="emit('update:groupId', ($event.target as HTMLSelectElement).value)"
+      >
+        <option value="">全部分组</option>
+        <option v-for="group in groupOptions" :key="group.id" :value="group.id">
+          {{ group.group_name }}
+        </option>
+      </select>
+    </label>
+    <div class="report-filter-actions">
+      <button class="primary-button" type="submit">查询</button>
+      <button class="ghost-button" type="button" @click="emit('reset')">重置</button>
+    </div>
+  </form>
+</template>
+
+<style scoped src="./ReportFilterBar.css"></style>

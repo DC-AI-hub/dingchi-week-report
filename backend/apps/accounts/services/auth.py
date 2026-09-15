@@ -13,7 +13,7 @@ from django.utils import timezone
 from apps.core.authentication.token import create_access_token
 from apps.core.security.passwords import CryptoPayloadError, decrypt_client_password
 
-from ..models import Role, UserAccount, UserRole
+from ..models import Role, UserAccount, UserGroupMembership, UserRole
 
 
 class AuthenticationError(ValueError):
@@ -26,6 +26,18 @@ class AuthorizationError(ValueError):
     """The identity is valid but is not allowed to perform an operation."""
 
     code = "FORBIDDEN"
+
+
+class UserNotFoundError(ValueError):
+    """The requested directory user is missing or has already been deleted."""
+
+    code = "USER_NOT_FOUND"
+
+
+class UserConflictError(ValueError):
+    """The requested user operation would invalidate the active session."""
+
+    code = "USER_CONFLICT"
 
 
 def login(
@@ -186,6 +198,25 @@ def update_user(*, user: UserAccount, payload: Mapping[str, Any]) -> UserAccount
                     role_id=role.id,
                     defaults={"status": "active", "is_default": index == 0},
                 )
+    return user
+
+
+@transaction.atomic
+def delete_user(*, user_id: int, acting_user_id: int) -> UserAccount:
+    """Soft-delete a directory user and disable logical memberships."""
+    user = UserAccount.objects.exclude(status="deleted").filter(id=user_id).first()
+    if user is None:
+        raise UserNotFoundError("用户不存在或已被删除。")
+    if int(user.id) == int(acting_user_id):
+        raise UserConflictError("当前登录用户不能删除，请先切换到其他管理员账号。")
+    if UserAccount.objects.filter(manager_id=user.id, status="active").exists():
+        raise UserConflictError("该用户仍有直属下属，请先调整下属的直属上级。")
+    user.status = "deleted"
+    user.save(update_fields=["status", "updated_at"])
+    UserRole.objects.filter(user_id=user.id, status="active").update(
+        status="inactive", is_default=False
+    )
+    UserGroupMembership.objects.filter(user_id=user.id, status="active").update(status="inactive")
     return user
 
 

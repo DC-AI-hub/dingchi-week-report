@@ -1,0 +1,8 @@
+.basics-card { padding: 24px; }
+.basics-card__title { display: flex; align-items: center; margin-bottom: 20px; }
+.basics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.period-field { grid-column: span 1; }
+.basics-grid label { display: grid; gap: 8px; color: #294b79; font-weight: 700; }
+.basics-grid input { box-sizing: border-box; width: 100%; border: 1px solid #cfe0f5; border-radius: 12px; background: #f7faff; color: #153562; padding: 11px 13px; font: inherit; }
+.basics-grid input:disabled { opacity: 1; color: #5c7395; }
+@media (max-width: 600px) { .basics-grid { grid-template-columns: 1fr; } }

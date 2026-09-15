@@ -7,10 +7,28 @@ import pytest
 from django.urls import reverse
 
 from apps.accounts.models import Role, UserRole
+from apps.dictionary.models import DictionaryItem
+
+
+def _seed_role_dictionaries() -> None:
+    DictionaryItem.objects.bulk_create(
+        [
+            DictionaryItem(dict_type="role_scope", dict_code="self", dict_name="仅本人数据"),
+            DictionaryItem(dict_type="role_scope", dict_code="team", dict_name="本人及下属团队"),
+            DictionaryItem(dict_type="role_scope", dict_code="all", dict_name="全部数据"),
+            DictionaryItem(
+                dict_type="report_template", dict_code="general_v1", dict_name="通用周报"
+            ),
+            DictionaryItem(
+                dict_type="report_template", dict_code="project_v1", dict_name="项目周报"
+            ),
+        ]
+    )
 
 
 @pytest.mark.django_db
 def test_patch_role_uses_unified_detail_endpoint(client) -> None:
+    _seed_role_dictionaries()
     role = Role.objects.create(
         role_code="project_specialist",
         role_name="项目专员",

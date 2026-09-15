@@ -1,6 +1,6 @@
 <script setup lang="ts">
 defineProps<{
-  name: "home" | "report" | "review" | "users" | "roles" | "sparkles"
+  name: "home" | "report" | "users" | "roles" | "sparkles"
 }>()
 </script>
 
@@ -15,11 +15,6 @@ defineProps<{
       <rect x="5" y="3.5" width="14" height="17" rx="2.3" />
       <path d="M8.2 8.1h7.6M8.2 12h4.8M8.2 15.9h7.6" />
       <path d="m14.6 11.9 1.1 1.1 2-2.2" />
-    </template>
-
-    <template v-else-if="name === 'review'">
-      <path d="M8.2 4.4H6.6A2.1 2.1 0 0 0 4.5 6.5v12A2.1 2.1 0 0 0 6.6 20.6h10.8a2.1 2.1 0 0 0 2.1-2.1v-12a2.1 2.1 0 0 0-2.1-2.1h-1.6" />
-      <path d="M9 3.4h6v3H9zM8.2 12.2l2.1 2.1 5.5-5.6" />
     </template>
 
     <template v-else-if="name === 'users'">

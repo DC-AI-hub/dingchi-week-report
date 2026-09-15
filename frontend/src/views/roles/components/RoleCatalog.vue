@@ -1,15 +1,20 @@
 <script setup lang="ts">
 import type { DirectoryRole } from "@/features/directory/types"
+import type { DictionaryItem } from "@/features/dictionary"
 
 const props = withDefaults(
   defineProps<{
     roles: DirectoryRole[]
     isLoading?: boolean
     activeRoleCode?: string
+    scopeOptions?: DictionaryItem[]
+    templateOptions?: DictionaryItem[]
   }>(),
   {
     isLoading: false,
     activeRoleCode: "",
+    scopeOptions: () => [],
+    templateOptions: () => [],
   },
 )
 
@@ -18,10 +23,16 @@ defineEmits<{
   delete: [role: DirectoryRole]
 }>()
 
-const scopeLabels: Record<string, string> = {
-  self: "个人数据",
-  team: "团队数据",
-  all: "全部数据",
+function dictionaryLabel(options: DictionaryItem[], code: string): string {
+  return options.find((item) => item.dict_code === code)?.dict_name || code
+}
+
+function scopeLabel(scope: string): string {
+  return dictionaryLabel(props.scopeOptions, scope)
+}
+
+function templateLabel(templateCode: string): string {
+  return dictionaryLabel(props.templateOptions, templateCode)
 }
 
 function deleteDisabledReason(role: DirectoryRole): string {
@@ -42,7 +53,7 @@ function deleteDisabledReason(role: DirectoryRole): string {
             <span>{{ role.role_code }}</span>
           </div>
         </div>
-        <span class="scope-badge">{{ scopeLabels[role.scope] || role.scope }}</span>
+        <span class="scope-badge">{{ scopeLabel(role.scope) }}</span>
       </div>
 
       <p class="role-description">{{ role.description || "暂无角色说明" }}</p>
@@ -50,11 +61,11 @@ function deleteDisabledReason(role: DirectoryRole): string {
       <dl class="role-details">
         <div>
           <dt>周报模板</dt>
-          <dd :title="role.report_template_code">{{ role.report_template_code }}</dd>
+          <dd :title="role.report_template_code">{{ templateLabel(role.report_template_code) }}</dd>
         </div>
         <div>
           <dt>可见范围</dt>
-          <dd>{{ scopeLabels[role.scope] || role.scope }}</dd>
+          <dd>{{ scopeLabel(role.scope) }}</dd>
         </div>
         <div>
           <dt>状态</dt>

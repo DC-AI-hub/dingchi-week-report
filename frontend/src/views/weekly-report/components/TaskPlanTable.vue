@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ReportItem, TemplateItem } from "@/features/weekly-report/types"
+import { formatDateTime } from "@/utils/date"
 
 type TaskDraft = Partial<ReportItem> & { task_code: string }
 
@@ -61,7 +62,7 @@ function isDelayed(item: TaskDraft) {
           </td>
           <td>
             <input v-if="!readonly" v-model="item.planned_completion_date" type="date" />
-            <span v-else>{{ item.planned_completion_date || '—' }}</span>
+            <span v-else>{{ formatDateTime(item.planned_completion_date) }}</span>
           </td>
           <td>
             <span :class="{ 'status-pill': true, [`status-pill--${item.on_time_status || 'in_progress'}`]: true }">{{ statusLabels[item.on_time_status || 'in_progress'] || '进行中' }}</span>

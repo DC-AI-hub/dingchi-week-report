@@ -11,8 +11,6 @@ class ReportTemplate(SnowflakeIdModel):
     role_code = models.CharField(max_length=64)
     template_name = models.CharField(max_length=128)
     description = models.CharField(max_length=500, blank=True, default="")
-    submit_deadline_rule = models.CharField(max_length=128, blank=True, default="每周五 12:00")
-    review_deadline_rule = models.CharField(max_length=128, blank=True, default="每周五 16:00")
     status = models.CharField(max_length=16, default="active")
     effective_from = models.DateField(null=True, blank=True)
     effective_to = models.DateField(null=True, blank=True)
@@ -70,7 +68,8 @@ class WeeklyReport(SnowflakeIdModel):
     period_start = models.DateField()
     period_end = models.DateField()
     as_of_date = models.DateField()
-    status = models.CharField(max_length=16, default="draft")
+    # 状态由周报周期动态决定：active/pending_activation/archived。
+    status = models.CharField(max_length=24, default="active")
     summary = models.TextField(blank=True, default="")
     risk_level = models.CharField(max_length=16, default="none")
     risk_blocked = models.BooleanField(default=False)
@@ -78,10 +77,6 @@ class WeeklyReport(SnowflakeIdModel):
     next_action = models.TextField(blank=True, default="")
     support_needed = models.TextField(blank=True, default="")
     expected_resolve_date = models.DateField(null=True, blank=True)
-    reviewer_id = models.BigIntegerField(null=True, blank=True)
-    review_comment = models.TextField(blank=True, default="")
-    submitted_at = models.DateTimeField(null=True, blank=True)
-    reviewed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -96,6 +91,26 @@ class WeeklyReport(SnowflakeIdModel):
         ordering = ["-period_start", "-updated_at"]
 
 
+class MonthlyPlan(SnowflakeIdModel):
+    role_code = models.CharField(max_length=64)
+    employee_id = models.BigIntegerField()
+    group_id = models.BigIntegerField(null=True, blank=True)
+    month_key = models.CharField(max_length=7)
+    summary = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "monthly_plan"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["employee_id", "role_code", "month_key"],
+                name="uq_monthly_plan_employee_role_month",
+            ),
+        ]
+        ordering = ["-month_key", "-updated_at"]
+
+
 class WeeklyReportItem(SnowflakeIdModel):
     report_id = models.BigIntegerField()
     scope_type = models.CharField(max_length=16, default="overall")
@@ -105,6 +120,7 @@ class WeeklyReportItem(SnowflakeIdModel):
     task_code = models.CharField(max_length=64)
     task_name_snapshot = models.CharField(max_length=255)
     guidance_snapshot = models.CharField(max_length=500, blank=True, default="")
+    work_content = models.TextField(blank=True, default="")
     output_description = models.TextField(blank=True, default="")
     planned_completion_date = models.DateField(null=True, blank=True)
     progress_text = models.TextField(blank=True, default="")
@@ -117,6 +133,9 @@ class WeeklyReportItem(SnowflakeIdModel):
     next_action = models.TextField(blank=True, default="")
     expected_completion_date = models.DateField(null=True, blank=True)
     owner_id = models.BigIntegerField(null=True, blank=True)
+    owner_name_snapshot = models.CharField(max_length=128, blank=True, default="")
+    collaborator_names = models.CharField(max_length=500, blank=True, default="")
+    document_links = models.TextField(blank=True, default="")
     item_status = models.CharField(max_length=16, default="pending")
     sort_order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -165,14 +184,3 @@ class WeeklyReportEvidence(SnowflakeIdModel):
 
     class Meta:
         db_table = "weekly_report_evidence"
-
-
-class WeeklyReportReviewRecord(SnowflakeIdModel):
-    report_id = models.BigIntegerField()
-    reviewer_id = models.BigIntegerField()
-    action = models.CharField(max_length=16)
-    comment = models.TextField(blank=True, default="")
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = "weekly_report_review_record"

@@ -11,12 +11,15 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 
 from apps.core.http import api_error, api_success
 
-from .dao import list_groups, list_users
+from .dao import list_groups, list_user_options, list_users
 from .models import OrganizationGroup, UserAccount
 from .services.auth import (
     AuthenticationError,
     AuthorizationError,
+    UserConflictError,
+    UserNotFoundError,
     create_user,
+    delete_user,
     get_user_roles,
     login,
     require_request_user,
@@ -26,11 +29,14 @@ from .services.auth import (
     update_user,
 )
 from .services.organization import (
+    GroupConflictError,
+    GroupNotFoundError,
     RoleConflictError,
     RoleNotFoundError,
     can_manage_directory,
     create_group,
     create_role,
+    delete_group,
     delete_role,
     get_role_list,
     serialize_group,
@@ -56,6 +62,10 @@ def _error_from_exception(exc: Exception) -> JsonResponse:
     if isinstance(exc, RoleNotFoundError):
         return api_error(exc.code, str(exc), status=404)
     if isinstance(exc, RoleConflictError):
+        return api_error(exc.code, str(exc), status=409)
+    if isinstance(exc, (GroupNotFoundError, UserNotFoundError)):
+        return api_error(exc.code, str(exc), status=404)
+    if isinstance(exc, (GroupConflictError, UserConflictError)):
         return api_error(exc.code, str(exc), status=409)
     if isinstance(exc, json.JSONDecodeError):
         return api_error("INVALID_JSON", "请求体不是有效的 JSON。", status=400)
@@ -168,7 +178,8 @@ def role_create_view(request: HttpRequest) -> JsonResponse:
 
     方法/路径：POST /api/v1/roles/new/；认证：总裁或系统管理员；幂等：否。
     请求体：role_code、role_name、scope、report_template_code 必填，description 可为空；
-    scope 只能为 self/team/all，role_code 使用小写字母、数字和下划线。
+    scope 必须是 role_scope 字典中的启用编码，report_template_code 必须是
+    report_template 字典中的启用编码；role_code 使用小写字母、数字和下划线。
     成功响应：201 角色对象，ID 为字符串；失败：400 INVALID_REQUEST、401、403，
     编码重复返回 409 ROLE_CONFLICT；响应带 X-Trace-ID，新增字段保持向后兼容。
     """
@@ -228,8 +239,9 @@ def group_create_view(request: HttpRequest) -> JsonResponse:
     """新增组织分组。
 
     方法/路径：POST /api/v1/groups/new/；认证：总裁或系统管理员；
-    请求参数：group_code/group_name 等。
-    成功响应：201 分组对象；失败：400/401/403；响应带 X-Trace-ID。
+    请求参数：group_code、group_name 必填，description 可为空，parent_group_id 可为空；
+    group_code 使用小写字母、数字和下划线且不能重复。成功响应：201 分组对象；
+    失败：400/401/403/409；响应带 X-Trace-ID。
     """
     try:
         _, role_code = require_request_user(request)
@@ -243,20 +255,27 @@ def group_create_view(request: HttpRequest) -> JsonResponse:
 
 
 @csrf_exempt
-@require_http_methods(["PATCH"])
+@require_http_methods(["PATCH", "DELETE"])
 def group_update_view(request: HttpRequest, group_id: str) -> JsonResponse:
-    """修改组织分组名称、上级分组或状态。
+    """修改或删除组织分组。
 
-    方法/路径：PATCH /api/v1/groups/{id}/；认证：总裁或系统管理员；请求参数：部分分组字段。
-    成功响应：更新后的分组；失败：400/401/403/404；响应带 X-Trace-ID。
+    方法/路径：PATCH、DELETE /api/v1/groups/{id}/；认证：总裁或系统管理员。
+    PATCH 请求参数：部分分组字段；DELETE 无请求体，要求分组没有下级和在职成员。
+    成功响应：更新后的分组，或 id/deleted=true；失败：400/401/403/404/409；响应带 X-Trace-ID。
     """
     try:
         _, role_code = require_request_user(request)
         if not can_manage_directory(role_code):
             raise AuthorizationError("无权维护组织分组。")
-        group = OrganizationGroup.objects.filter(id=int(group_id)).first()
+        parsed_group_id = int(group_id)
+        if request.method == "DELETE":
+            deleted_group = delete_group(group_id=parsed_group_id)
+            return api_success({"id": str(deleted_group.id), "deleted": True})
+        group = (
+            OrganizationGroup.objects.exclude(status="deleted").filter(id=parsed_group_id).first()
+        )
         if group is None:
-            return api_error("NOT_FOUND", "分组不存在。", status=404)
+            raise GroupNotFoundError("分组不存在或已被删除。")
         return api_success(
             serialize_group(update_group(group=group, payload=_json_payload(request)))
         )
@@ -286,6 +305,21 @@ def users_view(request: HttpRequest) -> JsonResponse:
         return _error_from_exception(exc)
 
 
+@require_GET
+def user_options_view(request: HttpRequest) -> JsonResponse:
+    """查询周报责任人和协作人下拉选项。
+
+    方法/路径：GET /api/v1/users/options/；认证：Bearer；参数：无；幂等：是。
+    成功响应：data.items 为在职用户数组，包含 id、employee_no、display_name、username、group_id，
+    不返回密码或其他敏感字段；失败：401 AUTHENTICATION_FAILED；响应带 X-Trace-ID。
+    """
+    try:
+        require_request_user(request)
+        return api_success({"items": list_user_options()})
+    except Exception as exc:
+        return _error_from_exception(exc)
+
+
 @csrf_exempt
 @require_POST
 def user_create_view(request: HttpRequest) -> JsonResponse:
@@ -305,20 +339,25 @@ def user_create_view(request: HttpRequest) -> JsonResponse:
 
 
 @csrf_exempt
-@require_http_methods(["PATCH"])
+@require_http_methods(["PATCH", "DELETE"])
 def user_update_view(request: HttpRequest, user_id: str) -> JsonResponse:
-    """修改用户资料、上下级、分组、状态和角色集合。
+    """修改或删除用户资料、上下级、分组、状态和角色集合。
 
-    方法/路径：PATCH /api/v1/users/{id}/；认证：总裁或系统管理员；参数：部分用户字段。
-    成功响应：更新后的用户对象；失败：400/401/403/404；响应带 X-Trace-ID。
+    方法/路径：PATCH、DELETE /api/v1/users/{id}/；认证：总裁或系统管理员。
+    PATCH 参数：部分用户字段；DELETE 无请求体，执行软删除并停用角色/分组成员关系。
+    成功响应：更新后的用户对象，或 id/deleted=true；失败：400/401/403/404/409；响应带 X-Trace-ID。
     """
     try:
-        _, role_code = require_request_user(request)
+        acting_user, role_code = require_request_user(request)
         if not can_manage_directory(role_code):
             raise AuthorizationError("无权维护用户。")
-        user = UserAccount.objects.filter(id=int(user_id)).first()
+        parsed_user_id = int(user_id)
+        if request.method == "DELETE":
+            deleted_user = delete_user(user_id=parsed_user_id, acting_user_id=int(acting_user.id))
+            return api_success({"id": str(deleted_user.id), "deleted": True})
+        user = UserAccount.objects.exclude(status="deleted").filter(id=parsed_user_id).first()
         if user is None:
-            return api_error("NOT_FOUND", "用户不存在。", status=404)
+            raise UserNotFoundError("用户不存在或已被删除。")
         return api_success(serialize_user(update_user(user=user, payload=_json_payload(request))))
     except Exception as exc:
         return _error_from_exception(exc)

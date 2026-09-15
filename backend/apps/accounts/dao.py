@@ -10,7 +10,7 @@ from typing import Any
 
 from django.db import connection
 
-from .models import Role, UserRole
+from .models import Role, UserAccount, UserRole
 
 
 def list_roles() -> list[dict[str, Any]]:
@@ -72,7 +72,12 @@ def list_groups() -> list[dict[str, Any]]:
             ["active"],
         )
         columns = [column[0] for column in cursor.description]
-        return [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
+        items = [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
+        for item in items:
+            item["id"] = str(item["id"])
+            if item.get("parent_group_id") is not None:
+                item["parent_group_id"] = str(item["parent_group_id"])
+        return items
 
 
 def list_users(
@@ -91,7 +96,7 @@ def list_users(
         cursor.execute(
             f"""
             SELECT u.id, u.username, u.employee_no, u.display_name, u.email,
-                   u.manager_id, u.group_id, g.group_name, u.avatar_color,
+                   u.manager_id, u.group_id, g.group_name, u.avatar_color, u.status,
                    GROUP_CONCAT(r.role_code) AS role_codes_csv,
                    GROUP_CONCAT(r.role_name) AS role_names_csv
             FROM user_account u
@@ -100,7 +105,7 @@ def list_users(
             LEFT JOIN role r ON r.id = ur.role_id AND r.status = %s
             WHERE {where_sql}
             GROUP BY u.id, u.username, u.employee_no, u.display_name, u.email,
-                     u.manager_id, u.group_id, g.group_name, u.avatar_color
+                     u.manager_id, u.group_id, g.group_name, u.avatar_color, u.status
             ORDER BY u.employee_no
             """,
             ["active", "active", *params],
@@ -109,10 +114,28 @@ def list_users(
         rows = []
         for row in cursor.fetchall():
             item = dict(zip(columns, row, strict=False))
+            item["id"] = str(item["id"])
+            for field in ("manager_id", "group_id"):
+                if item.get(field) is not None:
+                    item[field] = str(item[field])
             item["role_codes"] = _split_group_values(item.pop("role_codes_csv", None))
             item["role_names"] = _split_group_values(item.pop("role_names_csv", None))
             rows.append(item)
         return rows
+
+
+def list_user_options() -> list[dict[str, Any]]:
+    """查询任务责任人和协作人下拉选项；只返回在职用户基础字段。"""
+    rows = list(
+        UserAccount.objects.filter(status="active")
+        .order_by("employee_no", "id")
+        .values("id", "employee_no", "display_name", "username", "group_id")
+    )
+    for row in rows:
+        row["id"] = str(row["id"])
+        if row.get("group_id") is not None:
+            row["group_id"] = str(row["group_id"])
+    return rows
 
 
 def _split_group_values(value: Any) -> list[str]:

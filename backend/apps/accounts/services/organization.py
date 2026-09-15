@@ -9,6 +9,8 @@ from typing import Any
 
 from django.db import transaction
 
+from apps.dictionary.public import is_active_dictionary_code
+
 from ..dao import (
     deactivate_role_assignments,
     find_role_by_id,
@@ -17,11 +19,11 @@ from ..dao import (
     role_code_exists,
     save_role,
 )
-from ..models import OrganizationGroup, Role
+from ..models import OrganizationGroup, Role, UserAccount, UserGroupMembership
 
 _logger = logging.getLogger(__name__)
 _role_code_pattern = re.compile(r"^[a-z][a-z0-9_]*$")
-_role_scopes = {"self", "team", "all"}
+_group_code_pattern = re.compile(r"^[a-z][a-z0-9_]*$")
 _role_statuses = {"active", "inactive"}
 
 
@@ -35,6 +37,18 @@ class RoleConflictError(ValueError):
     """The requested role operation would make administration unsafe."""
 
     code = "ROLE_CONFLICT"
+
+
+class GroupNotFoundError(ValueError):
+    """The requested group is missing or has already been deleted."""
+
+    code = "GROUP_NOT_FOUND"
+
+
+class GroupConflictError(ValueError):
+    """The requested group operation would make the hierarchy unsafe."""
+
+    code = "GROUP_CONFLICT"
 
 
 @transaction.atomic
@@ -150,8 +164,10 @@ def _validate_role_fields(
         raise ValueError("角色编码必须以小写字母开头，只能包含小写字母、数字和下划线。")
     if len(role_name) > 128 or len(report_template_code) > 64:
         raise ValueError("角色名称或模板编码超过允许长度。")
-    if scope not in _role_scopes:
-        raise ValueError("数据范围只能是 self、team 或 all。")
+    if not is_active_dictionary_code("role_scope", scope):
+        raise ValueError("数据范围不是有效的字典项。")
+    if not is_active_dictionary_code("report_template", report_template_code):
+        raise ValueError("周报模板不是有效的字典项。")
 
 
 def _parse_sort_order(value: Any) -> int:
@@ -170,12 +186,23 @@ def create_group(*, payload: Mapping[str, Any]) -> OrganizationGroup:
     group_name = str(payload.get("group_name") or "").strip()
     if not group_code or not group_name:
         raise ValueError("分组编码和分组名称不能为空。")
+    if len(group_code) > 64 or not _group_code_pattern.fullmatch(group_code):
+        raise ValueError("分组编码必须以小写字母开头，只能包含小写字母、数字和下划线。")
+    if len(group_name) > 128:
+        raise ValueError("分组名称超过允许长度。")
+    if OrganizationGroup.objects.filter(group_code=group_code).exists():
+        raise GroupConflictError("分组编码已存在，请使用其他编码。")
     parent_group_id = payload.get("parent_group_id")
+    parsed_parent_id = int(parent_group_id) if parent_group_id else None
+    if parsed_parent_id is not None and not OrganizationGroup.objects.filter(
+        id=parsed_parent_id, status="active"
+    ).exists():
+        raise GroupConflictError("上级分组不存在或已停用。")
     return OrganizationGroup.objects.create(
         group_code=group_code,
         group_name=group_name,
         description=str(payload.get("description") or "").strip(),
-        parent_group_id=int(parent_group_id) if parent_group_id else None,
+        parent_group_id=parsed_parent_id,
     )
 
 
@@ -185,10 +212,36 @@ def update_group(*, group: OrganizationGroup, payload: Mapping[str, Any]) -> Org
         if field in payload:
             setattr(group, field, str(payload[field] or "").strip())
     if "parent_group_id" in payload:
-        group.parent_group_id = (
-            int(payload["parent_group_id"]) if payload["parent_group_id"] else None
-        )
+        parsed_parent_id = int(payload["parent_group_id"]) if payload["parent_group_id"] else None
+        if parsed_parent_id == int(group.id):
+            raise GroupConflictError("分组不能将自己设置为上级分组。")
+        if parsed_parent_id is not None and not OrganizationGroup.objects.filter(
+            id=parsed_parent_id, status="active"
+        ).exists():
+            raise GroupConflictError("上级分组不存在或已停用。")
+        if parsed_parent_id is not None and _is_descendant(
+            group_id=int(group.id), candidate_parent_id=parsed_parent_id
+        ):
+            raise GroupConflictError("分组不能移动到自己的下级分组中。")
+        group.parent_group_id = parsed_parent_id
     group.save()
+    return group
+
+
+@transaction.atomic
+def delete_group(*, group_id: int) -> OrganizationGroup:
+    """Soft-delete an empty group while preserving historical report links."""
+    group = OrganizationGroup.objects.exclude(status="deleted").filter(id=group_id).first()
+    if group is None:
+        raise GroupNotFoundError("分组不存在或已被删除。")
+    if OrganizationGroup.objects.filter(parent_group_id=group.id, status="active").exists():
+        raise GroupConflictError("该分组包含下级分组，请先移动或删除下级分组。")
+    if UserAccount.objects.filter(group_id=group.id, status="active").exists():
+        raise GroupConflictError("该分组仍有在职用户，不能删除。")
+    if UserGroupMembership.objects.filter(group_id=group.id, status="active").exists():
+        raise GroupConflictError("该分组仍有用户成员，不能删除。")
+    group.status = "deleted"
+    group.save(update_fields=["status", "updated_at"])
     return group
 
 
@@ -205,3 +258,19 @@ def serialize_group(group: OrganizationGroup) -> dict[str, Any]:
         "parent_group_id": str(group.parent_group_id) if group.parent_group_id else None,
         "status": group.status,
     }
+
+
+def _is_descendant(*, group_id: int, candidate_parent_id: int) -> bool:
+    """Return whether candidate_parent_id is below group_id in the logical tree."""
+    visited: set[int] = set()
+    current_id: int | None = candidate_parent_id
+    while current_id is not None and current_id not in visited:
+        if current_id == group_id:
+            return True
+        visited.add(current_id)
+        current_id = (
+            OrganizationGroup.objects.filter(id=current_id)
+            .values_list("parent_group_id", flat=True)
+            .first()
+        )
+    return False

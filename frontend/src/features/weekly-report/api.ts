@@ -1,79 +1,144 @@
 import { request } from "@/shared/api/http"
 
 import type {
+  ReportListFilters,
   ReportListResponse,
+  MonthlyPlan,
   ReportPayload,
   ReportTemplate,
+  ReportEvidence,
+  ReportAttachment,
   WeeklyReportDetail,
 } from "./types"
 
 /**
- * 获取当前激活角色的周报模板：GET /v1/weekly-report-templates/{role_code}/。
- * 请求：路径 role_code；认证：Bearer；响应：tasks、metrics、sections 及校验规则；失败：401/400。
+ * 获取当前激活角色的周报模板。
+ * 方法/路径：GET /v1/weekly-report-templates/{role_code}/；认证：Bearer；幂等：是。
+ * 请求参数：路径 role_code，角色编码字符串；响应 data 为模板、任务、指标和按字典配置排序的 fields JSON；
+ * 失败：401/400，统一客户端保留 trace_id，页面只展示错误消息。
  */
 export function getReportTemplate(roleCode: string): Promise<ReportTemplate> {
-  return request<ReportTemplate>({ method: "GET", url: `/v1/weekly-report-templates/${roleCode}/` })
-}
-
-/**
- * 查询当前角色可见的周报摘要：GET /v1/weekly-reports/，可选 status 筛选。
- * 后端按 self/team/all 作用域返回 JSON；响应带 trace_id；失败：401/400。
- */
-export function listReports(status?: string): Promise<ReportListResponse> {
-  return request<ReportListResponse>({
+  return request<ReportTemplate>({
     method: "GET",
-    url: "/v1/weekly-reports/",
-    params: status ? { status } : undefined,
+    url: "/v1/weekly-report-templates/" + roleCode + "/",
   })
 }
 
 /**
- * 创建当前用户当前角色的周报草稿：POST /v1/weekly-reports/。
- * 请求：周期、摘要、风险、items、metrics、evidence；响应：完整周报详情；失败：400/401。
+ * 分页查询当前角色可见的周报摘要。
+ * 方法/路径：GET /v1/weekly-reports/；认证：Bearer；幂等：是。
+ * 请求参数：page/page_size 为正整数（默认 1/10）；period_start、period_end 为
+ * YYYY-MM-DD 周期范围上下限，month_key 为 YYYY-MM 所属月度；team 角色可传 employee_scope=self/team；团队和全员角色可传
+ * group_id 字符串筛选分组。响应 data.items 为周报数组，并返回 page、page_size、total、
+ * total_pages；ID 为字符串，失败 400/401/403/404，统一客户端携带 trace_id。
+ */
+export function listReports(filters: ReportListFilters = {}): Promise<ReportListResponse> {
+  return request<ReportListResponse>({
+    method: "GET",
+    url: "/v1/weekly-reports/",
+    params: filters,
+  })
+}
+
+/**
+ * 获取当前用户当前角色指定月度的共用计划。
+ * 方法/路径：GET /v1/monthly-plans/{month_key}/；认证：Bearer；幂等：是。
+ * 路径参数 month_key 为 YYYY-MM；响应 data 为月度计划文本，未填写时为 null；
+ * 失败：400/401/403，统一客户端携带 trace_id。
+ */
+export function getMonthlyPlan(monthKey: string): Promise<MonthlyPlan | null> {
+  return request<MonthlyPlan | null>({
+    method: "GET",
+    url: "/v1/monthly-plans/" + monthKey + "/",
+  })
+}
+
+/**
+ * 保存当前用户当前角色指定月度的计划文本。
+ * 方法/路径：PUT /v1/monthly-plans/{month_key}/；认证：Bearer；幂等：是。
+ * 请求体：summary 月度计划文本；响应 data 为保存后的月度计划；失败：400/401/403。
+ */
+export function saveMonthlyPlan(monthKey: string, summary: string): Promise<MonthlyPlan> {
+  return request<MonthlyPlan>({
+    method: "PUT",
+    url: "/v1/monthly-plans/" + monthKey + "/",
+    data: { summary },
+  })
+}
+
+/**
+ * 创建当前用户当前角色的周报。
+ * 方法/路径：POST /v1/weekly-reports/；认证：Bearer；幂等：否。
+ * 请求体：period_start/period_end、动态 items、summary；统计日期由服务端按当前日期处理；
+ * 只能创建当前或未来周期，周期不能重复。响应 data 为完整周报详情；失败 400/401/409，
+ * 统一客户端携带 trace_id，页面不得依赖后端实现细节。
  */
 export function createReport(payload: ReportPayload): Promise<WeeklyReportDetail> {
   return request<WeeklyReportDetail>({ method: "POST", url: "/v1/weekly-reports/", data: payload })
 }
 
 /**
- * 更新自己的草稿或退回周报：PATCH /v1/weekly-reports/{id}/。
- * 请求：完整或部分 ReportPayload；已提交/已审核不可编辑；响应：更新后详情；失败：400/401。
+ * 更新本人当前周报。
+ * 方法/路径：PATCH /v1/weekly-reports/{id}/；认证：Bearer；幂等：否。
+ * 请求体字段同创建，周报周期不可修改且仅当前周期可编辑；响应 data 为更新后的详情；
+ * 失败 400/401/403/404，统一客户端携带 trace_id。
  */
 export function updateReport(reportId: string, payload: ReportPayload): Promise<WeeklyReportDetail> {
-  return request<WeeklyReportDetail>({ method: "PATCH", url: `/v1/weekly-reports/${reportId}/`, data: payload })
-}
-
-/**
- * 查询周报详情：GET /v1/weekly-reports/{id}/，返回 report/items/metrics/evidence/history。
- * 当前角色必须对该员工可见；失败：400/401；字段采用统一 JSON 契约。
- */
-export function getReportDetail(reportId: string): Promise<WeeklyReportDetail> {
-  return request<WeeklyReportDetail>({ method: "GET", url: `/v1/weekly-reports/${reportId}/` })
-}
-
-/**
- * 提交自己的周报：POST /v1/weekly-reports/{id}/submit/，无请求体。
- * 状态必须为 draft/returned；成功返回提交后的详情并记录历史；失败：400/401。
- */
-export function submitReport(reportId: string): Promise<WeeklyReportDetail> {
-  return request<WeeklyReportDetail>({ method: "POST", url: `/v1/weekly-reports/${reportId}/submit/` })
-}
-
-/**
- * 审核周报：POST /v1/weekly-reports/{id}/review/。
- * 请求：action=approve/return、comment；经理/总裁/系统管理员按可见范围操作；响应：审核后详情。
- */
-export function reviewReport(reportId: string, action: "approve" | "return", comment: string): Promise<WeeklyReportDetail> {
   return request<WeeklyReportDetail>({
-    method: "POST",
-    url: `/v1/weekly-reports/${reportId}/review/`,
-    data: { action, comment },
+    method: "PATCH",
+    url: "/v1/weekly-reports/" + reportId + "/",
+    data: payload,
   })
 }
 
 /**
- * 查询审核历史：GET /v1/weekly-reports/{id}/history/；认证：Bearer；响应 data.items。
+ * 查询周报详情。
+ * 方法/路径：GET /v1/weekly-reports/{id}/；认证：Bearer；幂等：是。
+ * 当前角色必须对该员工可见；响应 data 返回 report/items/metrics/evidence/attachments；
+ * 失败 401/403/404，ID 和日期字段遵守统一 JSON 契约。
  */
-export function getReportHistory(reportId: string): Promise<{ items: WeeklyReportDetail["history"] }> {
-  return request<{ items: WeeklyReportDetail["history"] }>({ method: "GET", url: `/v1/weekly-reports/${reportId}/history/` })
+export function getReportDetail(reportId: string): Promise<WeeklyReportDetail> {
+  return request<WeeklyReportDetail>({
+    method: "GET",
+    url: "/v1/weekly-reports/" + reportId + "/",
+  })
+}
+
+/**
+ * 删除本人当前周报。
+ * 方法/路径：DELETE /v1/weekly-reports/{id}/；认证：Bearer；幂等：否。
+ * 无请求体；仅当前周期且本人可删除，响应 data 为 { id: string, deleted: true }；
+ * 失败 400/401/403/404，统一客户端携带 trace_id。
+ */
+export function deleteReport(reportId: string): Promise<{ id: string; deleted: true }> {
+  return request<{ id: string; deleted: true }>({
+    method: "DELETE",
+    url: "/v1/weekly-reports/" + reportId + "/",
+  })
+}
+
+/**
+ * 上传周报任务附件。
+ * 方法/路径：POST /v1/weekly-reports/{id}/attachments/；认证：Bearer；幂等：否�?
+ * 请求体：multipart/form-data，file 必填，item_id 和 description 可选；attachment_type 固定为 weekly_report。
+ * 成功响应为系统通用附件信息。
+ * 仅允许本人当前或未来周期周报；失败 400/401/403/404，统一客户端携带 trace_id�?
+ */
+export function uploadReportAttachment(
+  reportId: string,
+  file: File,
+  itemId?: string | null,
+  description = "",
+  attachmentType = "weekly_report",
+): Promise<ReportAttachment> {
+  const data = new FormData()
+  data.append("file", file)
+  if (itemId) data.append("item_id", itemId)
+  if (description) data.append("description", description)
+  data.append("attachment_type", attachmentType)
+  return request<ReportAttachment>({
+    method: "POST",
+    url: "/v1/weekly-reports/" + reportId + "/attachments/",
+    data,
+  })
 }

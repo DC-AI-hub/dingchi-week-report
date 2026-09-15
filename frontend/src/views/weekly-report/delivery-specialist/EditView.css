@@ -1,0 +1,18 @@
+.delivery-report-page { display: grid; gap: 18px; padding-bottom: 32px; }
+.loading-card { padding: 32px; color: #58749c; }
+.monthly-summary,
+.weekly-summary { padding: 22px; }
+.monthly-summary__heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.monthly-summary__actions { display: flex; align-items: center; gap: 10px; }
+.monthly-summary__heading h2 { margin: 0; color: #173764; font-size: 22px; }
+.monthly-summary label,
+.weekly-summary label { display: grid; gap: 10px; color: #173764; font-weight: 700; }
+.monthly-summary textarea,
+.weekly-summary textarea { box-sizing: border-box; width: 100%; border: 1px solid #cfe0f5; border-radius: 12px; background: #f7faff; color: #153562; padding: 12px 14px; font: inherit; resize: vertical; }
+.monthly-summary textarea { display: block; }
+.form-actions { display: flex; justify-content: flex-end; }
+.form-actions .primary-button { min-width: 148px; }
+@media (max-width: 720px) {
+  .monthly-summary__heading { align-items: flex-start; flex-direction: column; }
+  .monthly-summary__actions { flex-wrap: wrap; }
+}

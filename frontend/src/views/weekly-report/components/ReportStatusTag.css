@@ -1,0 +1,25 @@
+.report-status-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 0.68rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.report-status-tag--active {
+  color: #087b54;
+  background: #dff8ed;
+}
+
+.report-status-tag--pending_activation {
+  color: #976400;
+  background: #fff1cc;
+}
+
+.report-status-tag--archived {
+  color: #64748b;
+  background: #e9eef5;
+}

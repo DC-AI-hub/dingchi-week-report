@@ -1,35 +1,28 @@
 <script setup lang="ts">
+import { getReportRoleName } from "@/features/weekly-report/constants"
 import type { WeeklyReport } from "@/features/weekly-report/types"
+import { formatPeriod } from "@/utils/date"
+
+import ReportStatusTag from "./ReportStatusTag.vue"
 
 defineProps<{
   report?: Partial<WeeklyReport> | null
   roleName?: string
-  editable?: boolean
 }>()
-
-const statusLabels: Record<string, string> = {
-  draft: "草稿",
-  submitted: "待审核",
-  approved: "已通过",
-  returned: "已退回",
-}
 </script>
 
 <template>
   <section class="report-header dashboard-card">
     <div>
-      <span class="section-caption">WEEKLY REPORT</span>
-      <h1>{{ report?.employee_name || "填写本周周报" }}</h1>
-      <p>{{ roleName || report?.role_code || "当前角色" }} · 聚焦进展、风险与下一步行动</p>
+      <h1>{{ report?.employee_name || "填写周报" }}</h1>
+      <p>{{ getReportRoleName(report?.role_code || "", roleName || report?.role_name) }}</p>
     </div>
     <div class="report-header-meta">
       <div class="period-field">
         <span>报告周期</span>
-        <strong>{{ report?.period_start || "本周" }} <i>至</i> {{ report?.period_end || "周日" }}</strong>
+        <strong>{{ formatPeriod(report?.period_start, report?.period_end) }}</strong>
       </div>
-      <span v-if="report?.status" :class="`status-pill status-pill--${report.status}`">
-        {{ statusLabels[report.status] || report.status }}
-      </span>
+      <ReportStatusTag v-if="report?.status" :status="report.status" />
     </div>
   </section>
 </template>

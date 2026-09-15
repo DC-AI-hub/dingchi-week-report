@@ -13,14 +13,19 @@ from apps.accounts.services.auth import AuthenticationError, require_request_use
 from apps.core.http import api_error, api_success
 
 from .services.reports import (
+    ReportConflictError,
     ReportError,
+    ReportNotFoundError,
+    ReportPermissionError,
     create_or_update_report,
     dashboard_summary,
+    delete_report,
+    get_monthly_plan,
     get_report_detail,
     get_template,
     list_visible_reports,
-    review_report,
-    submit_report,
+    save_monthly_plan,
+    upload_report_attachment,
 )
 
 
@@ -36,6 +41,12 @@ def _json_payload(request: HttpRequest) -> dict[str, Any]:
 def _error(exc: Exception) -> JsonResponse:
     if isinstance(exc, AuthenticationError):
         return api_error(exc.code, str(exc), status=401)
+    if isinstance(exc, ReportNotFoundError):
+        return api_error(exc.code, str(exc), status=404)
+    if isinstance(exc, ReportPermissionError):
+        return api_error(exc.code, str(exc), status=403)
+    if isinstance(exc, ReportConflictError):
+        return api_error(exc.code, str(exc), status=409)
     if isinstance(exc, ReportError):
         return api_error(exc.code, str(exc), status=400)
     if isinstance(exc, json.JSONDecodeError):
@@ -62,10 +73,11 @@ def dashboard_view(request: HttpRequest) -> JsonResponse:
 
 @require_GET
 def template_view(request: HttpRequest, role_code: str) -> JsonResponse:
-    """获取某角色的可配置周报任务、指标和校验规则。
+    """获取某角色的可配置周报任务、指标、字段顺序和校验规则。
 
     方法/路径：GET /api/v1/weekly-report-templates/{role_code}/；认证：Bearer；参数：路径角色编码。
-    成功响应：模板版本、模块、tasks、metrics；失败：401；响应带 X-Trace-ID，模板新增字段向后兼容。
+    成功响应：模板版本、模块、fields、tasks、metrics；fields 按周报列表展示顺序返回；
+    失败：401；响应带 X-Trace-ID，模板新增字段向后兼容。
     """
     try:
         require_request_user(request)
@@ -77,12 +89,15 @@ def template_view(request: HttpRequest, role_code: str) -> JsonResponse:
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 def report_list_view(request: HttpRequest) -> JsonResponse:
-    """查询当前角色可见的周报列表或创建一份当前角色草稿。
+    """查询当前角色可见的周报列表或创建当前角色的一份周报。
 
     方法/路径：GET/POST /api/v1/weekly-reports/；认证：Bearer；
-    GET 参数为可选 status，POST 参数为周报 JSON。
-    GET 成功响应：data.items 为周报摘要数组；POST 成功响应：201 周报详情；权限按角色作用域过滤。
-    失败：400/401；响应带 X-Trace-ID。
+    GET 参数：page、page_size、month_key（YYYY-MM）、period_start、period_end
+    （周期范围上下限）、group_id；
+    team 角色额外支持 employee_scope=self/team。POST 参数为周报 JSON。
+    GET 成功响应：data.items、page、page_size、total、total_pages；
+    POST 成功响应：201 周报详情；权限按角色作用域过滤。
+    失败：400/401/403/404/409；响应带 X-Trace-ID。
     """
     try:
         user, role_code = require_request_user(request)
@@ -93,12 +108,55 @@ def report_list_view(request: HttpRequest) -> JsonResponse:
                 ),
                 status=201,
             )
+        try:
+            page = int(request.GET.get("page") or "1")
+            page_size = int(request.GET.get("page_size") or "10")
+        except ValueError as exc:
+            raise ReportError("分页参数必须是整数。") from exc
         return api_success(
-            {
-                "items": list_visible_reports(
-                    user=user, role_code=role_code, status=request.GET.get("status")
+            list_visible_reports(
+                user=user,
+                role_code=role_code,
+                page=page,
+                page_size=page_size,
+                period_start=request.GET.get("period_start"),
+                period_end=request.GET.get("period_end"),
+                month_key=request.GET.get("month_key"),
+                group_id=request.GET.get("group_id"),
+                employee_scope=request.GET.get("employee_scope"),
+            )
+        )
+    except Exception as exc:
+        return _error(exc)
+
+
+@csrf_exempt
+@require_http_methods(["GET", "PUT"])
+def monthly_plan_view(request: HttpRequest, month_key: str) -> JsonResponse:
+    """查询或保存当前用户当前角色指定月度的单一月度计划。
+
+    方法/路径：GET/PUT /api/v1/monthly-plans/{month_key}/；认证：Bearer。
+    GET 路径参数 month_key 使用 YYYY-MM，未填写时 data=null；PUT 请求体为 {summary}。
+    成功响应为月度计划；失败：400/401/403；响应带 X-Trace-ID，逻辑 ID 均序列化为字符串。
+    """
+    try:
+        user, role_code = require_request_user(request)
+        if request.method == "PUT":
+            payload = _json_payload(request)
+            return api_success(
+                save_monthly_plan(
+                    user=user,
+                    role_code=role_code,
+                    month_key=month_key,
+                    summary=payload.get("summary"),
                 )
-            }
+            )
+        return api_success(
+            get_monthly_plan(
+                user=user,
+                access_role_code=role_code,
+                month_key=month_key,
+            )
         )
     except Exception as exc:
         return _error(exc)
@@ -107,7 +165,7 @@ def report_list_view(request: HttpRequest) -> JsonResponse:
 @csrf_exempt
 @require_POST
 def report_create_view(request: HttpRequest) -> JsonResponse:
-    """创建当前用户当前角色的周报草稿。
+    """创建当前用户当前角色的周报。
 
     方法/路径：POST /api/v1/weekly-reports/（兼容 /api/v1/weekly-reports/new/）；认证：Bearer；
     参数：周期、摘要、items、metrics、evidence JSON。
@@ -123,12 +181,15 @@ def report_create_view(request: HttpRequest) -> JsonResponse:
         return _error(exc)
 
 
-@require_http_methods(["GET", "PATCH"])
+@csrf_exempt
+@require_http_methods(["GET", "PATCH", "DELETE"])
 def report_detail_view(request: HttpRequest, report_id: str) -> JsonResponse:
-    """获取周报详情、任务、指标、佐证和审核历史。
+    """获取、修改或删除周报。
 
-    方法/路径：GET /api/v1/weekly-reports/{id}/；认证：Bearer；参数：路径 report_id；幂等：是。
-    成功响应：report/items/metrics/evidence/history；失败：400/401；响应带 X-Trace-ID。
+    方法/路径：GET/PATCH/DELETE /api/v1/weekly-reports/{id}/；认证：Bearer；参数：路径 report_id。
+    PATCH 仅允许修改本人当前周报周期；DELETE 仅允许删除本人当前周报周期。
+    成功响应：report/items/metrics/evidence/attachments，或 id/deleted=true；
+    失败：400/401/403/404/409；响应带 X-Trace-ID。
     """
     try:
         user, role_code = require_request_user(request)
@@ -141,6 +202,10 @@ def report_detail_view(request: HttpRequest, report_id: str) -> JsonResponse:
                     report_id=int(report_id),
                 )
             )
+        if request.method == "DELETE":
+            return api_success(
+                delete_report(user=user, role_code=role_code, report_id=int(report_id))
+            )
         return api_success(
             get_report_detail(user=user, role_code=role_code, report_id=int(report_id))
         )
@@ -149,79 +214,30 @@ def report_detail_view(request: HttpRequest, report_id: str) -> JsonResponse:
 
 
 @csrf_exempt
-@require_http_methods(["PATCH"])
-def report_update_view(request: HttpRequest, report_id: str) -> JsonResponse:
-    """保存自己草稿或退回周报的内容，系统重算完成率与按时状态。
-
-    方法/路径：PATCH /api/v1/weekly-reports/{id}/；认证：Bearer；参数：部分/完整周报 JSON。
-    成功响应：更新后的详情；失败：400/401；已提交或已审核周报不可修改；响应带 X-Trace-ID。
-    """
-    try:
-        user, role_code = require_request_user(request)
-        return api_success(
-            create_or_update_report(
-                user=user,
-                role_code=role_code,
-                payload=_json_payload(request),
-                report_id=int(report_id),
-            )
-        )
-    except Exception as exc:
-        return _error(exc)
-
-
-@csrf_exempt
 @require_POST
-def report_submit_view(request: HttpRequest, report_id: str) -> JsonResponse:
-    """提交自己的周报进入负责人审核队列。
+def attachment_upload_view(request: HttpRequest, report_id: str) -> JsonResponse:
+    """上传当前或未来周报的任务附件。
 
-    方法/路径：POST /api/v1/weekly-reports/{id}/submit/；认证：Bearer；
-    参数：路径 report_id；幂等：否。
-    成功响应：提交后的详情；失败：400/401；响应带 X-Trace-ID，系统记录提交历史。
+    方法/路径：POST /api/v1/weekly-reports/{report_id}/attachments/；认证：Bearer；
+    请求体：multipart/form-data；file 必填；item_id、description 可选，
+    附件类型固定为 weekly_report。
+    成功响应：201，data 为系统通用附件记录；仅本人当前或未来周期可上传，历史周期只读；
+    失败：400/401/403/404；响应带 X-Trace-ID，文件名、URL 和逻辑 ID 均按统一 JSON 契约返回。
     """
     try:
         user, role_code = require_request_user(request)
-        return api_success(submit_report(user=user, role_code=role_code, report_id=int(report_id)))
-    except Exception as exc:
-        return _error(exc)
-
-
-@csrf_exempt
-@require_POST
-def report_review_view(request: HttpRequest, report_id: str) -> JsonResponse:
-    """由经理、总裁或系统管理员审核周报并通过或退回。
-
-    方法/路径：POST /api/v1/weekly-reports/{id}/review/；认证：Bearer；
-    参数：action=approve/return、comment。
-    成功响应：审核后的详情；失败：400/401；权限由角色可见范围控制；响应带 X-Trace-ID。
-    """
-    try:
-        user, role_code = require_request_user(request)
-        payload = _json_payload(request)
+        uploaded_file = request.FILES.get("file")
         return api_success(
-            review_report(
+            upload_report_attachment(
                 user=user,
                 role_code=role_code,
                 report_id=int(report_id),
-                action=str(payload.get("action") or "").strip(),
-                comment=str(payload.get("comment") or "").strip(),
-            )
+                uploaded_file=uploaded_file,
+                item_id=request.POST.get("item_id"),
+                description=request.POST.get("description") or "",
+                attachment_type=request.POST.get("attachment_type") or "weekly_report",
+            ),
+            status=201,
         )
-    except Exception as exc:
-        return _error(exc)
-
-
-@require_GET
-def report_history_view(request: HttpRequest, report_id: str) -> JsonResponse:
-    """查询周报提交、退回和审核历史。
-
-    方法/路径：GET /api/v1/weekly-reports/{id}/history/；认证：Bearer；
-    参数：路径 report_id；幂等：是。
-    成功响应：data.items 为历史记录数组；失败：400/401；响应带 X-Trace-ID。
-    """
-    try:
-        user, role_code = require_request_user(request)
-        detail = get_report_detail(user=user, role_code=role_code, report_id=int(report_id))
-        return api_success({"items": detail["history"]})
     except Exception as exc:
         return _error(exc)

@@ -1,5 +1,7 @@
 import { ref } from "vue"
 
+import { listDictionaryItems } from "@/features/dictionary"
+import type { DictionaryItem } from "@/features/dictionary"
 import { createRole, deleteRole, listRoles, updateRole } from "@/features/directory/api"
 import type { DirectoryRole, RoleMutationPayload } from "@/features/directory/types"
 
@@ -14,6 +16,10 @@ export function useRoleManagement() {
   const isDeleting = ref(false)
   const errorMessage = ref("")
   const successMessage = ref("")
+  const scopeOptions = ref<DictionaryItem[]>([])
+  const templateOptions = ref<DictionaryItem[]>([])
+  const isDictionaryLoading = ref(false)
+  const dictionaryErrorMessage = ref("")
 
   async function loadRoles() {
     isLoading.value = true
@@ -24,6 +30,23 @@ export function useRoleManagement() {
       errorMessage.value = getErrorMessage(error, "角色数据加载失败。")
     } finally {
       isLoading.value = false
+    }
+  }
+
+  async function loadDictionaries() {
+    isDictionaryLoading.value = true
+    dictionaryErrorMessage.value = ""
+    try {
+      const [scopes, templates] = await Promise.all([
+        listDictionaryItems("role_scope"),
+        listDictionaryItems("report_template"),
+      ])
+      scopeOptions.value = scopes.items
+      templateOptions.value = templates.items
+    } catch (error: unknown) {
+      dictionaryErrorMessage.value = getErrorMessage(error, "静态配置加载失败，请联系管理员。")
+    } finally {
+      isDictionaryLoading.value = false
     }
   }
 
@@ -69,7 +92,12 @@ export function useRoleManagement() {
     isDeleting,
     errorMessage,
     successMessage,
+    scopeOptions,
+    templateOptions,
+    isDictionaryLoading,
+    dictionaryErrorMessage,
     loadRoles,
+    loadDictionaries,
     saveRole,
     removeRole,
   }

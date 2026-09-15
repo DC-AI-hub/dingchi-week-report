@@ -40,6 +40,11 @@ python -m pip install -e ".[dev]"
 python -m uvicorn config.asgi:application --reload --host 127.0.0.1 --port 8000
 ```
 
+```cmd
+cd backend
+.venv\Scripts\python.exe -m uvicorn config.asgi:application --reload --port 8000
+```
+
 项目启动不会自动执行数据库迁移。需要变更数据库结构时，单独审核并手动执行：
 
 ```powershell
@@ -52,7 +57,7 @@ python manage.py migrate
 首次初始化演示数据（项目启动不会自动执行）：
 
 ```powershell
-mysql -uroot -p dingchi_week_report < scripts/seed_weekly_report.sql
+mysql -uroot -p dingchi_week_report < "docs/数据库脚本/02_初始化DML.sql"
 ```
 
 演示账号：`delivery.specialist / Worker@123`、`recruiter / Worker@123`、

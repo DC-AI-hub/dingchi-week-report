@@ -5,6 +5,7 @@ import { RouterLink, useRoute } from "vue-router"
 import dingchiLogo from "@/assets/brand/dingchi-logo.png"
 import sidebarDataColumns from "@/assets/dashboard/hero-data-columns.png"
 import { useAuthStore } from "@/features/auth/store"
+import { formatDateTime } from "@/utils/date"
 
 import NavIcon from "./components/NavIcon.vue"
 import UserProfileMenu from "./components/UserProfileMenu.vue"
@@ -13,16 +14,15 @@ const authStore = useAuthStore()
 const route = useRoute()
 const isPublic = computed(() => Boolean(route.meta.public))
 const isDashboard = computed(() => route.path === "/")
+const headerDate = formatDateTime(new Date())
+const weeklyReportLabel = computed(() => {
+  const scope = authStore.activeRole?.scope
+  return scope === "all" ? "全员周报" : scope === "team" ? "团队周报" : "周报"
+})
 
 const navItems = computed(() => [
-  { label: "周报总览", to: "/", icon: "home" as const, visible: true },
-  { label: "我的周报", to: "/weekly-reports", icon: "report" as const, visible: true },
-  {
-    label: "待我审核",
-    to: "/weekly-reports/review",
-    icon: "review" as const,
-    visible: ["team", "all"].includes(authStore.activeRole?.scope || ""),
-  },
+  { label: "总览", to: "/", icon: "home" as const, visible: true },
+  { label: weeklyReportLabel.value, to: "/weekly-reports", icon: "report" as const, visible: true },
   {
     label: "用户管理",
     to: "/users",
@@ -52,7 +52,7 @@ onMounted(() => {
   </template>
   <div v-else class="app-shell">
     <aside class="app-sidebar">
-      <RouterLink class="brand" to="/" aria-label="返回周报总览">
+      <RouterLink class="brand" to="/" aria-label="返回总览">
         <span class="brand-mark">
           <img :src="dingchiLogo" alt="鼎驰" />
         </span>
@@ -74,7 +74,7 @@ onMounted(() => {
       <header v-if="!isDashboard" class="app-header">
         <div class="header-context">
           <span class="header-kicker">智能周报驾驶舱</span>
-          <span class="header-date">本周 {{ new Date().toLocaleDateString("zh-CN") }}</span>
+          <span class="header-date">本周 {{ headerDate }}</span>
         </div>
       </header>
       <main class="app-main" :class="{ 'app-main--dashboard': isDashboard }">

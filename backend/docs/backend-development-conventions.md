@@ -180,6 +180,9 @@ mcp_server/modules/<capability>/tools ──→ apps/<domain>/public.py（公开
 
 - 模型字段、关系、索引、唯一约束和检查约束必须显式定义。
 - 金额、比例、时区、状态枚举等类型必须选择可保持精度和语义的字段。
+- 日期时间字段（例如 `created_at`、`updated_at`、`last_login_at`）统一使用
+  Django `DateTimeField`，MySQL DDL 对应 `DATETIME(6)`；禁止使用 `BIGINT` 或 `DEFAULT 0`
+  表示日期时间。只有雪花主键和逻辑关联 ID 使用 `BIGINT`，日期周期字段使用 `DateField`/`DATE`。
 - 表之间统一采用逻辑关联：禁止使用数据库外键约束、Django `ForeignKey`/`OneToOneField`/
   默认 `ManyToManyField` 生成物理关系，也禁止为关联字段创建外键索引。
 - 逻辑关联使用明确的标量字段（例如 `user_id`、`report_id`）或显式中间表；关联完整性、
@@ -546,7 +549,7 @@ python manage.py makemigrations --check --dry-run
   入口负责覆盖所有挂载，Django middleware 负责 WSGI/测试入口。
 - 请求携带合法 `X-Trace-ID` 时必须原样复用；缺失或格式非法时由服务端生成安全的随机值。
   响应必须返回同名 `X-Trace-ID`，日志上下文必须包含同一值。
-- 统一日志使用 `logging.handlers.RotatingFileHandler`，日志目录、文件名、级别、单文件大小、
+- 统一日志使用 `logging.handlers.RotatingFileHandler`，日志目录（支持宿主机绝对路径）、文件名、级别、单文件大小、
   历史文件数量和是否输出控制台全部从 `.env.*` 读取；代码禁止写死这些运行参数。
 - 日志默认 UTF-8 编码，禁止记录密码明文、RSA 密文、私钥、公钥文件内容、Token、Cookie 和完整
   Authorization Header；异常堆栈也必须经过敏感信息审查。
@@ -594,3 +597,20 @@ Django View、Service、DAO、Model、SQL 和数据库表。详细协作规则�
   修改必须升级 API 版本，新增字段、错误码和弃用计划同步两端文档。
 - 后端不得把页面设计要求、组件名称或 UI 文案写进业务接口；前端不得根据数据库字段、内部异常或
   后端目录推断接口行为。
+
+## 28. 静态字典与配置项
+
+- 可由管理员维护、被多个业务模块复用的静态选项统一归属 `apps/dictionary/`，持久化到
+  `system_dictionary` 表；禁止在角色 Service、View 或前端页面中复制一套枚举常量作为唯一来源。
+- 字典表使用 `dict_type + dict_code` 唯一约束，编码采用小写 snake_case；`dict_name` 是展示名称，
+  `dict_value` 是可选机器值，`description` 记录中文用途，`status` 控制启用/停用，`sort_order` 控制顺序。
+- 字典模块按 Model、DAO、Service、View、URL 和测试分层；DAO 只使用单表 ORM 查询，不在 View
+  中直接访问数据库；跨模块校验只能依赖 `apps/dictionary/public.py` 公开能力。
+- 统一通过 `GET /api/v1/dictionaries/{dict_type}/` 返回启用项；接口必须认证、返回白名单 JSON，
+  ID 序列化为字符串；未知类型返回空数组，格式非法类型返回 `INVALID_DICTIONARY_TYPE`。
+- 角色数据范围和周报模板编码必须引用启用字典项；停用字典项不得用于新增/编辑，历史角色和周报
+  保留原编码以保证可追溯。
+- 初始静态配置必须提供可重复执行的完整 DML（`docs/数据库脚本/02_初始化DML.sql`，包含字典、
+  组织、角色、用户、模板和演示周报数据），并在完成表结构初始化后显式运行；项目启动禁止自动建表
+  或执行种子数据。建表 DDL、初始化 DML 和删除脚本统一维护在 `docs/数据库脚本/`，不要再分散到
+  `scripts/`。

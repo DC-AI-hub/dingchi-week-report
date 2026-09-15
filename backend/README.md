@@ -14,7 +14,8 @@ config/
 apps/
 ├─ core/                # 通用响应、追踪中间件、认证和安全工具
 ├─ accounts/            # 登录、角色、用户、上下级和分组
-├─ weekly_report/       # 模板、周报任务、指标、佐证和审核流程
+├─ dictionary/          # 静态字典（角色数据范围、周报模板等）
+├─ weekly_report/       # 模板、周报任务、指标、佐证和通用附件关联
 ├─ ai_gateway/          # AI 参数校验、服务层、HTTP 接口
 └─ mcp_server/          # 统一 MCP Server，工具按 modules/<capability>/ 分层
 ```
@@ -32,11 +33,29 @@ python scripts/generate_crypto_keys.py
 
 ## 启动
 
-```powershell
+在 Windows **CMD（命令提示符）** 中执行：
+
+```bat
 python -m venv .venv
-./.venv/Scripts/Activate.ps1
+.venv\Scripts\activate.bat
 python -m pip install -e ".[dev]"
 python -m uvicorn config.asgi:application --reload --port 8000
+```
+
+在 Windows **PowerShell** 中执行：
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
+python -m uvicorn config.asgi:application --reload --port 8000
+```
+
+说明：`Activate.ps1` 是 PowerShell 脚本，不能在 CMD 中使用；CMD 必须使用
+`.venv\Scripts\activate.bat`。如果 PowerShell 提示禁止执行脚本，可仅对当前用户执行一次：
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
 不要用 `manage.py runserver` 作为完整项目入口，因为它不会承载顶层 Starlette 中的 MCP 生命周期。
@@ -49,11 +68,17 @@ python manage.py migrate --plan
 python manage.py migrate
 ```
 
-首次初始化演示数据：
+纯 SQL 初始化脚本统一放在 `docs/数据库脚本/`：
 
 ```powershell
-mysql -uroot -p dingchi_week_report < scripts/seed_weekly_report.sql
+mysql -uroot -p dingchi_week_report < "docs/数据库脚本/01_建表DDL.sql"
+mysql -uroot -p dingchi_week_report < "docs/数据库脚本/02_初始化DML.sql"
+mysql -uroot -p dingchi_week_report < "docs/数据库脚本/05_system_attachment.sql"
 ```
+
+其中 DDL 使用 `CREATE TABLE IF NOT EXISTS`，不会覆盖已有表；日期时间字段统一为
+`DATETIME(6)`。`99_删除所有表.sql` 为破坏性脚本，仅限确认目标数据库后执行。手工 DDL
+与 Django migration 二选一作为同一环境的结构初始化来源，禁止在启动命令中自动执行。
 
 ## API 响应约定
 
@@ -74,15 +99,36 @@ mysql -uroot -p dingchi_week_report < scripts/seed_weekly_report.sql
 - `POST /api/v1/auth/login/`、`GET /api/v1/auth/me/`、`POST /api/v1/auth/switch-role/`：登录、会话和角色切换。
 - `GET /api/v1/dashboard/summary/`：按当前角色返回个人、团队或全量驾驶舱数据。
 - `GET /api/v1/weekly-report-templates/{role_code}/`：获取角色模板任务和指标。
-- `GET/POST /api/v1/weekly-reports/`、`GET/PATCH /api/v1/weekly-reports/{id}/`：查询、创建和编辑周报。
-- `POST /api/v1/weekly-reports/{id}/submit/`、`POST /api/v1/weekly-reports/{id}/review/`：提交与审核。
+- `GET/POST /api/v1/weekly-reports/`、`GET/PATCH/DELETE /api/v1/weekly-reports/{id}/`：查询、创建、编辑和删除周报。
+- `POST /api/v1/weekly-reports/{id}/attachments/`：上传周报附件，附件记录写入通用 `system_attachment` 表。
 - `GET /api/v1/users/`、`GET /api/v1/roles/`、`GET /api/v1/groups/`：总裁/系统管理员维护组织主数据。
 
-角色范围为 `self`（本人）、`team`（本人及下属树）和 `all`（全量）。所有接口返回统一 JSON，并附带 `X-Trace-ID`；完整中文契约注释放在后端 `views.py` 与前端 feature `api.ts`。
+角色范围和周报模板均从 `system_dictionary` 字典表读取，初始范围编码为 `self`（本人）、`team`（本人及下属树）和 `all`（全量）。所有接口返回统一 JSON，并附带 `X-Trace-ID`；完整中文契约注释放在后端 `views.py` 与前端 feature `api.ts`。
 
 ## 环境配置
 
-- 本地直接修改 `.env.development`；公共占位参考 `.env.example`；生产通过 `ENV_FILE` 指向 `.env.production.example` 的实际配置。
+环境变量按应用运行、跨域安全、静态/附件、MySQL、Redis、AI、雪花主键、认证、RSA
+和日志等模块分组维护；每个配置项都在 `.env.*` 文件中保留中文说明。配置文件的职责如下：
+
+- `.env.example`：不含真实凭据的公共占位示例。
+- `.env.development`：本地开发配置，使用本机 MySQL/Redis；开发机可直接修改其中的连接参数。
+- `.env.production.example`：生产配置模板，不可直接用于生产；复制为未提交的 `.env.production` 后，再替换全部 `CHANGE_ME` 占位符。
+
+生产环境示例（Linux/macOS）：
+
+```bash
+cp .env.production.example .env.production
+export ENV_FILE=/opt/dingchi-week-report/backend/.env.production
+export DJANGO_SETTINGS_MODULE=config.settings.production
+python -m uvicorn config.asgi:application --host 0.0.0.0 --port 8000
+```
+
+Windows PowerShell 可使用 `$env:ENV_FILE` 和 `$env:DJANGO_SETTINGS_MODULE` 设置同名变量后启动。
+`ENV_FILE` 支持宿主机绝对路径；未设置时默认读取 `.env.development`。
+
+- 附件存储根目录由 `MEDIA_ROOT` 配置，支持宿主机绝对路径，例如 `MEDIA_ROOT=/opt/dingchi-week-report/data/files`；`ATTACHMENT_UPLOAD_DIR=weekly-report` 仅表示相对于该根目录的分类子目录，最终文件落在 `/opt/dingchi-week-report/data/files/weekly-report/{report_id}/...`。
+- 日志目录由 `LOG_DIR` 配置，同样支持宿主机绝对路径，例如 `LOG_DIR=/opt/dingchi-week-report/data/logs`；`LOG_FILE_NAME` 只填写文件名，日志最终写入该目录并按 `.env` 中的滚动参数轮转。
+
 - 数据库和 Redis 连接必须使用连接池，连接池大小、超时和健康检查参数均在 `.env.*` 配置。
 - MySQL 使用 `django-db-connection-pool` 的 SQLAlchemy `QueuePool` 适配器，池参数为 `MYSQL_POOL_*`；Redis 使用 `django-redis` 内置连接池。
 - `.env.*` 中每个配置项均保留中文用途说明；禁止把系统配置、密钥或连接参数硬编码在代码中。

@@ -10,6 +10,20 @@ from apps.accounts.services.organization import (
     delete_role,
     get_role_list,
 )
+from apps.dictionary.models import DictionaryItem
+
+
+def _seed_role_dictionaries() -> None:
+    DictionaryItem.objects.bulk_create(
+        [
+            DictionaryItem(dict_type="role_scope", dict_code="self", dict_name="仅本人数据"),
+            DictionaryItem(dict_type="role_scope", dict_code="team", dict_name="本人及下属团队"),
+            DictionaryItem(dict_type="role_scope", dict_code="all", dict_name="全部数据"),
+            DictionaryItem(
+                dict_type="report_template", dict_code="general_v1", dict_name="通用周报"
+            ),
+        ]
+    )
 
 
 @pytest.mark.django_db
@@ -33,10 +47,36 @@ def test_role_list_keeps_inactive_roles_but_hides_deleted_roles() -> None:
 
 @pytest.mark.django_db
 def test_create_role_rejects_duplicate_code() -> None:
+    _seed_role_dictionaries()
     Role.objects.create(role_code="duplicate_role", role_name="原角色")
 
     with pytest.raises(RoleConflictError):
         create_role(payload={"role_code": "duplicate_role", "role_name": "重复角色"})
+
+
+@pytest.mark.django_db
+def test_create_role_requires_active_dictionary_codes() -> None:
+    _seed_role_dictionaries()
+
+    with pytest.raises(ValueError, match="数据范围"):
+        create_role(
+            payload={
+                "role_code": "invalid_scope_role",
+                "role_name": "非法范围角色",
+                "scope": "department",
+                "report_template_code": "general_v1",
+            }
+        )
+
+    with pytest.raises(ValueError, match="周报模板"):
+        create_role(
+            payload={
+                "role_code": "invalid_template_role",
+                "role_name": "非法模板角色",
+                "scope": "self",
+                "report_template_code": "disabled_v1",
+            }
+        )
 
 
 @pytest.mark.django_db

@@ -1,12 +1,68 @@
 """Built-in role templates used before the database seed is applied.
 
-The same shape is persisted by ``seed_weekly_report.sql``.  Keeping a small
-fallback makes the local UI useful while a developer is preparing MySQL.
+Template items are persisted by ``docs/数据库脚本/02_初始化DML.sql`` and task-list
+columns are optionally overridden by the role field dictionaries.  Keeping a
+small fallback makes the local UI useful while a developer is preparing MySQL.
 """
 
 from __future__ import annotations
 
 from typing import Any
+
+
+def _task_fields() -> list[dict[str, Any]]:
+    """Return the built-in task-list columns in the Excel-defined order.
+
+    The order is part of the template contract rather than an implementation
+    detail of the Vue table.  A dictionary override can replace these values
+    without changing the report tables or the task editor form.
+    """
+    labels = [
+        ("customer_name", "客户"),
+        ("task_name", "工作任务"),
+        ("work_content", "主要工作内容"),
+        ("output_description", "输出成果"),
+        ("planned_completion_date", "计划完成时间"),
+        ("progress_text", "工作进展（截至月日）"),
+        ("progress_percent", "完成进度（百分比）"),
+        ("delay_reason", "进度缓慢原因说明"),
+        ("on_time_status", "是否在计划时间内完成"),
+        ("actual_completion_date", "实际完成时间"),
+        ("owner_name", "责任人"),
+        ("collaborator_names", "协作人"),
+        ("document_links", "相关文档链接或佐证材料"),
+    ]
+    default_visible = {
+        "customer_name",
+        "task_name",
+        "output_description",
+        "planned_completion_date",
+        "progress_percent",
+        "on_time_status",
+    }
+    return [
+        {
+            "field_code": code,
+            "label": label,
+            "sort_order": index,
+            "default_visible": code in default_visible,
+        }
+        for index, (code, label) in enumerate(labels, start=1)
+    ]
+
+
+# Field order/visibility can be overridden by system_dictionary rows named
+# ``weekly_report_fields_{role_code}``.  Keep the built-in list for local
+# development and for databases that have not loaded the optional DML yet.
+ROLE_TASK_FIELDS: dict[str, list[dict[str, Any]]] = {
+    "delivery_specialist": _task_fields(),
+    "interaction_assistant": _task_fields(),
+}
+
+
+def get_default_task_fields(role_code: str) -> list[dict[str, Any]]:
+    """Return a copy of a role's built-in task-list column definition."""
+    return [dict(item) for item in ROLE_TASK_FIELDS.get(role_code, [])]
 
 
 def _task(
@@ -298,9 +354,8 @@ def get_default_template(role_code: str) -> dict[str, Any]:
         "template_version": "1.0",
         "template_name": source["template_name"],
         "description": source["description"],
-        "submit_deadline_rule": "每周五 12:00",
-        "review_deadline_rule": "每周五 16:00",
         "sections": sections,
         "tasks": items,
         "metrics": metrics,
+        "fields": get_default_task_fields(role_code),
     }

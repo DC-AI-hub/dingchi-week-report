@@ -2,6 +2,7 @@
 import { computed, nextTick, reactive, ref, watch } from "vue"
 
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
+import type { DictionaryItem } from "@/features/dictionary"
 import type { DirectoryRole, RoleMutationPayload } from "@/features/directory/types"
 
 const props = withDefaults(
@@ -9,10 +10,16 @@ const props = withDefaults(
     open: boolean
     role?: DirectoryRole | null
     isSaving?: boolean
+    isDictionaryLoading?: boolean
+    scopeOptions?: DictionaryItem[]
+    templateOptions?: DictionaryItem[]
   }>(),
   {
     role: null,
     isSaving: false,
+    isDictionaryLoading: false,
+    scopeOptions: () => [],
+    templateOptions: () => [],
   },
 )
 
@@ -24,8 +31,8 @@ const emit = defineEmits<{
 const emptyForm = (): RoleMutationPayload => ({
   role_code: "",
   role_name: "",
-  scope: "self",
-  report_template_code: "general_v1",
+  scope: props.scopeOptions[0]?.dict_code || "",
+  report_template_code: props.templateOptions[0]?.dict_code || "",
   description: "",
 })
 
@@ -39,26 +46,34 @@ watch(
   () => ({ open: props.open, role: props.role }),
   ({ open, role }) => {
     if (!open) return
-    Object.assign(
-      form,
-      role
-        ? {
-            role_code: role.role_code,
-            role_name: role.role_name,
-            scope: normalizeScope(role.scope),
-            report_template_code: role.report_template_code,
-            description: role.description,
-          }
-        : emptyForm(),
-    )
+    Object.assign(form, role ? toForm(role) : emptyForm())
     formError.value = ""
     void nextTick(() => (role ? roleNameInput.value : roleCodeInput.value)?.focus())
   },
   { immediate: true },
 )
 
-function normalizeScope(scope: string): RoleMutationPayload["scope"] {
-  return scope === "team" || scope === "all" ? scope : "self"
+watch(
+  () => [props.scopeOptions, props.templateOptions],
+  () => {
+    if (props.open && !props.role) {
+      if (!form.scope) form.scope = props.scopeOptions[0]?.dict_code || ""
+      if (!form.report_template_code) {
+        form.report_template_code = props.templateOptions[0]?.dict_code || ""
+      }
+    }
+  },
+  { deep: true },
+)
+
+function toForm(role: DirectoryRole): RoleMutationPayload {
+  return {
+    role_code: role.role_code,
+    role_name: role.role_name,
+    scope: role.scope,
+    report_template_code: role.report_template_code,
+    description: role.description,
+  }
 }
 
 function submitForm() {
@@ -70,8 +85,16 @@ function submitForm() {
     description: form.description.trim(),
   }
 
-  if (!payload.role_code || !payload.role_name || !payload.report_template_code) {
-    formError.value = "请完整填写角色编码、角色名称和模板编码。"
+  if (!payload.role_code || !payload.role_name || !payload.scope || !payload.report_template_code) {
+    formError.value = "请完整填写角色编码、角色名称、数据范围和周报模板。"
+    return
+  }
+  if (!props.scopeOptions.some((item) => item.dict_code === payload.scope)) {
+    formError.value = "请选择有效的数据范围。"
+    return
+  }
+  if (!props.templateOptions.some((item) => item.dict_code === payload.report_template_code)) {
+    formError.value = "请选择有效的周报模板。"
     return
   }
   if (!/^[a-z][a-z0-9_]*$/.test(payload.role_code)) {
@@ -86,10 +109,9 @@ function submitForm() {
 <template>
   <BaseDialog
     :busy="isSaving"
-    :description="isEditing ? '角色编码不可修改，其余配置保存后立即生效。' : '配置角色名称、数据可见范围和周报模板。'"
     :open="open"
     :title="isEditing ? '编辑角色' : '新增角色'"
-    width="680px"
+    width="920px"
     @close="$emit('close')"
   >
     <form id="role-editor-form" class="role-form" @submit.prevent="submitForm">
@@ -106,7 +128,6 @@ function submitForm() {
             placeholder="project_specialist"
             :disabled="isEditing || isSaving"
           />
-          <small>{{ isEditing ? "角色编码创建后不可修改" : "小写字母开头，使用下划线分隔" }}</small>
         </label>
 
         <label>
@@ -123,22 +144,32 @@ function submitForm() {
 
         <label>
           <span>数据范围</span>
-          <select v-model="form.scope" :disabled="isSaving">
-            <option value="self">仅本人数据</option>
-            <option value="team">本人及下属团队</option>
-            <option value="all">全部数据</option>
+          <select
+            v-model="form.scope"
+            :disabled="isSaving || isDictionaryLoading || !scopeOptions.length"
+          >
+            <option value="" disabled>
+              {{ isDictionaryLoading ? "正在加载静态配置…" : "请选择数据范围" }}
+            </option>
+            <option v-for="item in scopeOptions" :key="item.id" :value="item.dict_code">
+              {{ item.dict_name }}
+            </option>
           </select>
         </label>
 
         <label>
-          <span>周报模板编码</span>
-          <input
+          <span>周报模板</span>
+          <select
             v-model="form.report_template_code"
-            autocomplete="off"
-            maxlength="64"
-            placeholder="project_specialist_v1"
-            :disabled="isSaving"
-          />
+            :disabled="isSaving || isDictionaryLoading || !templateOptions.length"
+          >
+            <option value="" disabled>
+              {{ isDictionaryLoading ? "正在加载静态配置…" : "请选择周报模板" }}
+            </option>
+            <option v-for="item in templateOptions" :key="item.id" :value="item.dict_code">
+              {{ item.dict_name }}
+            </option>
+          </select>
         </label>
 
         <label class="description-field">

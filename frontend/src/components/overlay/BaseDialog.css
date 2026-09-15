@@ -16,7 +16,7 @@
   max-height: calc(100vh - 2.5rem);
   overflow: hidden auto;
   border: 1px solid rgba(116, 171, 236, 0.28);
-  border-radius: 22px;
+  border-radius: 26px;
   background: var(--surface-strong);
   box-shadow: 0 28px 80px rgba(20, 64, 119, 0.28);
 }
@@ -26,20 +26,20 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1.35rem 1.45rem 1rem;
+  padding: 1.75rem 2.1rem 1.2rem;
   border-bottom: 1px solid var(--line);
 }
 
 .dialog-header h2 {
   margin: 0;
   color: var(--text);
-  font-size: 1.25rem;
+  font-size: 1.65rem;
 }
 
 .dialog-header p {
-  margin: 0.38rem 0 0;
+  margin: 0.45rem 0 0;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.98rem;
   line-height: 1.55;
 }
 
@@ -69,14 +69,15 @@
 }
 
 .dialog-body {
-  padding: 1.25rem 1.45rem;
+  padding: 1.55rem 2.1rem 1.7rem;
 }
 
 .dialog-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.65rem;
-  padding: 1rem 1.45rem 1.3rem;
+  padding: 1.25rem 2.1rem 1.45rem;
   border-top: 1px solid var(--line);
   background: var(--surface-soft);
 }
@@ -124,5 +125,10 @@
   .dialog-actions {
     padding-right: 1rem;
     padding-left: 1rem;
+  }
+
+  .dialog-actions > button,
+  .dialog-actions > a {
+    flex: 1 1 auto;
   }
 }

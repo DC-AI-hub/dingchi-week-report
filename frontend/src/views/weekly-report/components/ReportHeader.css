@@ -4,22 +4,52 @@
   justify-content: space-between;
   gap: 1.5rem;
   padding: 1.5rem 1.7rem;
-  background: linear-gradient(115deg, rgba(255, 255, 255, 0.96), rgba(234, 244, 255, 0.88));
+  background:
+    radial-gradient(circle at 88% 14%, rgba(182, 223, 255, 0.38), transparent 30%),
+    linear-gradient(115deg, rgba(255, 255, 255, 0.96), rgba(234, 244, 255, 0.88));
 }
 
-.report-header h1 { margin: 0.3rem 0 0; color: var(--text-strong); font-size: clamp(1.45rem, 3vw, 2.1rem); }
-.report-header p { margin: 0.45rem 0 0; color: var(--muted); }
-.report-header-meta { display: flex; align-items: center; gap: 1rem; text-align: right; }
-.period-field { display: grid; gap: 0.28rem; color: var(--muted); font-size: 0.74rem; }
-.period-field strong { color: var(--text-strong); font-size: 0.95rem; white-space: nowrap; }
-.period-field i { padding: 0 0.3rem; color: var(--accent); font-style: normal; }
-.status-pill { display: inline-flex; align-items: center; justify-content: center; min-width: 4.6rem; padding: 0.38rem 0.7rem; border-radius: 99px; font-size: 0.76rem; font-weight: 750; }
-.status-pill--draft { color: #53657d; background: #e8eef7; }
-.status-pill--submitted { color: #9a6400; background: #fff0c7; }
-.status-pill--approved { color: #087b54; background: #d9f8ec; }
-.status-pill--returned { color: #c63f3f; background: #ffe0e0; }
+.report-header h1 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: clamp(1.45rem, 3vw, 2.1rem);
+}
+
+.report-header p {
+  margin: 0.45rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.report-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-align: right;
+}
+
+.period-field {
+  display: grid;
+  gap: 0.28rem;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.period-field strong {
+  color: var(--text-strong);
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
 
 @media (max-width: 680px) {
-  .report-header, .report-header-meta { flex-direction: column; align-items: flex-start; text-align: left; }
-  .report-header-meta { gap: 0.7rem; }
+  .report-header,
+  .report-header-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    text-align: left;
+  }
+
+  .report-header-meta {
+    gap: 0.7rem;
+  }
 }

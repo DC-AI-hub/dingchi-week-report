@@ -17,5 +17,6 @@ urlpatterns = [
     path("groups/<str:group_id>/", views.group_update_view, name="group-update"),
     path("users/", views.users_view, name="users"),
     path("users/new/", views.user_create_view, name="user-create"),
+    path("users/options/", views.user_options_view, name="user-options"),
     path("users/<str:user_id>/", views.user_update_view, name="user-update"),
 ]

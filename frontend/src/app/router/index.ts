@@ -22,6 +22,24 @@ const routes: RouteRecordRaw[] = [
     meta: { title: "我的周报", requiresAuth: true },
   },
   {
+    path: "/monthly-plan",
+    name: "delivery-specialist-monthly-plan",
+    component: () => import("@/views/weekly-report/delivery-specialist/MonthlyPlanView.vue"),
+    meta: { title: "月度计划", requiresAuth: true, roleCode: "delivery_specialist" },
+  },
+  {
+    path: "/weekly-reports/delivery-specialist/new",
+    name: "delivery-specialist-report-new",
+    component: () => import("@/views/weekly-report/delivery-specialist/EditView.vue"),
+    meta: { title: "填写交付专员周报", requiresAuth: true, roleCode: "delivery_specialist" },
+  },
+  {
+    path: "/weekly-reports/delivery-specialist/:reportId/edit",
+    name: "delivery-specialist-report-edit",
+    component: () => import("@/views/weekly-report/delivery-specialist/EditView.vue"),
+    meta: { title: "编辑交付专员周报", requiresAuth: true, roleCode: "delivery_specialist" },
+  },
+  {
     path: "/weekly-reports/new",
     name: "weekly-report-new",
     component: () => import("@/views/weekly-report/EditView.vue"),
@@ -32,12 +50,6 @@ const routes: RouteRecordRaw[] = [
     name: "weekly-report-edit",
     component: () => import("@/views/weekly-report/EditView.vue"),
     meta: { title: "编辑周报", requiresAuth: true },
-  },
-  {
-    path: "/weekly-reports/review",
-    name: "weekly-report-review",
-    component: () => import("@/views/weekly-report/ReviewView.vue"),
-    meta: { title: "待我审核", requiresAuth: true },
   },
   {
     path: "/weekly-reports/:reportId",
@@ -86,6 +98,9 @@ router.beforeEach(async (to) => {
   await authStore.bootstrap()
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: "login", query: { redirect: to.fullPath } }
+  }
+  if (to.meta.roleCode && authStore.activeRole?.role_code !== to.meta.roleCode) {
+    return { name: "weekly-reports" }
   }
   return true
 })

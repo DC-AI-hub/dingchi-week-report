@@ -1,0 +1,386 @@
+-- DingChi 周报系统 MySQL 建表脚本
+-- 版本：与当前 Django 模型及内置组件同步（2026-09）
+--
+-- 使用说明：
+-- 1. 本脚本只负责创建当前项目已知表，不创建数据库、不执行迁移。
+-- 2. 所有 CREATE TABLE 均使用 IF NOT EXISTS；已有表不会被修改。
+-- 3. 业务表的关联字段均为逻辑 BIGINT ID，不创建外键；Django 框架表的外键
+--    是框架自身权限/后台功能所需约束，不属于业务表关联。
+-- 4. 业务主键由应用层雪花算法生成；日期时间统一使用 DATETIME(6)，不使用 BIGINT。
+
+SET NAMES utf8mb4;
+
+-- =========================
+-- 业务表
+-- =========================
+
+CREATE TABLE IF NOT EXISTS `system_dictionary` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `dict_type` VARCHAR(64) NOT NULL COMMENT '字典类型编码',
+    `dict_code` VARCHAR(64) NOT NULL COMMENT '字典项编码',
+    `dict_name` VARCHAR(128) NOT NULL COMMENT '字典项名称',
+    `dict_value` VARCHAR(255) NOT NULL COMMENT '字典项实际值',
+    `description` VARCHAR(255) NOT NULL COMMENT '字典项说明',
+    `status` VARCHAR(16) NOT NULL COMMENT '状态：active启用、inactive停用',
+    `sort_order` INT UNSIGNED NOT NULL COMMENT '同类型字典项排序号',
+    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
+    `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_system_dictionary_type_code` (`dict_type`, `dict_code`),
+    KEY `idx_system_dictionary_lookup` (`dict_type`, `status`, `sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统静态字典表';
+
+CREATE TABLE IF NOT EXISTS `organization_group` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `group_code` VARCHAR(64) NOT NULL COMMENT '组织分组编码',
+    `group_name` VARCHAR(128) NOT NULL COMMENT '组织分组名称',
+    `description` VARCHAR(255) NOT NULL COMMENT '分组说明',
+    `parent_group_id` BIGINT NULL COMMENT '父分组ID，逻辑关联 organization_group.id',
+    `status` VARCHAR(16) NOT NULL COMMENT '状态：active启用、inactive停用',
+    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
+    `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_organization_group_group_code` (`group_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='组织分组表';
+
+CREATE TABLE IF NOT EXISTS `role` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `role_code` VARCHAR(64) NOT NULL COMMENT '角色编码',
+    `role_name` VARCHAR(128) NOT NULL COMMENT '角色名称',
+    `scope` VARCHAR(16) NOT NULL COMMENT '数据范围编码，关联 system_dictionary.role_scope',
+    `description` VARCHAR(255) NOT NULL COMMENT '角色说明',
+    `report_template_code` VARCHAR(64) NOT NULL COMMENT '周报模板编码，关联 system_dictionary.report_template',
+    `status` VARCHAR(16) NOT NULL COMMENT '状态：active启用、inactive停用',
+    `sort_order` INT UNSIGNED NOT NULL COMMENT '角色显示排序号',
+    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
+    `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_role_role_code` (`role_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统角色表';
+
+CREATE TABLE IF NOT EXISTS `user_account` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `username` VARCHAR(64) NOT NULL COMMENT '登录用户名',
+    `employee_no` VARCHAR(64) NOT NULL COMMENT '员工工号',
+    `display_name` VARCHAR(128) NOT NULL COMMENT '员工显示姓名',
+    `email` VARCHAR(254) NOT NULL COMMENT '员工邮箱',
+    `password_ciphertext` LONGTEXT NOT NULL COMMENT '非对称加密后的密码密文',
+    `manager_id` BIGINT NULL COMMENT '直属上级用户ID，逻辑关联 user_account.id',
+    `group_id` BIGINT NULL COMMENT '主组织分组ID，逻辑关联 organization_group.id',
+    `avatar_color` VARCHAR(16) NOT NULL COMMENT '头像背景色',
+    `status` VARCHAR(16) NOT NULL COMMENT '状态：active启用、inactive停用',
+    `is_demo` BOOL NOT NULL COMMENT '是否为演示账号',
+    `last_login_at` DATETIME(6) NULL COMMENT '最近登录时间',
+    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
+    `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_user_account_username` (`username`),
+    UNIQUE KEY `uq_user_account_employee_no` (`employee_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户账号表';
+
+CREATE TABLE IF NOT EXISTS `user_role` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID，逻辑关联 user_account.id',
+    `role_id` BIGINT NOT NULL COMMENT '角色ID，逻辑关联 role.id',
+    `is_default` BOOL NOT NULL COMMENT '是否为用户默认角色',
+    `status` VARCHAR(16) NOT NULL COMMENT '状态：active启用、inactive停用',
+    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
+    `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_user_role_pair` (`user_id`, `role_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户角色关联表';
+
+CREATE TABLE IF NOT EXISTS `user_group_membership` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID，逻辑关联 user_account.id',
+    `group_id` BIGINT NOT NULL COMMENT '组织分组ID，逻辑关联 organization_group.id',
+    `is_primary` BOOL NOT NULL COMMENT '是否为用户主分组',
+    `status` VARCHAR(16) NOT NULL COMMENT '状态：active启用、inactive停用',
+    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
+    `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_user_group_pair` (`user_id`, `group_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户组织分组关联表';
+
+CREATE TABLE IF NOT EXISTS `report_template` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `template_code` VARCHAR(64) NOT NULL COMMENT '周报模板编码',
+    `template_version` VARCHAR(16) NOT NULL COMMENT '模板版本号',
+    `role_code` VARCHAR(64) NOT NULL COMMENT '适用角色编码，逻辑关联 role.role_code',
+    `template_name` VARCHAR(128) NOT NULL COMMENT '模板名称',
+    `description` VARCHAR(500) NOT NULL COMMENT '模板说明',
+    `status` VARCHAR(16) NOT NULL COMMENT '状态：active启用、inactive停用',
+    `effective_from` DATE NULL COMMENT '生效开始日期',
+    `effective_to` DATE NULL COMMENT '生效结束日期',
+    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
+    `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_report_template_version` (`template_code`, `template_version`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='周报模板主表';
+
+CREATE TABLE IF NOT EXISTS `report_template_item` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `template_id` BIGINT NOT NULL COMMENT '模板ID，逻辑关联 report_template.id',
+    `section_code` VARCHAR(64) NOT NULL COMMENT '模板分区编码',
+    `section_name` VARCHAR(128) NOT NULL COMMENT '模板分区名称',
+    `task_code` VARCHAR(64) NOT NULL COMMENT '模板任务项编码',
+    `label` VARCHAR(255) NOT NULL COMMENT '任务项标题',
+    `guidance` VARCHAR(500) NOT NULL COMMENT '填写指引',
+    `item_type` VARCHAR(16) NOT NULL COMMENT '项目类型',
+    `scope_type` VARCHAR(16) NOT NULL COMMENT '数据范围类型',
+    `value_type` VARCHAR(16) NOT NULL COMMENT '填写值类型',
+    `unit` VARCHAR(32) NOT NULL COMMENT '计量单位',
+    `required` BOOL NOT NULL COMMENT '是否必填',
+    `validation_rule` VARCHAR(255) NOT NULL COMMENT '校验规则',
+    `sort_order` INT UNSIGNED NOT NULL COMMENT '项目显示排序号',
+    `config_json` LONGTEXT NOT NULL COMMENT '项目扩展配置JSON',
+    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
+    `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_report_template_item_code` (`template_id`, `task_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='周报模板项目明细表';
+
+CREATE TABLE IF NOT EXISTS `weekly_report` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `role_code` VARCHAR(64) NOT NULL COMMENT '填写时使用的角色编码',
+    `template_code` VARCHAR(64) NOT NULL COMMENT '填写时使用的模板编码',
+    `template_version` VARCHAR(16) NOT NULL COMMENT '填写时使用的模板版本',
+    `employee_id` BIGINT NOT NULL COMMENT '填报员工ID，逻辑关联 user_account.id',
+    `group_id` BIGINT NULL COMMENT '填报时组织分组ID，逻辑关联 organization_group.id',
+    `period_type` VARCHAR(16) NOT NULL COMMENT '周期类型，当前为 week',
+    `month_key` VARCHAR(7) NOT NULL COMMENT '所属月份，格式 YYYY-MM',
+    `period_start` DATE NOT NULL COMMENT '周期开始日期',
+    `period_end` DATE NOT NULL COMMENT '周期结束日期',
+    `as_of_date` DATE NOT NULL COMMENT '报告统计截至日期',
+    `status` VARCHAR(24) NOT NULL COMMENT '报告状态：active激活、pending_activation待激活、archived归档',
+    `summary` LONGTEXT NOT NULL COMMENT '本周工作总结',
+    `risk_level` VARCHAR(16) NOT NULL COMMENT '风险等级',
+    `risk_blocked` BOOL NOT NULL COMMENT '是否存在阻塞风险',
+    `risk_reason` LONGTEXT NOT NULL COMMENT '风险或阻塞原因',
+    `next_action` LONGTEXT NOT NULL COMMENT '下周重点行动',
+    `support_needed` LONGTEXT NOT NULL COMMENT '需要的支持事项',
+    `expected_resolve_date` DATE NULL COMMENT '预计风险解决日期',
+    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
+    `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_weekly_report_employee_role_period` (`employee_id`, `role_code`, `period_start`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='员工周报主表';
+
+CREATE TABLE IF NOT EXISTS `monthly_plan` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `role_code` VARCHAR(64) NOT NULL COMMENT '月度计划所属角色编码',
+    `employee_id` BIGINT NOT NULL COMMENT '填报员工ID，逻辑关联 user_account.id',
+    `group_id` BIGINT NULL COMMENT '填报时组织分组ID，逻辑关联 organization_group.id',
+    `month_key` VARCHAR(7) NOT NULL COMMENT '计划月度，格式 YYYY-MM',
+    `summary` LONGTEXT NOT NULL COMMENT '月度计划概述',
+    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
+    `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_monthly_plan_employee_role_month` (`employee_id`, `role_code`, `month_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='员工角色月度共用计划主表';
+
+CREATE TABLE IF NOT EXISTS `weekly_report_item` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `report_id` BIGINT NOT NULL COMMENT '周报ID，逻辑关联 weekly_report.id',
+    `scope_type` VARCHAR(16) NOT NULL COMMENT '任务数据范围类型',
+    `customer_id` BIGINT NULL COMMENT '客户ID，预留逻辑关联客户业务表',
+    `customer_name_snapshot` VARCHAR(255) NOT NULL COMMENT '客户名称快照',
+    `section_code` VARCHAR(64) NOT NULL COMMENT '模板分区编码快照',
+    `task_code` VARCHAR(64) NOT NULL COMMENT '模板任务项编码快照',
+    `task_name_snapshot` VARCHAR(255) NOT NULL COMMENT '任务名称快照',
+    `guidance_snapshot` VARCHAR(500) NOT NULL COMMENT '填写指引快照',
+    `work_content` LONGTEXT NOT NULL COMMENT '主要工作内容',
+    `output_description` LONGTEXT NOT NULL COMMENT '本周产出描述',
+    `planned_completion_date` DATE NULL COMMENT '计划完成日期',
+    `progress_text` LONGTEXT NOT NULL COMMENT '进度说明',
+    `progress_percent` DECIMAL(5,2) NULL COMMENT '进度百分比',
+    `quality_percent` DECIMAL(5,2) NULL COMMENT '质量百分比',
+    `completion_rate` DECIMAL(5,2) NULL COMMENT '综合完成率百分比',
+    `on_time_status` VARCHAR(24) NOT NULL COMMENT '按时状态：in_progress/completed/delayed',
+    `actual_completion_date` DATE NULL COMMENT '实际完成日期',
+    `delay_reason` LONGTEXT NOT NULL COMMENT '延期原因',
+    `next_action` LONGTEXT NOT NULL COMMENT '该任务下一步行动',
+    `expected_completion_date` DATE NULL COMMENT '预计完成日期',
+    `owner_id` BIGINT NULL COMMENT '任务负责人ID，逻辑关联 user_account.id',
+    `owner_name_snapshot` VARCHAR(128) NOT NULL COMMENT '责任人姓名快照',
+    `collaborator_names` VARCHAR(500) NOT NULL COMMENT '协作人姓名，多个以逗号分隔',
+    `document_links` LONGTEXT NOT NULL COMMENT '相关文档链接或佐证材料',
+    `item_status` VARCHAR(16) NOT NULL COMMENT '任务项状态',
+    `sort_order` INT UNSIGNED NOT NULL COMMENT '任务项排序号',
+    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
+    `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='周报任务明细表';
+
+CREATE TABLE IF NOT EXISTS `weekly_report_metric` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `report_id` BIGINT NOT NULL COMMENT '周报ID，逻辑关联 weekly_report.id',
+    `item_id` BIGINT NULL COMMENT '任务明细ID，逻辑关联 weekly_report_item.id',
+    `metric_code` VARCHAR(64) NOT NULL COMMENT '指标编码',
+    `metric_name_snapshot` VARCHAR(255) NOT NULL COMMENT '指标名称快照',
+    `value_type` VARCHAR(16) NOT NULL COMMENT '指标值类型',
+    `target_value_decimal` DECIMAL(16,2) NULL COMMENT '指标目标数值',
+    `actual_value_decimal` DECIMAL(16,2) NULL COMMENT '指标实际数值',
+    `value_text` LONGTEXT NOT NULL COMMENT '指标文本值',
+    `unit` VARCHAR(32) NOT NULL COMMENT '指标单位',
+    `precision` SMALLINT UNSIGNED NOT NULL COMMENT '指标小数位数',
+    `baseline_value_decimal` DECIMAL(16,2) NULL COMMENT '指标基线数值',
+    `note` LONGTEXT NOT NULL COMMENT '指标备注',
+    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
+    `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='周报指标明细表';
+
+CREATE TABLE IF NOT EXISTS `weekly_report_evidence` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `report_id` BIGINT NOT NULL COMMENT '周报ID，逻辑关联 weekly_report.id',
+    `item_id` BIGINT NULL COMMENT '任务明细ID，逻辑关联 weekly_report_item.id',
+    `evidence_type` VARCHAR(16) NOT NULL COMMENT '佐证类型',
+    `file_url` LONGTEXT NOT NULL COMMENT '佐证文件或链接地址',
+    `file_name` VARCHAR(255) NOT NULL COMMENT '佐证文件名称',
+    `description` VARCHAR(500) NOT NULL COMMENT '佐证说明',
+    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='周报佐证材料表';
+
+CREATE TABLE IF NOT EXISTS `system_attachment` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `attachment_type` VARCHAR(64) NOT NULL COMMENT '业务类型，例如 weekly_report；不是文件格式',
+    `relation_id` BIGINT NOT NULL COMMENT '业务主记录ID，按 attachment_type 解释',
+    `relation_sub_id` BIGINT NULL COMMENT '业务子记录ID，预留逻辑关联，不绑定具体模块',
+    `storage_key` VARCHAR(512) NOT NULL COMMENT '文件存储键，相对 MEDIA_ROOT 的路径',
+    `file_url` LONGTEXT NOT NULL COMMENT '附件访问地址',
+    `file_name` VARCHAR(255) NOT NULL COMMENT '用户上传的原始文件名',
+    `mime_type` VARCHAR(128) NOT NULL COMMENT '文件 MIME 类型',
+    `file_size` BIGINT NOT NULL DEFAULT 0 COMMENT '文件大小，单位字节',
+    `description` VARCHAR(500) NOT NULL COMMENT '附件说明',
+    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
+    `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_system_attachment_relation` (`attachment_type`, `relation_id`, `relation_sub_id`),
+    KEY `idx_system_attachment_type` (`attachment_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统通用附件表';
+
+-- =========================
+-- Django 框架表（admin/auth/contenttypes/sessions/migrations）
+-- =========================
+
+CREATE TABLE IF NOT EXISTS `django_migrations` (
+    `id` BIGINT AUTO_INCREMENT NOT NULL COMMENT 'Django 迁移记录主键',
+    `app` VARCHAR(255) NOT NULL COMMENT 'Django 应用标签',
+    `name` VARCHAR(255) NOT NULL COMMENT '迁移名称',
+    `applied` DATETIME(6) NOT NULL COMMENT '迁移应用时间',
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Django 迁移记录表';
+
+CREATE TABLE IF NOT EXISTS `django_content_type` (
+    `id` INT AUTO_INCREMENT NOT NULL COMMENT '内容类型主键',
+    `name` VARCHAR(100) NOT NULL COMMENT '内容类型名称',
+    `app_label` VARCHAR(100) NOT NULL COMMENT 'Django 应用标签',
+    `model` VARCHAR(100) NOT NULL COMMENT '模型名称',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `django_content_type_app_label_model_76bd3d3b_uniq` (`app_label`, `model`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Django 内容类型表';
+
+CREATE TABLE IF NOT EXISTS `auth_permission` (
+    `id` INT AUTO_INCREMENT NOT NULL COMMENT '权限主键',
+    `name` VARCHAR(50) NOT NULL COMMENT '权限名称',
+    `content_type_id` INT NOT NULL COMMENT '内容类型ID，Django外键',
+    `codename` VARCHAR(100) NOT NULL COMMENT '权限编码',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `auth_permission_content_type_id_codename_01ab375a_uniq` (`content_type_id`, `codename`),
+    KEY `auth_permission_content_type_id_2f476e4b` (`content_type_id`),
+    CONSTRAINT `fk_auth_permission_content_type`
+        FOREIGN KEY (`content_type_id`) REFERENCES `django_content_type` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Django 权限表';
+
+CREATE TABLE IF NOT EXISTS `auth_group` (
+    `id` INT AUTO_INCREMENT NOT NULL COMMENT '权限组主键',
+    `name` VARCHAR(80) NOT NULL COMMENT '权限组名称',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `auth_group_name_uniq` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Django 权限组表';
+
+CREATE TABLE IF NOT EXISTS `auth_group_permissions` (
+    `id` BIGINT AUTO_INCREMENT NOT NULL COMMENT '权限组关系主键',
+    `group_id` INT NOT NULL COMMENT '权限组ID，Django外键',
+    `permission_id` INT NOT NULL COMMENT '权限ID，Django外键',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `auth_group_permissions_group_id_permission_id_0cd325b0_uniq` (`group_id`, `permission_id`),
+    KEY `auth_group_permissions_group_id_b120cbf9` (`group_id`),
+    KEY `auth_group_permissions_permission_id_84c5c92e` (`permission_id`),
+    CONSTRAINT `fk_group_perm_group`
+        FOREIGN KEY (`group_id`) REFERENCES `auth_group` (`id`),
+    CONSTRAINT `fk_group_perm_permission`
+        FOREIGN KEY (`permission_id`) REFERENCES `auth_permission` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Django 权限组-权限关系表';
+
+CREATE TABLE IF NOT EXISTS `auth_user` (
+    `id` INT AUTO_INCREMENT NOT NULL COMMENT 'Django 用户主键',
+    `password` VARCHAR(128) NOT NULL COMMENT 'Django 密码哈希',
+    `last_login` DATETIME(6) NOT NULL COMMENT '最近登录时间',
+    `is_superuser` BOOL NOT NULL COMMENT '是否超级管理员',
+    `username` VARCHAR(30) NOT NULL COMMENT 'Django 管理后台用户名',
+    `first_name` VARCHAR(30) NOT NULL COMMENT '名',
+    `last_name` VARCHAR(30) NOT NULL COMMENT '姓',
+    `email` VARCHAR(75) NOT NULL COMMENT '邮箱',
+    `is_staff` BOOL NOT NULL COMMENT '是否允许进入 Django 管理后台',
+    `is_active` BOOL NOT NULL COMMENT '是否启用',
+    `date_joined` DATETIME(6) NOT NULL COMMENT '加入时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `auth_user_username_uniq` (`username`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Django 后台用户表';
+
+CREATE TABLE IF NOT EXISTS `auth_user_groups` (
+    `id` BIGINT AUTO_INCREMENT NOT NULL COMMENT '用户-权限组关系主键',
+    `user_id` INT NOT NULL COMMENT '用户ID，Django外键',
+    `group_id` INT NOT NULL COMMENT '权限组ID，Django外键',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `auth_user_groups_user_id_group_id_94350c0c_uniq` (`user_id`, `group_id`),
+    KEY `auth_user_groups_user_id_6a12ed8b` (`user_id`),
+    KEY `auth_user_groups_group_id_97559544` (`group_id`),
+    CONSTRAINT `fk_user_groups_user`
+        FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`),
+    CONSTRAINT `fk_user_groups_group`
+        FOREIGN KEY (`group_id`) REFERENCES `auth_group` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Django 用户-权限组关系表';
+
+CREATE TABLE IF NOT EXISTS `auth_user_user_permissions` (
+    `id` BIGINT AUTO_INCREMENT NOT NULL COMMENT '用户-权限关系主键',
+    `user_id` INT NOT NULL COMMENT '用户ID，Django外键',
+    `permission_id` INT NOT NULL COMMENT '权限ID，Django外键',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `auth_user_user_permissions_user_id_permission_id_14a6b632_uniq` (`user_id`, `permission_id`),
+    KEY `auth_user_user_permissions_user_id_a95ead1b` (`user_id`),
+    KEY `auth_user_user_permissions_permission_id_1fbb5f2c` (`permission_id`),
+    CONSTRAINT `fk_user_perm_user`
+        FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`),
+    CONSTRAINT `fk_user_perm_permission`
+        FOREIGN KEY (`permission_id`) REFERENCES `auth_permission` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Django 用户-权限关系表';
+
+CREATE TABLE IF NOT EXISTS `django_admin_log` (
+    `id` INT AUTO_INCREMENT NOT NULL COMMENT '后台操作日志主键',
+    `action_time` DATETIME(6) NOT NULL COMMENT '操作时间',
+    `object_id` LONGTEXT NULL COMMENT '被操作对象ID文本',
+    `object_repr` VARCHAR(200) NOT NULL COMMENT '被操作对象描述',
+    `action_flag` SMALLINT UNSIGNED NOT NULL COMMENT '操作类型标记',
+    `change_message` LONGTEXT NOT NULL COMMENT '变更内容',
+    `content_type_id` INT NULL COMMENT '内容类型ID，Django外键',
+    `user_id` INT NOT NULL COMMENT '操作用户ID，Django外键',
+    PRIMARY KEY (`id`),
+    KEY `django_admin_log_content_type_id_c4bce8eb` (`content_type_id`),
+    KEY `django_admin_log_user_id_c564eba6` (`user_id`),
+    CONSTRAINT `fk_admin_log_content_type`
+        FOREIGN KEY (`content_type_id`) REFERENCES `django_content_type` (`id`),
+    CONSTRAINT `fk_admin_log_user`
+        FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Django 管理后台操作日志表';
+
+CREATE TABLE IF NOT EXISTS `django_session` (
+    `session_key` VARCHAR(40) NOT NULL COMMENT '会话键',
+    `session_data` LONGTEXT NOT NULL COMMENT '会话数据',
+    `expire_date` DATETIME(6) NOT NULL COMMENT '会话过期时间',
+    PRIMARY KEY (`session_key`),
+    KEY `django_session_expire_date_a5c62663` (`expire_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Django 会话表';

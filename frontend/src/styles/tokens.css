@@ -12,6 +12,7 @@
   --surface-strong: #ffffff;
   --surface-soft: #f5f9ff;
   --text: #132a55;
+  --text-strong: #102b59;
   --muted: #6e82a6;
   --line: rgba(59, 121, 211, 0.16);
   --accent: #2f80ed;
@@ -32,6 +33,7 @@
   --surface-strong: #182a4a;
   --surface-soft: #152542;
   --text: #edf5ff;
+  --text-strong: #f4f8ff;
   --muted: #a6b9d8;
   --line: rgba(178, 211, 255, 0.16);
   --accent: #76b9ff;

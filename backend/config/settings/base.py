@@ -12,7 +12,7 @@ if env_file.is_file():
 
 
 def _resolve_path(value: str) -> Path:
-    """Resolve a path from .env relative to the backend directory."""
+    """Resolve .env paths: absolute paths are used as-is; relative paths use backend as root."""
     path = Path(value).expanduser()
     return path if path.is_absolute() else BASE_DIR / path
 
@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "apps.core.apps.CoreConfig",
     "apps.ai_gateway.apps.AiGatewayConfig",
     "apps.accounts.apps.AccountsConfig",
+    "apps.dictionary.apps.DictionaryConfig",
     "apps.weekly_report.apps.WeeklyReportConfig",
 ]
 
@@ -134,6 +135,10 @@ STATIC_URL = env("STATIC_URL")
 STATIC_ROOT = _resolve_path(env("STATIC_ROOT"))
 MEDIA_URL = env("MEDIA_URL")
 MEDIA_ROOT = _resolve_path(env("MEDIA_ROOT"))
+# 周报附件配置全部由环境变量控制，上传文件不直接写入任务表字段。
+ATTACHMENT_MAX_SIZE_BYTES = env.int("ATTACHMENT_MAX_SIZE_BYTES")
+ATTACHMENT_ALLOWED_EXTENSIONS = env.list("ATTACHMENT_ALLOWED_EXTENSIONS")
+ATTACHMENT_UPLOAD_DIR = env("ATTACHMENT_UPLOAD_DIR")
 DEFAULT_AUTO_FIELD = env("DEFAULT_AUTO_FIELD")
 
 AI_API_KEY = env("AI_API_KEY")

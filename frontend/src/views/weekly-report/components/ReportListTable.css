@@ -1,0 +1,86 @@
+.report-list-table-wrap {
+  overflow-x: auto;
+}
+
+.report-list-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+}
+
+.report-list-table th {
+  padding: 0.78rem 0.7rem;
+  color: #5b76a0;
+  background: #f2f7fd;
+  font-size: 0.74rem;
+  font-weight: 750;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.report-list-table td {
+  padding: 0.82rem 0.7rem;
+  border-bottom: 1px solid #eaf1fa;
+  color: var(--text);
+  font-size: 0.8rem;
+  vertical-align: middle;
+}
+
+.report-list-table tbody tr:hover {
+  background: #fbfdff;
+}
+
+.period-cell strong {
+  display: block;
+}
+
+.period-cell strong {
+  color: var(--text-strong);
+  font-size: 0.84rem;
+}
+
+.date-cell {
+  min-width: 155px;
+  white-space: nowrap;
+}
+
+.actions-heading {
+  min-width: 150px;
+  text-align: left;
+}
+
+.action-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  white-space: nowrap;
+}
+
+.table-action {
+  border: 0;
+  padding: 0;
+  color: var(--accent-dark);
+  background: transparent;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.table-action:hover {
+  color: var(--accent);
+}
+
+.table-action--danger {
+  color: #c24c55;
+}
+
+.table-action--danger:hover {
+  color: #9f2f39;
+}
+
+.empty-row {
+  padding: 2.8rem 1rem !important;
+  color: var(--muted) !important;
+  text-align: center;
+}
