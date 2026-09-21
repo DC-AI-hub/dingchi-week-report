@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ListChecks, ArrowUpRight } from "lucide-vue-next"
-import { RouterLink } from "vue-router"
+import { computed } from "vue"
+import { Target } from "lucide-vue-next"
 
+import planArtwork from "@/assets/dashboard/personal-next-week-plan.png"
 import type { DashboardItem } from "@/features/dashboard/types"
 
 const props = defineProps<{
@@ -20,19 +21,33 @@ function dayColumn(dateValue: string | null) {
 function dateLabel(value: string | null) {
   return value ? value.slice(0, 10) : "待安排"
 }
+
+const timelineDays = computed(() => {
+  const end = new Date(`${props.period.end.slice(0, 10)}T00:00:00`)
+  const monday = new Date(end)
+  monday.setDate(end.getDate() + 1)
+  return Array.from({ length: 5 }, (_, index) => {
+    const date = new Date(monday)
+    date.setDate(monday.getDate() + index)
+    return {
+      week: ["周一", "周二", "周三", "周四", "周五"][index],
+      date: `${date.getMonth() + 1}/${date.getDate()}`,
+    }
+  })
+})
 </script>
 
 <template>
   <article class="personal-content-panel personal-plans-panel">
     <div class="content-panel-heading">
       <div class="content-panel-title">
-        <span class="content-panel-icon content-panel-icon--cyan" aria-hidden="true"><ListChecks :size="17" /></span>
+        <span class="content-panel-icon plans-title-icon" aria-hidden="true"><Target :size="19" :stroke-width="2.35" /></span>
         <div>
-          <span class="content-kicker">下一步安排</span>
           <h2>我的下周计划</h2>
         </div>
+        <span class="plans-heading-divider" aria-hidden="true"></span>
+        <p class="plans-heading-copy">明确目标，有序安排，为下周的进步做好准备</p>
       </div>
-      <RouterLink class="panel-link" to="/weekly-reports">打开周报 <ArrowUpRight :size="14" aria-hidden="true" /></RouterLink>
     </div>
 
     <div v-if="!props.plans.length" class="content-empty">暂无下一步计划</div>
@@ -47,11 +62,16 @@ function dateLabel(value: string | null) {
         </div>
       </div>
       <div class="plan-timeline" aria-label="计划排期">
-        <div class="timeline-head"><span>周一</span><span>周二</span><span>周三</span><span>周四</span><span>周五</span></div>
+        <div class="timeline-head">
+          <span v-for="day in timelineDays" :key="day.week"><b>{{ day.week }}</b><small>{{ day.date }}</small></span>
+        </div>
         <div v-for="plan in props.plans" :key="`timeline-${plan.id}`" class="timeline-row">
           <span class="timeline-bar" :style="{ gridColumn: `${dayColumn(plan.planned_completion_date)} / span ${Math.max(1, 5 - dayColumn(plan.planned_completion_date) + 1)}` }" />
         </div>
       </div>
+    </div>
+    <div class="plan-artwork" aria-hidden="true">
+      <img :src="planArtwork" alt="" />
     </div>
   </article>
 </template>

@@ -41,7 +41,6 @@ const hasOverallData = computed(() => props.plannedTasks > 0 || hasStatusData.va
         <div class="panel-title">
           <span class="panel-icon panel-icon--blue" aria-hidden="true"><BarChart3 :size="17" /></span>
           <div>
-            <span class="panel-kicker">进展曲线</span>
             <h2>我的本周进展</h2>
           </div>
         </div>
@@ -56,8 +55,7 @@ const hasOverallData = computed(() => props.plannedTasks > 0 || hasStatusData.va
         <div class="panel-title">
           <span class="panel-icon panel-icon--purple" aria-hidden="true"><Activity :size="16" /></span>
           <div>
-            <span class="panel-kicker">任务状态</span>
-            <h2>状态分布</h2>
+            <h2>任务状态分布</h2>
           </div>
         </div>
       </div>
@@ -83,7 +81,6 @@ const hasOverallData = computed(() => props.plannedTasks > 0 || hasStatusData.va
         <div class="panel-title">
           <span class="panel-icon panel-icon--green" aria-hidden="true"><Users :size="16" /></span>
           <div>
-            <span class="panel-kicker">客户任务</span>
             <h2>客户任务占比</h2>
           </div>
         </div>
@@ -110,7 +107,6 @@ const hasOverallData = computed(() => props.plannedTasks > 0 || hasStatusData.va
         <div class="panel-title">
           <span class="panel-icon panel-icon--cyan" aria-hidden="true"><CircleGauge :size="17" /></span>
           <div>
-            <span class="panel-kicker">全局健康度</span>
             <h2>整体完成率</h2>
           </div>
         </div>

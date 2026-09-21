@@ -1,26 +1,30 @@
 .personal-metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 
 .personal-metric-card {
   position: relative;
   display: flex;
-  min-height: 104px;
+  min-height: 90px;
   align-items: center;
   gap: 13px;
   overflow: hidden;
   padding: 13px 17px;
   border: 1px solid rgba(255, 255, 255, 0.85);
-  border-radius: 14px;
+  border-radius: 10px;
   box-shadow: 0 6px 16px rgba(75, 141, 211, 0.12), inset 0 1px rgba(255, 255, 255, 0.95);
 }
 
 .personal-metric-card::after {
   position: absolute;
   inset: 0;
-  background: linear-gradient(124deg, transparent 63%, rgba(255, 255, 255, 0.52) 63.4% 74%, transparent 74.4%, transparent 89%, rgba(133, 198, 255, 0.16) 89.4%, transparent 90%);
+  left: 48%;
+  right: auto;
+  width: 34%;
+  background: rgba(255,255,255,.38);
+  clip-path: polygon(45% 0, 100% 0, 55% 100%, 0 100%);
   content: "";
   pointer-events: none;
 }
@@ -45,30 +49,19 @@
   position: relative;
   z-index: 1;
   display: grid;
-  width: 58px;
-  height: 58px;
-  flex: 0 0 58px;
+  width: 76px;
+  height: 70px;
+  flex: 0 0 76px;
   place-items: center;
-  border-radius: 16px;
-  color: #fff;
-  background: linear-gradient(145deg, #64baff, #1878e8);
-  box-shadow: 0 7px 14px rgba(24, 120, 232, 0.23), inset 0 1px rgba(255, 255, 255, 0.66);
+  background-image: url("@/assets/dashboard/dashboard-kpi-sprite.png");
+  background-repeat: no-repeat;
+  background-size: 200% 200%;
+  filter: drop-shadow(0 6px 6px rgba(29,104,203,.2));
 }
-
-.personal-metric-card--purple .metric-icon {
-  color: #fff;
-  background: linear-gradient(145deg, #ae83ff, #6842de);
-  box-shadow: 0 7px 14px rgba(104, 66, 222, 0.23), inset 0 1px rgba(255, 255, 255, 0.66);
-}
-
-.personal-metric-card--green .metric-icon {
-  background: linear-gradient(145deg, #49dcb1, #0a9b7f);
-  box-shadow: 0 7px 14px rgba(10, 155, 127, 0.22), inset 0 1px rgba(255, 255, 255, 0.66);
-}
-
-.personal-metric-card--cyan .metric-icon {
-  background: linear-gradient(145deg, #59cfff, #1689e9);
-}
+.metric-icon--blue { background-position: 0 0; }
+.metric-icon--purple { background-position: 100% 0; }
+.metric-icon--green { background-position: 0 100%; }
+.metric-icon--cyan { background-image:url("@/assets/dashboard/hero-action-checklist.png"); background-size:contain; background-position:center; }
 
 .metric-copy {
   position: relative;
@@ -87,7 +80,7 @@
 
 .metric-copy strong {
   color: #0b3d92;
-  font-size: 33px;
+  font-size: 35px;
   font-weight: 750;
   line-height: 1;
 }

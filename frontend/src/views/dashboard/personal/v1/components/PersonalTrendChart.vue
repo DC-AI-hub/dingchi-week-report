@@ -16,14 +16,7 @@ function renderChart() {
     color: ["#2d83ee", "#12b98d"],
     grid: { left: 34, right: 12, top: 24, bottom: 26 },
     tooltip: { trigger: "axis" },
-    legend: {
-      top: 0,
-      right: 0,
-      icon: "circle",
-      itemWidth: 8,
-      itemHeight: 8,
-      textStyle: { color: "#6f86a9", fontSize: 11 },
-    },
+    legend: { show: false },
     xAxis: {
       type: "category",
       boundaryGap: false,

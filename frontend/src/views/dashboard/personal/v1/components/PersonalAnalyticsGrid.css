@@ -68,17 +68,29 @@
   font-size: 12px;
 }
 
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .chart-legend span::before {
   display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-right: 4px;
-  border-radius: 50%;
+  width: 28px;
+  height: 8px;
   content: "";
 }
 
-.legend-blue::before { background: #2d83ee; }
-.legend-green::before { background: #12b98d; }
+.legend-blue::before {
+  background:
+    radial-gradient(circle at 4px 50%, #2d83ee 0 3px, transparent 3.5px),
+    linear-gradient(#2d83ee, #2d83ee) 4px 3px / 24px 2px no-repeat;
+}
+.legend-green::before {
+  background:
+    radial-gradient(circle at 4px 50%, #12b98d 0 3px, transparent 3.5px),
+    linear-gradient(#12b98d, #12b98d) 4px 3px / 24px 2px no-repeat;
+}
 
 .analytics-empty {
   display: grid;

@@ -42,11 +42,20 @@ watch(() => authStore.activeRole?.role_code, () => {
 
 <template>
   <div class="personal-home-page">
-    <PersonalHomeHeader
-      :period="summary.period"
-      :role-name="authStore.activeRole?.role_name || '个人视角'"
-      :user-name="authStore.user?.display_name || ''"
-    />
+    <section class="personal-hero">
+      <PersonalHomeHeader
+        :period="summary.period"
+        :role-name="authStore.activeRole?.role_name || '个人视角'"
+        :user-name="authStore.user?.display_name || ''"
+      />
+      <PersonalMetricGrid
+        v-if="!dashboardStore.isLoading && !dashboardStore.errorMessage"
+        :planned-tasks="summary.kpis.planned_tasks"
+        :completion-rate="summary.kpis.completion_rate"
+        :completed-tasks="summary.kpis.completed_tasks"
+        :plan-count="plans.length"
+      />
+    </section>
     <NoticeBridge :warning-message="dashboardStore.errorMessage" />
 
     <div v-if="dashboardStore.isLoading" class="personal-state">正在加载数据…</div>
@@ -54,13 +63,6 @@ watch(() => authStore.activeRole?.role_code, () => {
       暂无首页数据
     </div>
     <template v-else>
-      <PersonalMetricGrid
-        :planned-tasks="summary.kpis.planned_tasks"
-        :completion-rate="summary.kpis.completion_rate"
-        :completed-tasks="summary.kpis.completed_tasks"
-        :plan-count="plans.length"
-      />
-
       <PersonalAnalyticsGrid
         :planned-tasks="summary.kpis.planned_tasks"
         :trend="summary.trend"
@@ -71,7 +73,7 @@ watch(() => authStore.activeRole?.role_code, () => {
 
       <div class="personal-lower-grid">
         <PersonalTaskPanel :tasks="summary.my_tasks" />
-        <PersonalResultsPanel :tasks="summary.my_tasks" :reports="summary.reports" />
+        <PersonalResultsPanel :tasks="summary.my_tasks" />
       </div>
 
       <PersonalPlansPanel :plans="plans" :period="summary.period" />

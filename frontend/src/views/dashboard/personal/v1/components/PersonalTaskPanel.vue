@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ClipboardCheck, ArrowUpRight } from "lucide-vue-next"
+import { ListTodo, ArrowUpRight } from "lucide-vue-next"
 import { RouterLink } from "vue-router"
 
 import type { DashboardItem } from "@/features/dashboard/types"
@@ -19,9 +19,8 @@ function statusLabel(status: string) {
   <article class="personal-content-panel personal-task-panel">
     <div class="content-panel-heading">
       <div class="content-panel-title">
-        <span class="content-panel-icon" aria-hidden="true"><ClipboardCheck :size="17" /></span>
+        <span class="content-panel-icon task-title-icon" aria-hidden="true"><ListTodo :size="18" :stroke-width="2.25" /></span>
         <div>
-          <span class="content-kicker">重点行动</span>
           <h2>我的本周条目</h2>
         </div>
       </div>
@@ -37,7 +36,6 @@ function statusLabel(status: string) {
         <span class="task-customer" :title="task.customer_name_snapshot || '内部事项'">{{ task.customer_name_snapshot || "内部事项" }}</span>
         <div class="task-name" :title="task.task_name_snapshot">
           <strong>{{ task.task_name_snapshot }}</strong>
-          <small>{{ task.progress_text || "暂无进展" }}</small>
         </div>
         <div class="task-progress-track" aria-hidden="true"><span :style="{ width: `${task.progress_percent || 0}%` }" /></div>
         <span class="task-number">{{ percent(task.progress_percent) }}</span>

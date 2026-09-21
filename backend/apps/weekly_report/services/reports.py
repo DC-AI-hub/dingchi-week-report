@@ -1105,23 +1105,33 @@ def _decimal_or_none(value: Any, value_type: str) -> Decimal | None:
 
 
 def _build_trend(items: Sequence[Mapping[str, Any]], start: date) -> list[dict[str, Any]]:
-    current = []
-    average = Decimal("0")
-    values = [
-        Decimal(str(item["completion_rate"]))
-        for item in items
-        if item.get("completion_rate") is not None
-    ]
-    if values:
-        average = sum(values) / len(values)
+    """按任务在数据库中的实际更新时间聚合本周每日进展，不生成模拟增量。"""
+    current: list[dict[str, Any]] = []
     for index in range(7):
         day = start + timedelta(days=index)
+        day_items = [item for item in items if _as_date(item.get("updated_at")) == day]
+        progress_values = [
+            Decimal(str(item["progress_percent"]))
+            for item in day_items
+            if item.get("progress_percent") is not None
+        ]
+        completion_values = [
+            Decimal(str(item["completion_rate"]))
+            for item in day_items
+            if item.get("completion_rate") is not None
+        ]
+        progress = sum(progress_values) / len(progress_values) if progress_values else Decimal("0")
+        completion = (
+            sum(completion_values) / len(completion_values)
+            if completion_values
+            else Decimal("0")
+        )
         current.append(
             {
                 "date": day.isoformat(),
                 "label": f"周{['一', '二', '三', '四', '五', '六', '日'][index]}",
-                "progress": float(min(100, average + Decimal(index * 2))),
-                "completion": float(min(100, average + Decimal(index * 3))),
+                "progress": float(progress.quantize(Decimal("0.1"))),
+                "completion": float(completion.quantize(Decimal("0.1"))),
             }
         )
     return current

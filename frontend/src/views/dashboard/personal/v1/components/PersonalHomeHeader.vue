@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { CalendarRange, Sparkles } from "lucide-vue-next"
+import { CalendarDays } from "lucide-vue-next"
 
-import heroDataColumns from "@/assets/dashboard/hero-data-columns.png"
+import personalProgressMotto from "@/assets/dashboard/personal-progress-motto.png"
 
 defineProps<{
   period: { start: string; end: string }
@@ -20,26 +20,21 @@ function formatPeriod(value: string) {
       <div class="header-title-line">
         <span class="title-mark" aria-hidden="true" />
         <div>
-          <p class="header-eyebrow">PERSONAL OPERATING PULSE</p>
           <h1>智能周报 · 个人首页</h1>
           <p class="header-subtitle">聚焦我的进展 · 沉淀工作成果 · 规划下周行动</p>
         </div>
       </div>
-      <div class="header-motto">
-        <Sparkles :size="17" stroke-width="1.8" aria-hidden="true" />
-        <span>持续进步，遇见更好的自己！</span>
-      </div>
     </div>
 
-    <img class="header-art" :src="heroDataColumns" alt="" aria-hidden="true" />
+    <img class="header-motto-art" :src="personalProgressMotto" alt="持续进步，遇见更好的自己！" />
 
     <div class="header-period">
-      <div class="period-label">本周周期</div>
-      <strong>{{ formatPeriod(period.start) }} - {{ formatPeriod(period.end) }}</strong>
-      <div class="period-owner">
-        <CalendarRange :size="15" stroke-width="1.8" aria-hidden="true" />
-        <span>{{ userName || "个人用户" }} · {{ roleName }}</span>
+      <div class="period-main">
+        <span>本周</span>
+        <strong>{{ formatPeriod(period.start) }} - {{ formatPeriod(period.end) }}</strong>
+        <CalendarDays class="period-calendar" :size="17" :stroke-width="2" aria-hidden="true" />
       </div>
+      <div class="period-owner">专注当下 · 积累成长 · 创造更大价值</div>
     </div>
   </header>
 </template>
