@@ -3,6 +3,7 @@ import { computed } from "vue"
 import { BarChart3, CheckCircle2, CircleGauge, Users, Activity } from "lucide-vue-next"
 
 import type { DashboardDistribution, DashboardTrendPoint } from "@/features/dashboard/types"
+import overallArtwork from "@/assets/dashboard/personal-overall-completion-bg.png"
 
 import PersonalDonutChart from "./PersonalDonutChart.vue"
 import PersonalGaugeChart from "./PersonalGaugeChart.vue"
@@ -68,7 +69,7 @@ const hasOverallData = computed(() => props.plannedTasks > 0 || hasStatusData.va
         <div class="distribution-legend">
           <div v-for="item in props.statusDistribution" :key="item.name" class="distribution-legend-item">
             <span class="legend-dot" :style="{ backgroundColor: item.color }" />
-            <span>{{ distributionLabel(item.name) }}</span>
+            <span :title="distributionLabel(item.name)">{{ distributionLabel(item.name) }}</span>
             <strong>{{ item.value }}</strong>
           </div>
         </div>
@@ -103,6 +104,7 @@ const hasOverallData = computed(() => props.plannedTasks > 0 || hasStatusData.va
     </article>
 
     <article class="personal-panel personal-overall-panel">
+      <img class="overall-artwork" :src="overallArtwork" alt="" aria-hidden="true" />
       <div class="personal-panel-heading">
         <div class="panel-title">
           <span class="panel-icon panel-icon--cyan" aria-hidden="true"><CircleGauge :size="17" /></span>

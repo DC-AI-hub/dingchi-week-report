@@ -115,16 +115,18 @@
 
 .distribution-content {
   display: flex;
-  min-height: 170px;
+  min-height: 214px;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 8px;
+  padding: 7px 4px 4px;
 }
 
 .distribution-chart-wrap {
   position: relative;
   display: grid;
-  flex: 0 0 132px;
+  flex: 0 0 152px;
   place-items: center;
 }
 
@@ -148,17 +150,28 @@
 
 .distribution-legend {
   display: grid;
+  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
   min-width: 0;
-  gap: 9px;
+  overflow: hidden;
+  gap: 7px 12px;
 }
 
 .distribution-legend-item {
   display: grid;
-  grid-template-columns: 8px minmax(42px, auto) auto;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  min-width: 0;
   gap: 6px;
   align-items: center;
   color: #607a9e;
   font-size: 12px;
+}
+
+.distribution-legend-item > span:not(.legend-dot) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .legend-dot {
@@ -168,6 +181,7 @@
 }
 
 .legend-text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -184,8 +198,30 @@
 }
 
 .personal-overall-panel {
+  position: relative;
   display: grid;
   align-content: start;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 88% 76%, rgba(105, 190, 255, 0.18), transparent 42%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(236, 247, 255, 0.95));
+}
+
+.overall-artwork {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  opacity: 0.54;
+  pointer-events: none;
+}
+
+.personal-overall-panel > :not(.overall-artwork) {
+  position: relative;
+  z-index: 1;
 }
 
 .overall-content {

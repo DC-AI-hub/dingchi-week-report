@@ -26,7 +26,7 @@ function renderChart() {
     tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
     series: [{
       type: "pie",
-      radius: ["56%", "78%"],
+      radius: ["52%", "84%"],
       center: ["50%", "50%"],
       itemStyle: { borderColor: "#fff", borderWidth: 3 },
       label: { show: false },
