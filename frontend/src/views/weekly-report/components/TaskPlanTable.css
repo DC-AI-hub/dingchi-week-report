@@ -1,4 +1,4 @@
-.task-table-wrap { overflow-x: auto; }
+.task-table-wrap { width: 100%; min-width: 0; max-width: 100%; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
 .task-table { width: 100%; min-width: 980px; border-collapse: collapse; }
 .task-table th { padding: 0.78rem 0.65rem; color: #5b76a0; background: #f3f7fd; font-size: 0.74rem; font-weight: 750; text-align: left; white-space: nowrap; }
 .task-table td { padding: 0.72rem 0.65rem; border-bottom: 1px solid #edf2fa; color: var(--text); font-size: 0.78rem; vertical-align: top; }

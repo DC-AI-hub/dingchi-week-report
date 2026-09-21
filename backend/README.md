@@ -73,7 +73,6 @@ python manage.py migrate
 ```powershell
 mysql -uroot -p dingchi_week_report < "docs/数据库脚本/01_建表DDL.sql"
 mysql -uroot -p dingchi_week_report < "docs/数据库脚本/02_初始化DML.sql"
-mysql -uroot -p dingchi_week_report < "docs/数据库脚本/05_system_attachment.sql"
 ```
 
 其中 DDL 使用 `CREATE TABLE IF NOT EXISTS`，不会覆盖已有表；日期时间字段统一为
@@ -98,8 +97,9 @@ mysql -uroot -p dingchi_week_report < "docs/数据库脚本/05_system_attachment
 
 - `POST /api/v1/auth/login/`、`GET /api/v1/auth/me/`、`POST /api/v1/auth/switch-role/`：登录、会话和角色切换。
 - `GET /api/v1/dashboard/summary/`：按当前角色返回个人、团队或全量驾驶舱数据。
-- `GET /api/v1/weekly-report-templates/{role_code}/`：获取角色模板任务和指标。
+- `GET /api/v1/weekly-report-templates/{template_code}/`：按包含版本号的模板编码获取模板任务、指标和列表字段。
 - `GET/POST /api/v1/weekly-reports/`、`GET/PATCH/DELETE /api/v1/weekly-reports/{id}/`：查询、创建、编辑和删除周报。
+- `GET/POST /api/v1/weekly-reports/{id}/daily-tasks/`、`PATCH/DELETE /api/v1/weekly-reports/{id}/daily-tasks/{daily_task_id}/`：查询、新增、编辑和删除周报每日工作任务；日报表需先执行 `backend/docs/数据库脚本/06_新增每日工作任务表.sql`。
 - `POST /api/v1/weekly-reports/{id}/attachments/`：上传周报附件，附件记录写入通用 `system_attachment` 表。
 - `GET /api/v1/users/`、`GET /api/v1/roles/`、`GET /api/v1/groups/`：总裁/系统管理员维护组织主数据。
 
@@ -131,6 +131,8 @@ Windows PowerShell 可使用 `$env:ENV_FILE` 和 `$env:DJANGO_SETTINGS_MODULE` �
 
 - 数据库和 Redis 连接必须使用连接池，连接池大小、超时和健康检查参数均在 `.env.*` 配置。
 - MySQL 使用 `django-db-connection-pool` 的 SQLAlchemy `QueuePool` 适配器，池参数为 `MYSQL_POOL_*`；Redis 使用 `django-redis` 内置连接池。
+- MySQL 使用连接池时 `MYSQL_CONN_MAX_AGE` 必须配置为 `0`。Django 只在请求结束时归还连接，底层连接仍由 QueuePool 复用；不要用 Django 持久连接时长占用池内连接槽位。
+- 本地 `LOG_LEVEL=DEBUG` 时，可在请求结束后看到 `release default's connection ... to its pool` 日志，用于确认连接已归还；修改连接池配置后必须重启后端进程。
 - `.env.*` 中每个配置项均保留中文用途说明；禁止把系统配置、密钥或连接参数硬编码在代码中。
 
 ## 运行时烟雾测试

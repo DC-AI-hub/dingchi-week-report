@@ -82,7 +82,10 @@
 }
 
 .searchable-select__input::placeholder {
-  color: #8da4c4;
+  color: #91a6c2;
+  font-style: italic;
+  font-weight: 400;
+  opacity: 1;
 }
 
 .searchable-select__clear {

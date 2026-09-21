@@ -17,12 +17,20 @@ const props = withDefaults(
     emptyMessage?: string
     canEdit?: (report: WeeklyReport) => boolean
     canDelete?: (report: WeeklyReport) => boolean
+    canFillDaily?: (report: WeeklyReport) => boolean
   }>(),
-  { isLoading: false, emptyMessage: "暂无周报", canEdit: undefined, canDelete: undefined },
+  {
+    isLoading: false,
+    emptyMessage: "暂无周报",
+    canEdit: undefined,
+    canDelete: undefined,
+    canFillDaily: undefined,
+  },
 )
 
 const emit = defineEmits<{
   delete: [report: WeeklyReport]
+  dailyTask: [report: WeeklyReport]
 }>()
 
 function canEditReport(report: WeeklyReport) {
@@ -33,11 +41,13 @@ function canDeleteReport(report: WeeklyReport) {
   return props.canDelete?.(report) ?? false
 }
 
+function canFillDailyReport(report: WeeklyReport) {
+  return props.canFillDaily?.(report) ?? false
+}
+
 function editRoute(report: WeeklyReport) {
   return {
-    name: report.role_code === "delivery_specialist"
-      ? "delivery-specialist-report-edit"
-      : "weekly-report-edit",
+    name: "weekly-report-edit",
     params: { reportId: report.id },
   }
 }
@@ -61,7 +71,12 @@ function editRoute(report: WeeklyReport) {
       <tbody>
         <tr v-for="report in reports" :key="report.id">
           <td class="period-cell">
-            <strong>{{ formatPeriod(report.period_start, report.period_end) }}</strong>
+            <RouterLink
+              class="period-link"
+              :to="{ name: 'weekly-report-detail', params: { reportId: report.id } }"
+            >
+              <strong>{{ formatPeriod(report.period_start, report.period_end) }}</strong>
+            </RouterLink>
           </td>
           <td class="date-cell">{{ report.month_key }}</td>
           <td v-if="scope !== 'self'">{{ report.employee_name || "—" }}</td>
@@ -70,12 +85,14 @@ function editRoute(report: WeeklyReport) {
           <td><ReportStatusTag :status="report.status" /></td>
           <td class="date-cell">{{ formatDateTime(report.updated_at) }}</td>
           <td class="action-cell">
-            <RouterLink
+            <button
+              v-if="scope === 'self' && canFillDailyReport(report)"
               class="table-action"
-              :to="{ name: 'weekly-report-detail', params: { reportId: report.id } }"
+              type="button"
+              @click="emit('dailyTask', report)"
             >
-              查看
-            </RouterLink>
+              填写日报
+            </button>
             <RouterLink
               v-if="canEditReport(report)"
               class="table-action"

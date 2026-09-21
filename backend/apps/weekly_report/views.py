@@ -10,8 +10,14 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from apps.accounts.services.auth import AuthenticationError, require_request_user
-from apps.core.http import api_error, api_success
+from apps.core.http import api_error, api_success, log_unhandled_exception
 
+from .services.daily_tasks import (
+    create_daily_task,
+    delete_daily_task,
+    list_daily_tasks,
+    update_daily_task,
+)
 from .services.reports import (
     ReportConflictError,
     ReportError,
@@ -22,7 +28,7 @@ from .services.reports import (
     delete_report,
     get_monthly_plan,
     get_report_detail,
-    get_template,
+    get_template_by_code,
     list_visible_reports,
     save_monthly_plan,
     upload_report_attachment,
@@ -53,6 +59,7 @@ def _error(exc: Exception) -> JsonResponse:
         return api_error("INVALID_JSON", "请求体不是有效的 JSON。", status=400)
     if isinstance(exc, ValueError):
         return api_error("INVALID_REQUEST", str(exc), status=400)
+    log_unhandled_exception(exc, context="weekly_report")
     return api_error("INTERNAL_ERROR", "服务暂时不可用。", status=500)
 
 
@@ -72,16 +79,17 @@ def dashboard_view(request: HttpRequest) -> JsonResponse:
 
 
 @require_GET
-def template_view(request: HttpRequest, role_code: str) -> JsonResponse:
-    """获取某角色的可配置周报任务、指标、字段顺序和校验规则。
+def template_view(request: HttpRequest, template_code: str) -> JsonResponse:
+    """获取指定模板编码的可配置周报任务、指标、字段顺序和校验规则。
 
-    方法/路径：GET /api/v1/weekly-report-templates/{role_code}/；认证：Bearer；参数：路径角色编码。
-    成功响应：模板版本、模块、fields、tasks、metrics；fields 按周报列表展示顺序返回；
+    方法/路径：GET /api/v1/weekly-report-templates/{template_code}/；认证：Bearer；
+    参数：路径模板编码（编码已包含版本号）。成功响应：模板信息、模块、fields、tasks、metrics；
+    fields 按周报列表展示顺序返回；
     失败：401；响应带 X-Trace-ID，模板新增字段向后兼容。
     """
     try:
         require_request_user(request)
-        return api_success(get_template(role_code))
+        return api_success(get_template_by_code(template_code))
     except Exception as exc:
         return _error(exc)
 
@@ -163,32 +171,14 @@ def monthly_plan_view(request: HttpRequest, month_key: str) -> JsonResponse:
 
 
 @csrf_exempt
-@require_POST
-def report_create_view(request: HttpRequest) -> JsonResponse:
-    """创建当前用户当前角色的周报。
-
-    方法/路径：POST /api/v1/weekly-reports/（兼容 /api/v1/weekly-reports/new/）；认证：Bearer；
-    参数：周期、摘要、items、metrics、evidence JSON。
-    成功响应：201 周报详情；失败：400 校验错误/401；响应带 X-Trace-ID，ID 为字符串。
-    """
-    try:
-        user, role_code = require_request_user(request)
-        return api_success(
-            create_or_update_report(user=user, role_code=role_code, payload=_json_payload(request)),
-            status=201,
-        )
-    except Exception as exc:
-        return _error(exc)
-
-
-@csrf_exempt
 @require_http_methods(["GET", "PATCH", "DELETE"])
 def report_detail_view(request: HttpRequest, report_id: str) -> JsonResponse:
     """获取、修改或删除周报。
 
     方法/路径：GET/PATCH/DELETE /api/v1/weekly-reports/{id}/；认证：Bearer；参数：路径 report_id。
     PATCH 仅允许修改本人当前周报周期；DELETE 仅允许删除本人当前周报周期。
-    成功响应：report/items/metrics/evidence/attachments，或 id/deleted=true；
+    成功响应：report/template/monthly_plan/items/metrics/attachments/daily_tasks，
+    或 id/deleted=true；
     失败：400/401/403/404/409；响应带 X-Trace-ID。
     """
     try:
@@ -208,6 +198,76 @@ def report_detail_view(request: HttpRequest, report_id: str) -> JsonResponse:
             )
         return api_success(
             get_report_detail(user=user, role_code=role_code, report_id=int(report_id))
+        )
+    except Exception as exc:
+        return _error(exc)
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def daily_task_list_view(request: HttpRequest, report_id: str) -> JsonResponse:
+    """查询或新增指定周报的每日工作任务。
+
+    方法/路径：GET/POST /api/v1/weekly-reports/{report_id}/daily-tasks/；认证：Bearer。
+    GET 无分页参数，成功响应 data.items 为按日期升序排列的日报数组；字段为 id、report_id、
+    work_date（YYYY-MM-DD）、work_content、created_at、updated_at，逻辑 ID 序列化为字符串。
+    POST 请求体为 {work_date: YYYY-MM-DD, work_content: string}，日期必须位于当前周报周期内，
+    且一个周报日期只能保存一条；仅周报本人且当前周期可新增。失败：400/401/403/404/409；
+    响应带 X-Trace-ID，页面不依赖数据库实现细节。
+    """
+    try:
+        user, role_code = require_request_user(request)
+        parsed_report_id = int(report_id)
+        if request.method == "POST":
+            return api_success(
+                create_daily_task(
+                    user=user,
+                    role_code=role_code,
+                    report_id=parsed_report_id,
+                    payload=_json_payload(request),
+                ),
+                status=201,
+            )
+        return api_success(
+            list_daily_tasks(user=user, role_code=role_code, report_id=parsed_report_id)
+        )
+    except Exception as exc:
+        return _error(exc)
+
+
+@csrf_exempt
+@require_http_methods(["PATCH", "DELETE"])
+def daily_task_detail_view(
+    request: HttpRequest, report_id: str, daily_task_id: str
+) -> JsonResponse:
+    """修改或删除指定周报的一条日报。
+
+    方法/路径：PATCH/DELETE /api/v1/weekly-reports/{report_id}/daily-tasks/{daily_task_id}/；
+    认证：Bearer。PATCH 请求体为 {work_date: YYYY-MM-DD, work_content: string}，日期必须在本周
+    范围且不能与同周报已有日期重复；DELETE 无请求体。仅周报本人且当前周期可操作；成功响应为
+    日报记录或 {id, deleted: true}。失败：400/401/403/404/409；响应带 X-Trace-ID。
+    """
+    try:
+        user, role_code = require_request_user(request)
+        parsed_report_id = int(report_id)
+        parsed_task_id = int(daily_task_id)
+        if request.method == "PATCH":
+            return api_success(
+                update_daily_task(
+                    user=user,
+                    role_code=role_code,
+                    report_id=parsed_report_id,
+                    daily_task_id=parsed_task_id,
+                    payload=_json_payload(request),
+                )
+            )
+        return api_success(
+            delete_daily_task(
+                user=user,
+                role_code=role_code,
+                report_id=parsed_report_id,
+                daily_task_id=parsed_task_id,
+            )
         )
     except Exception as exc:
         return _error(exc)

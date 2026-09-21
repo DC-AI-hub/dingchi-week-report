@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, watch } from "vue"
 
+import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
 import type { DictionaryItem } from "@/features/dictionary"
-import type { DirectoryRole, RoleMutationPayload } from "@/features/directory/types"
+import GroupTreeSelect from "@/features/directory/components/GroupTreeSelect.vue"
+import type { DirectoryGroup, DirectoryRole, RoleMutationPayload } from "@/features/directory/types"
 
 const props = withDefaults(
   defineProps<{
@@ -13,6 +15,7 @@ const props = withDefaults(
     isDictionaryLoading?: boolean
     scopeOptions?: DictionaryItem[]
     templateOptions?: DictionaryItem[]
+    groupOptions?: DirectoryGroup[]
   }>(),
   {
     role: null,
@@ -20,6 +23,7 @@ const props = withDefaults(
     isDictionaryLoading: false,
     scopeOptions: () => [],
     templateOptions: () => [],
+    groupOptions: () => [],
   },
 )
 
@@ -33,6 +37,7 @@ const emptyForm = (): RoleMutationPayload => ({
   role_name: "",
   scope: props.scopeOptions[0]?.dict_code || "",
   report_template_code: props.templateOptions[0]?.dict_code || "",
+  role_group_code: props.groupOptions[0]?.group_code || "",
   description: "",
 })
 
@@ -54,12 +59,15 @@ watch(
 )
 
 watch(
-  () => [props.scopeOptions, props.templateOptions],
+  () => [props.scopeOptions, props.templateOptions, props.groupOptions],
   () => {
     if (props.open && !props.role) {
       if (!form.scope) form.scope = props.scopeOptions[0]?.dict_code || ""
       if (!form.report_template_code) {
         form.report_template_code = props.templateOptions[0]?.dict_code || ""
+      }
+      if (!form.role_group_code) {
+        form.role_group_code = props.groupOptions[0]?.group_code || ""
       }
     }
   },
@@ -72,6 +80,7 @@ function toForm(role: DirectoryRole): RoleMutationPayload {
     role_name: role.role_name,
     scope: role.scope,
     report_template_code: role.report_template_code,
+    role_group_code: role.role_group_code,
     description: role.description,
   }
 }
@@ -82,6 +91,7 @@ function submitForm() {
     role_name: form.role_name.trim(),
     scope: form.scope,
     report_template_code: form.report_template_code.trim(),
+    role_group_code: form.role_group_code,
     description: form.description.trim(),
   }
 
@@ -95,6 +105,10 @@ function submitForm() {
   }
   if (!props.templateOptions.some((item) => item.dict_code === payload.report_template_code)) {
     formError.value = "请选择有效的周报模板。"
+    return
+  }
+  if (!props.groupOptions.some((item) => item.group_code === payload.role_group_code)) {
+    formError.value = "请选择有效的角色分组。"
     return
   }
   if (!/^[a-z][a-z0-9_]*$/.test(payload.role_code)) {
@@ -115,7 +129,7 @@ function submitForm() {
     @close="$emit('close')"
   >
     <form id="role-editor-form" class="role-form" @submit.prevent="submitForm">
-      <p v-if="formError" class="form-error" role="alert">{{ formError }}</p>
+      <NoticeBridge :warning-message="formError" />
 
       <div class="form-grid">
         <label>
@@ -170,6 +184,18 @@ function submitForm() {
               {{ item.dict_name }}
             </option>
           </select>
+        </label>
+
+        <label>
+          <span>角色分组</span>
+          <GroupTreeSelect
+            v-model="form.role_group_code"
+            :allow-empty="false"
+            :disabled="isSaving || !groupOptions.length"
+            empty-label="请选择角色分组"
+            :groups="groupOptions"
+            value-field="group_code"
+          />
         </label>
 
         <label class="description-field">

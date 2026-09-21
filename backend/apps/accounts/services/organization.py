@@ -58,6 +58,7 @@ def create_role(*, payload: Mapping[str, Any]) -> Role:
     scope = str(payload.get("scope") or "self").strip()
     description = str(payload.get("description") or "").strip()
     report_template_code = str(payload.get("report_template_code") or "general_v1").strip()
+    role_group_code = str(payload.get("role_group_code") or "").strip()
     _validate_role_fields(
         role_code=role_code,
         role_name=role_name,
@@ -66,6 +67,7 @@ def create_role(*, payload: Mapping[str, Any]) -> Role:
     )
     if len(description) > 255:
         raise ValueError("角色说明不能超过 255 个字符。")
+    _validate_role_group_code(role_group_code)
     if role_code_exists(role_code):
         raise RoleConflictError("角色编码已存在，请使用其他编码。")
     return insert_role(
@@ -74,6 +76,7 @@ def create_role(*, payload: Mapping[str, Any]) -> Role:
         scope=scope,
         description=description,
         report_template_code=report_template_code,
+        role_group_code=role_group_code,
         sort_order=_parse_sort_order(payload.get("sort_order", 0)),
     )
 
@@ -89,6 +92,9 @@ def update_role(*, role_id: int, payload: Mapping[str, Any]) -> Role:
     report_template_code = str(
         payload.get("report_template_code", role.report_template_code) or ""
     ).strip()
+    role_group_code = str(
+        payload.get("role_group_code", role.role_group_code) or ""
+    ).strip()
     description = str(payload.get("description", role.description) or "").strip()
     _validate_role_fields(
         role_code=role.role_code,
@@ -98,6 +104,7 @@ def update_role(*, role_id: int, payload: Mapping[str, Any]) -> Role:
     )
     if len(description) > 255:
         raise ValueError("角色说明不能超过 255 个字符。")
+    _validate_role_group_code(role_group_code)
 
     update_fields: list[str] = []
     for field, value in (
@@ -105,6 +112,7 @@ def update_role(*, role_id: int, payload: Mapping[str, Any]) -> Role:
         ("scope", scope),
         ("description", description),
         ("report_template_code", report_template_code),
+        ("role_group_code", role_group_code),
     ):
         if getattr(role, field) != value:
             setattr(role, field, value)
@@ -240,6 +248,10 @@ def delete_group(*, group_id: int) -> OrganizationGroup:
         raise GroupConflictError("该分组仍有在职用户，不能删除。")
     if UserGroupMembership.objects.filter(group_id=group.id, status="active").exists():
         raise GroupConflictError("该分组仍有用户成员，不能删除。")
+    if Role.objects.filter(role_group_code=group.group_code).exclude(status="deleted").exists():
+        raise GroupConflictError("该分组仍有关联角色，不能删除。")
+    if group.is_system:
+        raise GroupConflictError("系统预设分组不能删除。")
     group.status = "deleted"
     group.save(update_fields=["status", "updated_at"])
     return group
@@ -256,6 +268,7 @@ def serialize_group(group: OrganizationGroup) -> dict[str, Any]:
         "group_name": group.group_name,
         "description": group.description,
         "parent_group_id": str(group.parent_group_id) if group.parent_group_id else None,
+        "is_system": group.is_system,
         "status": group.status,
     }
 
@@ -274,3 +287,13 @@ def _is_descendant(*, group_id: int, candidate_parent_id: int) -> bool:
             .first()
         )
     return False
+
+
+def _validate_role_group_code(role_group_code: str) -> None:
+    if not role_group_code:
+        raise ValueError("角色分组不能为空。")
+    if not OrganizationGroup.objects.filter(
+        group_code=role_group_code,
+        status="active",
+    ).exists():
+        raise ValueError("角色分组不存在或已停用。")

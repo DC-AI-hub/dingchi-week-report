@@ -88,6 +88,31 @@
   box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.12);
 }
 
+/* 空输入框的提示词要明显区别于已填写内容，避免被误认为默认值。 */
+input::placeholder,
+textarea::placeholder {
+  color: #91a6c2;
+  font-size: 0.94em;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  opacity: 1;
+}
+
+.required-mark {
+  display: inline;
+  margin-left: 4px;
+  color: #d9485f;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.task-editor__label {
+  display: inline-flex;
+  align-items: baseline;
+  min-height: 1.4em;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;

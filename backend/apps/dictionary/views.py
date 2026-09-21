@@ -6,7 +6,7 @@ from django.http import HttpRequest, JsonResponse
 from django.views.decorators.http import require_GET
 
 from apps.accounts.public import require_user
-from apps.core.http import api_error, api_success
+from apps.core.http import api_error, api_success, log_unhandled_exception
 
 from .services.items import InvalidDictionaryTypeError, get_active_items
 
@@ -30,4 +30,5 @@ def dictionary_items_view(request: HttpRequest, dict_type: str) -> JsonResponse:
     except Exception as exc:
         if hasattr(exc, "code") and str(exc.code) == "AUTHENTICATION_FAILED":
             return api_error("AUTHENTICATION_FAILED", str(exc), status=401)
+        log_unhandled_exception(exc, context="dictionary")
         return api_error("INTERNAL_ERROR", "服务暂时不可用。", status=500)

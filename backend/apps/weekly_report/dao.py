@@ -58,7 +58,7 @@ def _report_clauses(
 def _report_select() -> str:
     return """
         SELECT r.id, r.role_code, COALESCE(ro.role_name, r.role_code) AS role_name,
-               r.template_code, r.template_version, r.employee_id,
+               r.template_code, r.employee_id,
                r.group_id, r.period_type, r.month_key, r.period_start, r.period_end,
                r.as_of_date, r.status, r.summary, r.risk_level, r.risk_blocked,
                r.created_at, r.updated_at, u.display_name AS employee_name,
@@ -143,7 +143,7 @@ def get_report_header(report_id: int) -> dict[str, Any] | None:
     rows = _fetch(
         """
         SELECT r.id, r.role_code, COALESCE(ro.role_name, r.role_code) AS role_name,
-               r.template_code, r.template_version, r.employee_id,
+               r.template_code, r.employee_id,
                r.group_id, r.period_type, r.month_key, r.period_start, r.period_end,
                r.as_of_date, r.status, r.summary, r.risk_level, r.risk_blocked,
                r.risk_reason, r.next_action, r.support_needed, r.expected_resolve_date,
@@ -200,19 +200,6 @@ def get_report_metrics(report_id: int) -> list[dict[str, Any]]:
                target_value_decimal, actual_value_decimal, value_text, unit,
                `precision`, baseline_value_decimal, note, created_at, updated_at
         FROM weekly_report_metric
-        WHERE report_id = %s
-        ORDER BY id
-        """,
-        [report_id],
-    )
-
-
-def get_report_evidence(report_id: int) -> list[dict[str, Any]]:
-    return _fetch(
-        """
-        SELECT id, report_id, item_id, evidence_type, file_url, file_name,
-               description, created_at
-        FROM weekly_report_evidence
         WHERE report_id = %s
         ORDER BY id
         """,

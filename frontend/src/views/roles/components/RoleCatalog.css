@@ -1,4 +1,231 @@
+.role-catalog-layout {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.organization-role-group,
+.organization-role-count {
+  display: block;
+}
+
+.organization-role-group {
+  font-size: 0.84rem;
+}
+
+.organization-role-count {
+  margin-top: 0.16rem;
+  color: var(--muted);
+  font-size: 0.64rem;
+}
+
+.organization-roles {
+  display: grid;
+  box-sizing: border-box;
+  width: 245px;
+  max-width: 100%;
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  gap: 0.32rem;
+  margin-top: 0.55rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #d8e7f7;
+  scrollbar-color: #abc9eb transparent;
+  scrollbar-width: thin;
+}
+
+.organization-role {
+  display: grid;
+  grid-template-columns: 1.6rem minmax(110px, 1fr) auto;
+  align-items: center;
+  gap: 0.38rem;
+  min-width: 245px;
+  padding: 0.35rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.86);
+  text-align: left;
+}
+
+.organization-role .role-mark {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 8px;
+  font-size: 0.64rem;
+}
+
+.organization-role__content {
+  min-width: 0;
+}
+
+.organization-role__content strong,
+.organization-role__content small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.organization-role__content strong {
+  font-size: 0.7rem;
+}
+
+.organization-role__content small {
+  margin-top: 0.1rem;
+  color: var(--muted);
+  font-size: 0.56rem;
+}
+
+.organization-role__actions {
+  display: flex;
+  gap: 0.15rem;
+}
+
+.organization-role__actions button {
+  padding: 0.14rem 0.2rem;
+  border: 0;
+  color: var(--accent-dark);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.56rem;
+}
+
+.organization-role__actions button.is-danger {
+  color: #c94950;
+}
+
+.organization-role__actions button:disabled {
+  color: #a9b6c8;
+  cursor: not-allowed;
+}
+
+.ungrouped-roles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.7rem;
+  border: 1px dashed #c9dcef;
+  border-radius: 12px;
+}
+
+.ungrouped-roles button {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
 .role-grid {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.role-group {
+  display: grid;
+  gap: 0.7rem;
+  scroll-margin-top: 108px;
+}
+
+.group-bookmarks {
+  position: sticky;
+  top: 104px;
+  display: grid;
+  align-self: start;
+  gap: 0.3rem;
+  padding: 0.8rem 0.65rem;
+  border: 1px solid rgba(182, 211, 245, 0.82);
+  border-radius: 14px;
+  background: rgba(248, 252, 255, 0.94);
+  box-shadow: 0 8px 22px rgba(49, 110, 187, 0.09);
+  backdrop-filter: blur(10px);
+}
+
+.group-bookmarks > strong {
+  padding: 0 0.45rem 0.45rem;
+  border-bottom: 1px solid #dce9f8;
+  color: var(--text);
+  font-size: 0.78rem;
+}
+
+.group-bookmarks button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.52rem 0.55rem;
+  border: 0;
+  border-radius: 9px;
+  color: #58749b;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.73rem;
+  text-align: left;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.group-bookmarks button:hover,
+.group-bookmarks button.is-active {
+  color: #1768d2;
+  background: #e9f3ff;
+}
+
+.group-bookmarks button.is-active {
+  box-shadow: inset 3px 0 #2f80ed;
+  font-weight: 700;
+}
+
+.group-bookmarks small {
+  display: grid;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.25rem;
+  place-items: center;
+  border-radius: 999px;
+  color: #3975c4;
+  background: rgba(255, 255, 255, 0.82);
+  font-size: 0.65rem;
+}
+
+.role-group-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.35rem 0.2rem;
+}
+
+.role-group-heading > div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+}
+
+.role-group-heading h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.role-group-heading span {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.role-group-heading__line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--line), transparent);
+}
+
+.role-group__cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.9rem;
@@ -168,7 +395,6 @@
 }
 
 .empty-card {
-  grid-column: 1 / -1;
   min-height: 150px;
   color: var(--muted);
   text-align: center;
@@ -176,13 +402,44 @@
 }
 
 @media (max-width: 1120px) {
-  .role-grid {
+  .role-catalog-layout {
+    grid-template-columns: minmax(0, 1fr) 130px;
+  }
+
+  .role-group__cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
+@media (max-width: 860px) {
+  .role-catalog-layout {
+    display: flex;
+    flex-direction: column-reverse;
+  }
+
+  .group-bookmarks {
+    position: sticky;
+    top: 88px;
+    z-index: 3;
+    display: flex;
+    gap: 0.4rem;
+    overflow-x: auto;
+    padding: 0.55rem;
+  }
+
+  .group-bookmarks > strong {
+    display: none;
+  }
+
+  .group-bookmarks button {
+    width: auto;
+    flex: 0 0 auto;
+    min-width: 92px;
+  }
+}
+
 @media (max-width: 680px) {
-  .role-grid {
+  .role-group__cards {
     grid-template-columns: 1fr;
   }
 }

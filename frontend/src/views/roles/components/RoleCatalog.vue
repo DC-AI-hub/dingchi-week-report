@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { computed } from "vue"
+
+import OrganizationChart from "@/features/directory/components/OrganizationChart.vue"
 import type { DirectoryRole } from "@/features/directory/types"
 import type { DictionaryItem } from "@/features/dictionary"
 
@@ -9,12 +12,14 @@ const props = withDefaults(
     activeRoleCode?: string
     scopeOptions?: DictionaryItem[]
     templateOptions?: DictionaryItem[]
+    groupOptions?: import("@/features/directory/types").DirectoryGroup[]
   }>(),
   {
     isLoading: false,
     activeRoleCode: "",
     scopeOptions: () => [],
     templateOptions: () => [],
+    groupOptions: () => [],
   },
 )
 
@@ -35,6 +40,16 @@ function templateLabel(templateCode: string): string {
   return dictionaryLabel(props.templateOptions, templateCode)
 }
 
+const rolesByGroup = computed(() => {
+  const result = new Map<string, DirectoryRole[]>()
+  for (const role of props.roles) {
+    result.set(role.role_group_code, [...(result.get(role.role_group_code) || []), role])
+  }
+  return result
+})
+
+const ungroupedRoles = computed(() => props.roles.filter((role) => !props.groupOptions.some((group) => group.group_code === role.role_group_code)))
+
 function deleteDisabledReason(role: DirectoryRole): string {
   if (role.role_code === "system_admin") return "系统管理员角色受保护，不能删除"
   if (role.role_code === props.activeRoleCode) return "当前正在使用的角色不能删除"
@@ -43,59 +58,44 @@ function deleteDisabledReason(role: DirectoryRole): string {
 </script>
 
 <template>
-  <section aria-label="角色列表" class="role-grid">
-    <article v-for="role in roles" :key="role.id" class="dashboard-card role-card">
-      <div class="role-card__heading">
-        <div class="role-identity">
-          <span class="role-mark" aria-hidden="true">{{ role.role_name.slice(0, 1) }}</span>
-          <div class="role-title">
-            <h2>{{ role.role_name }}</h2>
-            <span>{{ role.role_code }}</span>
-          </div>
-        </div>
-        <span class="scope-badge">{{ scopeLabel(role.scope) }}</span>
-      </div>
-
-      <p class="role-description">{{ role.description || "暂无角色说明" }}</p>
-
-      <dl class="role-details">
-        <div>
-          <dt>周报模板</dt>
-          <dd :title="role.report_template_code">{{ templateLabel(role.report_template_code) }}</dd>
-        </div>
-        <div>
-          <dt>可见范围</dt>
-          <dd>{{ scopeLabel(role.scope) }}</dd>
-        </div>
-        <div>
-          <dt>状态</dt>
-          <dd :class="{ 'status-active': role.status === 'active' }">
-            {{ role.status === "active" ? "启用" : "停用" }}
-          </dd>
-        </div>
-      </dl>
-
-      <div class="role-actions">
-        <button class="edit-button" type="button" @click="$emit('edit', role)">编辑</button>
-        <button
-          class="delete-button"
-          type="button"
-          :disabled="Boolean(deleteDisabledReason(role))"
-          :title="deleteDisabledReason(role)"
-          @click="$emit('delete', role)"
+  <div class="role-catalog-layout">
+    <div v-if="isLoading" class="dashboard-card empty-card" aria-live="polite">正在加载角色数据…</div>
+    <OrganizationChart v-else :collapsible="true" :groups="groupOptions">
+      <template #node="{ group, isExpanded }">
+        <strong class="organization-role-group">{{ group.group_name }}</strong>
+        <span class="organization-role-count">{{ rolesByGroup.get(group.group_code)?.length || 0 }} 个角色</span>
+        <div
+          v-if="isExpanded && rolesByGroup.get(group.group_code)?.length"
+          class="organization-roles"
+          @click.stop
         >
-          删除
-        </button>
-      </div>
-    </article>
-
-    <article v-if="isLoading" class="dashboard-card empty-card" aria-live="polite">
-      正在加载角色数据…
-    </article>
-    <article v-else-if="!roles.length" class="dashboard-card empty-card">
-      暂无角色数据，可以通过“新增角色”创建第一条角色配置。
-    </article>
-  </section>
+          <article v-for="role in rolesByGroup.get(group.group_code)" :key="role.id" class="organization-role">
+            <span class="role-mark" aria-hidden="true">{{ role.role_name.slice(0, 1) }}</span>
+            <span class="organization-role__content">
+              <strong>{{ role.role_name }}</strong>
+              <small>{{ templateLabel(role.report_template_code) }} · {{ scopeLabel(role.scope) }}</small>
+            </span>
+            <span class="organization-role__actions">
+              <button type="button" @click="$emit('edit', role)">编辑</button>
+              <button
+                class="is-danger"
+                type="button"
+                :disabled="Boolean(deleteDisabledReason(role))"
+                :title="deleteDisabledReason(role)"
+                @click="$emit('delete', role)"
+              >删除</button>
+            </span>
+          </article>
+        </div>
+      </template>
+    </OrganizationChart>
+    <section v-if="ungroupedRoles.length" class="ungrouped-roles">
+      <strong>未分组角色</strong>
+      <button v-for="role in ungroupedRoles" :key="role.id" type="button" @click="$emit('edit', role)">
+        {{ role.role_name }}
+      </button>
+    </section>
+  </div>
 </template>
 
 <style scoped src="./RoleCatalog.css"></style>

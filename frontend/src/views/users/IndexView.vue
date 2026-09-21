@@ -20,6 +20,9 @@ import type {
   UserMutationPayload,
 } from "@/features/directory/types"
 import { encryptPassword } from "@/shared/security/password"
+import GroupTreeSelect from "@/features/directory/components/GroupTreeSelect.vue"
+import OrganizationChart from "@/features/directory/components/OrganizationChart.vue"
+import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 
 import ConfirmDeleteDialog from "./components/ConfirmDeleteDialog.vue"
 import GroupEditorDialog from "./components/GroupEditorDialog.vue"
@@ -47,10 +50,18 @@ const deletingTarget = ref<
 >(null)
 const errorMessage = ref("")
 const successMessage = ref("")
-const filters = reactive({ role_code: "", group_id: "" })
+const filters = reactive({ role_code: "", group_id: "", keyword: "" })
 
-const managerName = computed(() => new Map(users.value.map((user) => [user.id, user.display_name])))
 const roleName = (code: string) => roles.value.find((role) => role.role_code === code)?.role_name || code
+const usersByGroup = computed(() => {
+  const map = new Map<string, DirectoryUser[]>()
+  for (const user of users.value) {
+    const key = user.group_id ? String(user.group_id) : ""
+    map.set(key, [...(map.get(key) || []), user])
+  }
+  return map
+})
+const ungroupedUsers = computed(() => usersByGroup.value.get("") || [])
 
 const deleteTitle = computed(() => (deletingTarget.value?.kind === "group" ? "删除分组" : "删除用户"))
 const deleteMessage = computed(() => {
@@ -135,9 +146,9 @@ async function submitUser(payload: UserMutationPayload) {
   try {
     const commonPayload = {
       username: payload.username,
-      employee_no: payload.employee_no,
       display_name: payload.display_name,
       email: payload.email,
+      phone: payload.phone,
       group_id: payload.group_id || null,
       manager_id: payload.manager_id || null,
       role_codes: payload.role_codes,
@@ -194,86 +205,88 @@ onMounted(() => void load())
 
 <template>
   <div class="users-page">
-    <section class="directory-hero">
-      <div>
-        <span class="section-caption">ORGANIZATION</span>
-        <h1>用户与组织</h1>
-        <p>维护人员、角色、分组和上下级关系，周报权限会随组织关系自动计算。</p>
-      </div>
-      <div class="hero-actions">
-        <button class="ghost-button" type="button" @click="isGroupManagementOpen = true">分组管理</button>
-        <button class="primary-button" type="button" @click="openCreateUser">新增用户</button>
-      </div>
-    </section>
-
-    <p v-if="errorMessage" class="page-alert" role="alert">{{ errorMessage }}</p>
-    <p v-if="successMessage" class="page-success" role="status">{{ successMessage }}</p>
-
     <section class="dashboard-card directory-card">
-      <div class="directory-heading">
+      <div class="directory-hero">
         <div>
-          <span class="section-caption">DIRECTORY</span>
-          <h2>人员目录</h2>
+          <h1>用户与组织</h1>
+          <p>维护人员、角色、分组和上下级关系，周报权限会随组织关系自动计算。</p>
         </div>
+        <div class="hero-actions">
+          <button class="ghost-button" type="button" @click="isGroupManagementOpen = true">分组管理</button>
+          <button class="primary-button" type="button" @click="openCreateUser">新增用户</button>
+        </div>
+      </div>
+
+      <NoticeBridge :warning-message="errorMessage" :reminder-message="successMessage" />
+
+      <div class="directory-heading">
+        <h2>人员目录</h2>
         <div class="filter-row">
+          <input
+            v-model="filters.keyword"
+            class="user-filter-input"
+            type="search"
+            aria-label="搜索用户"
+            placeholder="登录账号/工号/用户名/邮箱/手机号"
+            @keyup.enter="load"
+          />
           <select v-model="filters.role_code" aria-label="按角色筛选" @change="load">
             <option value="">全部角色</option>
             <option v-for="role in roles" :key="role.id" :value="role.role_code">{{ role.role_name }}</option>
           </select>
-          <select v-model="filters.group_id" aria-label="按分组筛选" @change="load">
-            <option value="">全部分组</option>
-            <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.group_name }}</option>
-          </select>
-          <button class="ghost-button" type="button" :disabled="isLoading" @click="load">刷新</button>
+          <GroupTreeSelect
+            v-model="filters.group_id"
+            aria-label="按分组筛选"
+            :groups="groups"
+            empty-label="全部分组"
+            @update:model-value="load"
+          />
+          <button class="primary-button" type="button" :disabled="isLoading" @click="load">查询</button>
         </div>
       </div>
 
-      <div class="table-wrap">
-        <table class="directory-table">
-          <thead>
-            <tr>
-              <th>人员</th>
-              <th>角色</th>
-              <th>分组</th>
-              <th>直属上级</th>
-              <th>账号</th>
-              <th>状态</th>
-              <th class="actions-column">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="user in users" :key="user.id">
-              <td>
-                <div class="person-cell">
-                  <span class="person-avatar" :style="{ background: user.avatar_color || '#2f80ed' }">{{ user.display_name.slice(0, 1) }}</span>
-                  <div>
-                    <strong>{{ user.display_name }}</strong>
-                    <small>{{ user.employee_no }}</small>
-                  </div>
-                </div>
-              </td>
-              <td>
-                <div class="role-tags">
-                  <span v-for="code in user.role_codes" :key="code">{{ roleName(code) }}</span>
-                </div>
-              </td>
-              <td>{{ user.group_name || "未分组" }}</td>
-              <td>{{ user.manager_id ? managerName.get(user.manager_id) || "未知" : "无" }}</td>
-              <td>{{ user.username }}</td>
-              <td><span class="active-status">{{ user.status === "active" ? "在职" : "停用" }}</span></td>
-              <td>
-                <div class="row-actions">
-                  <button class="row-action" type="button" @click="viewingUser = user">查看</button>
-                  <button class="row-action" type="button" @click="openEditUser(user)">编辑</button>
-                  <button class="row-action row-action--danger" type="button" @click="requestDeleteUser(user)">删除</button>
-                </div>
-              </td>
-            </tr>
-            <tr v-if="!users.length && !isLoading"><td colspan="7" class="empty-row">暂无人员数据。</td></tr>
-            <tr v-if="isLoading"><td colspan="7" class="empty-row">正在加载…</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <div v-if="isLoading" class="organization-loading">正在加载…</div>
+      <OrganizationChart v-else :collapsible="true" :groups="groups">
+        <template #node="{ group, isExpanded }">
+          <strong class="organization-group-name">{{ group.group_name }}</strong>
+          <span class="organization-member-count">{{ usersByGroup.get(String(group.id))?.length || 0 }} 人</span>
+          <div
+            v-if="isExpanded && usersByGroup.get(String(group.id))?.length"
+            class="organization-members"
+            @click.stop
+          >
+            <article
+              v-for="user in usersByGroup.get(String(group.id))"
+              :key="user.id"
+              class="organization-member"
+              role="button"
+              tabindex="0"
+              @click="viewingUser = user"
+              @keydown.enter.prevent="viewingUser = user"
+              @keydown.space.prevent="viewingUser = user"
+            >
+              <span class="person-avatar" :style="{ background: user.avatar_color || '#2f80ed' }">{{ user.display_name.slice(0, 1) }}</span>
+              <span class="organization-member__identity">
+                <strong>{{ user.display_name }}</strong>
+                <small>{{ user.role_codes.map(roleName).join('、') }}</small>
+              </span>
+              <span class="organization-member__actions">
+                <button type="button" @click.stop="openEditUser(user)">编辑</button>
+                <button class="is-danger" type="button" @click.stop="requestDeleteUser(user)">删除</button>
+              </span>
+            </article>
+          </div>
+        </template>
+      </OrganizationChart>
+
+      <section v-if="ungroupedUsers.length" class="ungrouped-users">
+        <h3>未分组人员</h3>
+        <div class="ungrouped-users__list">
+          <button v-for="user in ungroupedUsers" :key="user.id" type="button" @click="viewingUser = user">
+            {{ user.display_name }} · {{ user.username }}
+          </button>
+        </div>
+      </section>
     </section>
 
     <GroupManagementDialog

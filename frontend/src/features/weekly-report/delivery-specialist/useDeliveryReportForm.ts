@@ -11,8 +11,8 @@ import {
   updateReport,
 } from "../api"
 import type {
+  DailyWorkTask,
   ReportAttachment,
-  ReportEvidence,
   ReportItem,
   ReportPayload,
   ReportTemplateField,
@@ -44,18 +44,14 @@ function endOfWeek(start: string) {
   return isoDate(value)
 }
 
-function taskCode(task: Pick<DeliveryTaskDraft, "client_key">) {
-  return `delivery_${task.client_key}`.slice(0, 64)
+function taskCode(task: Pick<DeliveryTaskDraft, "client_key">, prefix = "delivery") {
+  return `${prefix}_${task.client_key}`.slice(0, 64)
 }
 
 function fromReportItem(
   item: ReportItem,
   attachments: ReportAttachment[] = [],
-  legacyEvidence: ReportEvidence[] = [],
 ): DeliveryTaskDraft {
-  const source = attachments.length
-    ? attachments
-    : legacyEvidence.filter((evidence) => evidence.evidence_type === "file")
   return {
     ...emptyDeliveryTask(item.owner_name_snapshot),
     client_key: item.id || item.task_code,
@@ -74,7 +70,7 @@ function fromReportItem(
     owner_name: item.owner_name_snapshot,
     collaborator_names: item.collaborator_names,
     document_links: item.document_links,
-    attachments: source.map((attachment) => ({
+    attachments: attachments.map((attachment) => ({
       id: attachment.id,
       attachment_type: "attachment_type" in attachment ? attachment.attachment_type : "weekly_report",
       storage_key: "storage_key" in attachment ? attachment.storage_key : undefined,
@@ -87,8 +83,11 @@ function fromReportItem(
   }
 }
 
-function normalizeTaskFields(fields: ReportTemplateField[] | undefined): DeliveryTaskFieldDefinition[] {
-  const known = new Set(deliveryTaskFieldDefinitions.map((field) => field.code))
+function normalizeTaskFields(
+  fields: ReportTemplateField[] | undefined,
+  fallbackFields: DeliveryTaskFieldDefinition[],
+): DeliveryTaskFieldDefinition[] {
+  const known = new Set(fallbackFields.map((field) => field.code))
   const normalized = (fields || [])
     .filter((field) => known.has(field.field_code as DeliveryTaskFieldDefinition["code"]))
     .map((field) => ({
@@ -98,22 +97,39 @@ function normalizeTaskFields(fields: ReportTemplateField[] | undefined): Deliver
       default_visible: field.default_visible,
     }))
     .filter((field) => field.label && Number.isFinite(field.sort_order))
-  return normalized.length ? normalized : deliveryTaskFieldDefinitions
+  return normalized.length ? normalized : fallbackFields
 }
 
-export function useDeliveryReportForm(reportId: () => string) {
+export interface DeliveryReportFormOptions {
+  templateCode?: string
+  includeCustomer?: boolean
+  fallbackFields?: DeliveryTaskFieldDefinition[]
+  taskCodePrefix?: string
+}
+
+export function useDeliveryReportForm(
+  reportId: () => string,
+  options: DeliveryReportFormOptions = {},
+) {
+  const templateCode = options.templateCode || "delivery_specialist_v1"
+  const includeCustomer = options.includeCustomer ?? true
+  const fallbackFields = options.fallbackFields || deliveryTaskFieldDefinitions
+  const taskCodePrefix = options.taskCodePrefix || "delivery"
   const authStore = useAuthStore()
   const start = currentMonday()
   const report = reactive({
+    id: reportId(),
     period_start: start,
     period_end: endOfWeek(start),
     summary: "",
   })
   const monthlySummary = ref("")
+  const monthlyPlanLocked = ref(false)
   const isMonthlyPlanSaving = ref(false)
   const monthlyPlanErrorMessage = ref("")
   const weeklyTasks = ref<DeliveryTaskDraft[]>([])
-  const taskFields = ref<DeliveryTaskFieldDefinition[]>(deliveryTaskFieldDefinitions)
+  const dailyTasks = ref<DailyWorkTask[]>([])
+  const taskFields = ref<DeliveryTaskFieldDefinition[]>(fallbackFields)
   const isLoading = ref(true)
   const isSaving = ref(false)
   const errorMessage = ref("")
@@ -131,9 +147,11 @@ export function useDeliveryReportForm(reportId: () => string) {
     try {
       const plan = await getMonthlyPlan(monthKey.value)
       monthlySummary.value = plan?.summary || ""
+      monthlyPlanLocked.value = Boolean(plan?.id)
     } catch {
       // 月度计划表尚未初始化或本月尚未建立记录时，周报仍可先填写。
       monthlySummary.value = ""
+      monthlyPlanLocked.value = false
     }
   }
 
@@ -143,6 +161,7 @@ export function useDeliveryReportForm(reportId: () => string) {
     try {
       const plan = await saveMonthlyPlan(monthKey.value, summary)
       monthlySummary.value = plan.summary || ""
+      monthlyPlanLocked.value = true
       return true
     } catch (error) {
       monthlyPlanErrorMessage.value = error instanceof Error ? error.message : "月度计划保存失败。"
@@ -154,12 +173,11 @@ export function useDeliveryReportForm(reportId: () => string) {
 
   async function loadTaskFields() {
     try {
-      const roleCode = authStore.activeRole?.role_code || "delivery_specialist"
-      const template = await getReportTemplate(roleCode)
-      taskFields.value = normalizeTaskFields(template.fields)
+      const template = await getReportTemplate(templateCode)
+      taskFields.value = normalizeTaskFields(template.fields, fallbackFields)
     } catch {
       // 字段字典尚未初始化时使用内置 Excel 顺序，不影响周报填写。
-      taskFields.value = deliveryTaskFieldDefinitions
+      taskFields.value = fallbackFields
     }
   }
 
@@ -171,20 +189,24 @@ export function useDeliveryReportForm(reportId: () => string) {
       if (reportId()) {
         const detail = await getReportDetail(reportId())
         Object.assign(report, {
+          id: detail.report.id,
           period_start: detail.report.period_start,
           period_end: detail.report.period_end,
           summary: detail.report.summary || "",
         })
         monthlySummary.value = detail.monthly_plan?.summary || ""
+        monthlyPlanLocked.value = Boolean(detail.monthly_plan?.id)
         const attachments = detail.attachments || []
         weeklyTasks.value = detail.items.map((item) =>
           fromReportItem(
             item,
             attachments.filter((attachment) => attachment.relation_sub_id === item.id),
-            detail.evidence.filter((evidence) => evidence.item_id === item.id),
           ),
         )
+        dailyTasks.value = detail.daily_tasks || []
       } else {
+        report.id = ""
+        dailyTasks.value = []
         await loadMonthlyPlan()
       }
       initialized = true
@@ -207,10 +229,10 @@ export function useDeliveryReportForm(reportId: () => string) {
       support_needed: "",
       expected_resolve_date: null,
       items: weeklyTasks.value.map((item, index) => ({
-        task_code: taskCode(item),
+        task_code: taskCode(item, taskCodePrefix),
         section_code: "weekly_tasks",
-        scope_type: "customer",
-        customer_name_snapshot: item.customer_name.trim(),
+        scope_type: includeCustomer ? "customer" : "overall",
+        customer_name_snapshot: includeCustomer ? item.customer_name.trim() : "",
         task_name_snapshot: item.task_name.trim(),
         work_content: item.work_content,
         output_description: item.output_description,
@@ -227,13 +249,17 @@ export function useDeliveryReportForm(reportId: () => string) {
         sort_order: index,
       })),
       metrics: [],
-      evidence: [],
+      daily_tasks: dailyTasks.value.map((task) => ({
+        id: task.id.startsWith("draft-") ? undefined : task.id,
+        work_date: task.work_date,
+        work_content: task.work_content,
+      })),
       attachments: weeklyTasks.value.flatMap((item) =>
         item.attachments
           .filter((attachment) => Boolean(attachment.id) && !attachment.file)
           .map((attachment) => ({
             id: attachment.id as string,
-            task_code: taskCode(item),
+            task_code: taskCode(item, taskCodePrefix),
           })),
       ),
     }
@@ -241,7 +267,7 @@ export function useDeliveryReportForm(reportId: () => string) {
 
   async function uploadPendingAttachments(detail: WeeklyReportDetail) {
     for (const task of weeklyTasks.value) {
-      const item = detail.items.find((candidate) => candidate.task_code === taskCode(task))
+      const item = detail.items.find((candidate) => candidate.task_code === taskCode(task, taskCodePrefix))
       for (const attachment of task.attachments) {
         const file = attachment.file
         if (!file) continue
@@ -274,6 +300,7 @@ export function useDeliveryReportForm(reportId: () => string) {
       const detail = reportId()
         ? await updateReport(reportId(), buildPayload())
         : await createReport(buildPayload())
+      report.id = detail.report.id
       try {
         await uploadPendingAttachments(detail)
       } catch (error) {
@@ -294,7 +321,7 @@ export function useDeliveryReportForm(reportId: () => string) {
   })
 
   return {
-    report, monthlySummary, weeklyTasks, taskFields, monthKey, isNew,
+    report, monthlySummary, monthlyPlanLocked, weeklyTasks, dailyTasks, taskFields, monthKey, isNew,
     isLoading, isSaving, errorMessage, isMonthlyPlanSaving, monthlyPlanErrorMessage,
     authStore, setPeriodStart, load, save, saveMonthlyPlanSummary,
   }

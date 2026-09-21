@@ -2,15 +2,16 @@
 import { computed, onMounted, reactive, ref } from "vue"
 import { useRoute } from "vue-router"
 
-import BackButton from "@/components/navigation/BackButton.vue"
+import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import { useAuthStore } from "@/features/auth/store"
 import { createReport, getReportDetail, getReportTemplate, updateReport } from "@/features/weekly-report/api"
-import type { ReportItem, ReportMetric, ReportPayload, ReportTemplate, WeeklyReportDetail } from "@/features/weekly-report/types"
+import type { DailyWorkTask, ReportItem, ReportMetric, ReportPayload, ReportTemplate, WeeklyReportDetail } from "@/features/weekly-report/types"
 
 import MetricSection from "./components/MetricSection.vue"
 import ReportHeader from "./components/ReportHeader.vue"
 import RiskPanel from "./components/RiskPanel.vue"
 import TaskPlanTable from "./components/TaskPlanTable.vue"
+import DailyTaskSection from "./components/DailyTaskSection.vue"
 
 type TaskDraft = Partial<ReportItem> & { task_code: string }
 type MetricDraft = Partial<ReportMetric> & { metric_code: string }
@@ -51,6 +52,7 @@ const report = reactive({
 })
 const items = ref<TaskDraft[]>([])
 const metrics = ref<MetricDraft[]>([])
+const dailyTasks = ref<DailyWorkTask[]>([])
 
 function isoDate(value: Date) {
   const year = value.getFullYear()
@@ -133,6 +135,7 @@ function applyDetail(detail: WeeklyReportDetail) {
   metrics.value = template.value?.metrics.map((metric) =>
     metricDraft(detail.metrics.find((item) => item.metric_code === metric.task_code), metric),
   ) || detail.metrics.map((metric) => ({ ...metric, metric_code: metric.metric_code }))
+  dailyTasks.value = detail.daily_tasks || []
 }
 
 function buildPayload(): ReportPayload {
@@ -149,7 +152,12 @@ function buildPayload(): ReportPayload {
     expected_resolve_date: report.expected_resolve_date,
     items: items.value.map((item) => ({ ...item, task_code: item.task_code })),
     metrics: metrics.value.map((metric) => ({ ...metric, metric_code: metric.metric_code })),
-    evidence: [],
+    attachments: [],
+    daily_tasks: dailyTasks.value.map((task) => ({
+      id: task.id.startsWith("draft-") ? undefined : task.id,
+      work_date: task.work_date,
+      work_content: task.work_content,
+    })),
   }
 }
 
@@ -176,13 +184,18 @@ async function load() {
   isLoading.value = true
   errorMessage.value = ""
   try {
-    const roleCode = authStore.activeRole?.role_code || ""
-    template.value = await getReportTemplate(roleCode)
     if (reportId.value) {
-      applyDetail(await getReportDetail(reportId.value))
+      const detail = await getReportDetail(reportId.value)
+      template.value = detail.template
+        || await getReportTemplate(detail.report.template_code)
+      applyDetail(detail)
     } else {
+      const templateCode = authStore.activeRole?.report_template_code || ""
+      if (!templateCode) throw new Error("当前角色未配置周报模板。")
+      template.value = await getReportTemplate(templateCode)
       items.value = template.value.tasks.map((task) => taskDraft(undefined, task))
       metrics.value = template.value.metrics.map((metric) => metricDraft(undefined, metric))
+      dailyTasks.value = []
     }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "周报加载失败。"
@@ -198,10 +211,8 @@ onMounted(() => void load())
   <div class="report-edit-page">
     <div v-if="isLoading" class="loading-card dashboard-card">正在加载周报</div>
     <template v-else>
-      <BackButton :to="{ name: 'weekly-reports' }" />
       <ReportHeader :report="report" :role-name="template?.role_name" />
-      <p v-if="errorMessage" class="page-alert" role="alert">{{ errorMessage }}</p>
-      <p v-if="successMessage" class="page-success" role="status">{{ successMessage }}</p>
+      <NoticeBridge :warning-message="errorMessage" :reminder-message="successMessage" />
 
       <section class="dashboard-card form-card">
         <div class="section-heading"><h2>报告基本信息</h2></div>
@@ -211,6 +222,13 @@ onMounted(() => void load())
           <label class="summary-field">本周总结<textarea v-model="report.summary" :disabled="isReadOnly" rows="3" placeholder="概括本周关键进展和结果" /></label>
         </div>
       </section>
+
+      <DailyTaskSection
+        :report="report"
+        v-model:daily-tasks="dailyTasks"
+        :defer-save="isNew"
+        :can-edit="!isReadOnly"
+      />
 
       <section class="dashboard-card form-card">
         <div class="section-heading"><h2>本周工作任务</h2></div>

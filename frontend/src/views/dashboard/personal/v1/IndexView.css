@@ -1,0 +1,58 @@
+.personal-home-page {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 0 2px 16px;
+  background:
+    radial-gradient(circle at 92% 6%, rgba(131, 201, 255, 0.18), transparent 22%),
+    linear-gradient(180deg, rgba(235, 247, 255, 0.55), rgba(225, 242, 255, 0.44));
+}
+
+.personal-home-page::before {
+  position: absolute;
+  top: 88px;
+  right: 6%;
+  width: 260px;
+  height: 180px;
+  border-radius: 50%;
+  background: rgba(95, 175, 255, 0.12);
+  filter: blur(36px);
+  content: "";
+  pointer-events: none;
+}
+
+.personal-lower-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(300px, 0.75fr);
+  gap: 12px;
+}
+
+.personal-state {
+  display: grid;
+  min-height: 160px;
+  place-items: center;
+  border: 1px solid rgba(70, 143, 225, 0.2);
+  border-radius: 16px;
+  color: #6683aa;
+  background: rgba(255, 255, 255, 0.82);
+  font-size: 14px;
+}
+
+.personal-state--error {
+  color: #c54c55;
+  background: rgba(255, 247, 247, 0.9);
+}
+
+@media (max-width: 980px) {
+  .personal-lower-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .personal-home-page {
+    gap: 9px;
+    padding-inline: 0;
+  }
+}

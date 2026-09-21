@@ -2,8 +2,8 @@ import { ref } from "vue"
 
 import { listDictionaryItems } from "@/features/dictionary"
 import type { DictionaryItem } from "@/features/dictionary"
-import { createRole, deleteRole, listRoles, updateRole } from "@/features/directory/api"
-import type { DirectoryRole, RoleMutationPayload } from "@/features/directory/types"
+import { createRole, deleteRole, listGroups, listRoles, updateRole } from "@/features/directory/api"
+import type { DirectoryGroup, DirectoryRole, RoleMutationPayload } from "@/features/directory/types"
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback
@@ -18,6 +18,7 @@ export function useRoleManagement() {
   const successMessage = ref("")
   const scopeOptions = ref<DictionaryItem[]>([])
   const templateOptions = ref<DictionaryItem[]>([])
+  const groupOptions = ref<DirectoryGroup[]>([])
   const isDictionaryLoading = ref(false)
   const dictionaryErrorMessage = ref("")
 
@@ -37,12 +38,14 @@ export function useRoleManagement() {
     isDictionaryLoading.value = true
     dictionaryErrorMessage.value = ""
     try {
-      const [scopes, templates] = await Promise.all([
+      const [scopes, templates, groups] = await Promise.all([
         listDictionaryItems("role_scope"),
         listDictionaryItems("report_template"),
+        listGroups(),
       ])
       scopeOptions.value = scopes.items
       templateOptions.value = templates.items
+      groupOptions.value = groups.items
     } catch (error: unknown) {
       dictionaryErrorMessage.value = getErrorMessage(error, "静态配置加载失败，请联系管理员。")
     } finally {
@@ -94,6 +97,7 @@ export function useRoleManagement() {
     successMessage,
     scopeOptions,
     templateOptions,
+    groupOptions,
     isDictionaryLoading,
     dictionaryErrorMessage,
     loadRoles,

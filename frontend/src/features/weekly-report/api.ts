@@ -6,21 +6,22 @@ import type {
   MonthlyPlan,
   ReportPayload,
   ReportTemplate,
-  ReportEvidence,
   ReportAttachment,
+  DailyWorkTask,
+  DailyWorkTaskListResponse,
   WeeklyReportDetail,
 } from "./types"
 
 /**
- * 获取当前激活角色的周报模板。
- * 方法/路径：GET /v1/weekly-report-templates/{role_code}/；认证：Bearer；幂等：是。
- * 请求参数：路径 role_code，角色编码字符串；响应 data 为模板、任务、指标和按字典配置排序的 fields JSON；
+ * 获取指定版本周报模板。
+ * 方法/路径：GET /v1/weekly-report-templates/{template_code}/；认证：Bearer；幂等：是。
+ * 请求参数：路径 template_code，包含版本号的模板编码；响应 data 为模板、任务、指标和按字典配置排序的 fields JSON；
  * 失败：401/400，统一客户端保留 trace_id，页面只展示错误消息。
  */
-export function getReportTemplate(roleCode: string): Promise<ReportTemplate> {
+export function getReportTemplate(templateCode: string): Promise<ReportTemplate> {
   return request<ReportTemplate>({
     method: "GET",
-    url: "/v1/weekly-report-templates/" + roleCode + "/",
+    url: "/v1/weekly-report-templates/" + templateCode + "/",
   })
 }
 
@@ -94,13 +95,76 @@ export function updateReport(reportId: string, payload: ReportPayload): Promise<
 /**
  * 查询周报详情。
  * 方法/路径：GET /v1/weekly-reports/{id}/；认证：Bearer；幂等：是。
- * 当前角色必须对该员工可见；响应 data 返回 report/items/metrics/evidence/attachments；
+ * 当前角色必须对该员工可见；响应 data 返回 report/template/monthly_plan/items/metrics/attachments/daily_tasks；
+ * template 按 report.template_code 返回周报创建时绑定的完整版本模板；
  * 失败 401/403/404，ID 和日期字段遵守统一 JSON 契约。
  */
 export function getReportDetail(reportId: string): Promise<WeeklyReportDetail> {
   return request<WeeklyReportDetail>({
     method: "GET",
     url: "/v1/weekly-reports/" + reportId + "/",
+  })
+}
+
+/**
+ * 查询指定周报的每日工作任务。
+ * 方法/路径：GET /v1/weekly-reports/{id}/daily-tasks/；认证：Bearer；幂等：是。
+ * 无分页参数，响应 data.items 按日期升序返回日报；日期为 YYYY-MM-DD，逻辑 ID 为字符串；
+ * 当前角色必须对周报可见，失败 401/403/404，统一客户端携带 trace_id。
+ */
+export function getDailyTasks(reportId: string): Promise<DailyWorkTaskListResponse> {
+  return request<DailyWorkTaskListResponse>({
+    method: "GET",
+    url: "/v1/weekly-reports/" + reportId + "/daily-tasks/",
+  })
+}
+
+/**
+ * 新增周报中的每日工作任务。
+ * 方法/路径：POST /v1/weekly-reports/{id}/daily-tasks/；认证：Bearer；幂等：否。
+ * 请求体：work_date（YYYY-MM-DD）和 work_content；日期必须在当前周报周期内且每天只能一条；
+ * 仅本人当前周期周报可新增，成功返回日报记录，失败 400/401/403/404/409。
+ */
+export function createDailyTask(
+  reportId: string,
+  payload: Pick<DailyWorkTask, "work_date" | "work_content">,
+): Promise<DailyWorkTask> {
+  return request<DailyWorkTask>({
+    method: "POST",
+    url: "/v1/weekly-reports/" + reportId + "/daily-tasks/",
+    data: payload,
+  })
+}
+
+/**
+ * 修改周报中的每日工作任务。
+ * 方法/路径：PATCH /v1/weekly-reports/{id}/daily-tasks/{daily_task_id}/；认证：Bearer；幂等：否。
+ * 请求体字段同新增；仅本人当前周期周报可修改，成功返回日报记录，失败 400/401/403/404/409。
+ */
+export function updateDailyTask(
+  reportId: string,
+  dailyTaskId: string,
+  payload: Pick<DailyWorkTask, "work_date" | "work_content">,
+): Promise<DailyWorkTask> {
+  return request<DailyWorkTask>({
+    method: "PATCH",
+    url: "/v1/weekly-reports/" + reportId + "/daily-tasks/" + dailyTaskId + "/",
+    data: payload,
+  })
+}
+
+/**
+ * 删除周报中的每日工作任务。
+ * 方法/路径：DELETE /v1/weekly-reports/{id}/daily-tasks/{daily_task_id}/；认证：Bearer；幂等：否。
+ * 无请求体；仅本人当前周期周报可删除，成功返回 {id, deleted:true}，失败 401/403/404。
+ */
+export function deleteDailyTask(
+  reportId: string,
+  dailyTaskId: string,
+): Promise<{ id: string; deleted: true }> {
+  return request<{ id: string; deleted: true }>({
+    method: "DELETE",
+    url: "/v1/weekly-reports/" + reportId + "/daily-tasks/" + dailyTaskId + "/",
   })
 }
 

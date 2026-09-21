@@ -1,0 +1,31 @@
+.team-analytics-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(260px, 0.8fr) minmax(250px, 0.75fr); gap: 10px; }
+.team-panel { min-width: 0; overflow: hidden; padding: 17px 18px 14px; border: 1px solid rgba(101, 164, 232, 0.2); border-radius: 15px; background: rgba(255, 255, 255, 0.96); box-shadow: 0 6px 16px rgba(65, 132, 205, 0.07); }
+.team-panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; min-height: 38px; }
+.team-panel-title { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.team-panel-title > div { display: grid; gap: 2px; min-width: 0; }
+.team-panel-title span:not(.team-panel-icon) { color: #52739e; font-size: 12px; }
+.team-panel-title strong { color: #102d5f; font-size: 17px; font-weight: 750; }
+.team-panel-icon { display: grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; border-radius: 8px; }
+.team-panel-icon--blue { color: #2d83ee; background: #e5f1ff; }
+.team-panel-icon--purple { color: #7651df; background: #eee9ff; }
+.team-panel-icon--green { color: #05a37a; background: #dcf8ee; }
+.team-panel-note { display: inline-flex; align-items: center; gap: 4px; color: #7d96b8; font-size: 11px; }
+.member-progress-list { display: grid; gap: 11px; margin-top: 11px; }
+.member-progress-item { display: grid; gap: 5px; }
+.member-progress-name { display: grid; grid-template-columns: 27px minmax(0, 1fr) auto; align-items: center; gap: 7px; }
+.member-avatar { display: grid; width: 27px; height: 27px; place-items: center; border-radius: 50%; color: #fff; background: linear-gradient(135deg, #3e94f3, #7c5de8); font-size: 12px; font-weight: 700; }
+.member-progress-name div { display: grid; min-width: 0; gap: 1px; }
+.member-progress-name strong { overflow: hidden; color: #193b6c; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.member-progress-name small { overflow: hidden; color: #8aa0be; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.member-progress-name b { color: #267bd9; font-size: 12px; }
+.member-progress-track { height: 7px; overflow: hidden; border-radius: 99px; background: #e3edf8; }
+.member-progress-track i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #378cf0, #13b891); }
+.status-panel-body { display: flex; min-height: 174px; align-items: center; justify-content: center; gap: 9px; }
+.status-legend { display: grid; min-width: 100px; gap: 12px; }
+.status-legend-item { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; gap: 6px; color: #5c78a2; font-size: 11px; }
+.status-legend-item i { width: 8px; height: 8px; border-radius: 50%; }
+.status-legend-item strong { color: #173a6c; font-size: 13px; }
+.team-panel-empty { display: grid; min-height: 128px; place-items: center; color: #8298b7; font-size: 12px; }
+
+@media (max-width: 1180px) { .team-analytics-grid { grid-template-columns: minmax(0, 1.35fr) minmax(250px, 0.85fr); } .team-status-panel { grid-column: 1 / -1; } .status-panel-body { min-height: 145px; } }
+@media (max-width: 720px) { .team-analytics-grid { grid-template-columns: 1fr; } .team-status-panel { grid-column: auto; } .team-panel { padding: 14px; } }

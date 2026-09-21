@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS `organization_group` (
     `group_name` VARCHAR(128) NOT NULL COMMENT '组织分组名称',
     `description` VARCHAR(255) NOT NULL COMMENT '分组说明',
     `parent_group_id` BIGINT NULL COMMENT '父分组ID，逻辑关联 organization_group.id',
+    `is_system` BOOL NOT NULL DEFAULT 0 COMMENT '是否为系统预设分组，预设分组不可删除',
     `status` VARCHAR(16) NOT NULL COMMENT '状态：active启用、inactive停用',
     `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
     `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
@@ -50,6 +51,7 @@ CREATE TABLE IF NOT EXISTS `role` (
     `scope` VARCHAR(16) NOT NULL COMMENT '数据范围编码，关联 system_dictionary.role_scope',
     `description` VARCHAR(255) NOT NULL COMMENT '角色说明',
     `report_template_code` VARCHAR(64) NOT NULL COMMENT '周报模板编码，关联 system_dictionary.report_template',
+    `role_group_code` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '角色分组编码，逻辑关联 organization_group.group_code',
     `status` VARCHAR(16) NOT NULL COMMENT '状态：active启用、inactive停用',
     `sort_order` INT UNSIGNED NOT NULL COMMENT '角色显示排序号',
     `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
@@ -64,6 +66,7 @@ CREATE TABLE IF NOT EXISTS `user_account` (
     `employee_no` VARCHAR(64) NOT NULL COMMENT '员工工号',
     `display_name` VARCHAR(128) NOT NULL COMMENT '员工显示姓名',
     `email` VARCHAR(254) NOT NULL COMMENT '员工邮箱',
+    `phone` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '员工手机号',
     `password_ciphertext` LONGTEXT NOT NULL COMMENT '非对称加密后的密码密文',
     `manager_id` BIGINT NULL COMMENT '直属上级用户ID，逻辑关联 user_account.id',
     `group_id` BIGINT NULL COMMENT '主组织分组ID，逻辑关联 organization_group.id',
@@ -104,9 +107,7 @@ CREATE TABLE IF NOT EXISTS `user_group_membership` (
 
 CREATE TABLE IF NOT EXISTS `report_template` (
     `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
-    `template_code` VARCHAR(64) NOT NULL COMMENT '周报模板编码',
-    `template_version` VARCHAR(16) NOT NULL COMMENT '模板版本号',
-    `role_code` VARCHAR(64) NOT NULL COMMENT '适用角色编码，逻辑关联 role.role_code',
+    `template_code` VARCHAR(64) NOT NULL COMMENT '周报模板唯一编码（编码中包含版本号，例如 delivery_assistant_v1）',
     `template_name` VARCHAR(128) NOT NULL COMMENT '模板名称',
     `description` VARCHAR(500) NOT NULL COMMENT '模板说明',
     `status` VARCHAR(16) NOT NULL COMMENT '状态：active启用、inactive停用',
@@ -115,7 +116,7 @@ CREATE TABLE IF NOT EXISTS `report_template` (
     `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
     `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_report_template_version` (`template_code`, `template_version`)
+    UNIQUE KEY `uq_report_template_code` (`template_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='周报模板主表';
 
 CREATE TABLE IF NOT EXISTS `report_template_item` (
@@ -143,8 +144,7 @@ CREATE TABLE IF NOT EXISTS `report_template_item` (
 CREATE TABLE IF NOT EXISTS `weekly_report` (
     `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
     `role_code` VARCHAR(64) NOT NULL COMMENT '填写时使用的角色编码',
-    `template_code` VARCHAR(64) NOT NULL COMMENT '填写时使用的模板编码',
-    `template_version` VARCHAR(16) NOT NULL COMMENT '填写时使用的模板版本',
+    `template_code` VARCHAR(64) NOT NULL COMMENT '填写时使用的模板编码（编码已包含版本）',
     `employee_id` BIGINT NOT NULL COMMENT '填报员工ID，逻辑关联 user_account.id',
     `group_id` BIGINT NULL COMMENT '填报时组织分组ID，逻辑关联 organization_group.id',
     `period_type` VARCHAR(16) NOT NULL COMMENT '周期类型，当前为 week',
@@ -230,18 +230,6 @@ CREATE TABLE IF NOT EXISTS `weekly_report_metric` (
     `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='周报指标明细表';
-
-CREATE TABLE IF NOT EXISTS `weekly_report_evidence` (
-    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
-    `report_id` BIGINT NOT NULL COMMENT '周报ID，逻辑关联 weekly_report.id',
-    `item_id` BIGINT NULL COMMENT '任务明细ID，逻辑关联 weekly_report_item.id',
-    `evidence_type` VARCHAR(16) NOT NULL COMMENT '佐证类型',
-    `file_url` LONGTEXT NOT NULL COMMENT '佐证文件或链接地址',
-    `file_name` VARCHAR(255) NOT NULL COMMENT '佐证文件名称',
-    `description` VARCHAR(500) NOT NULL COMMENT '佐证说明',
-    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
-    PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='周报佐证材料表';
 
 CREATE TABLE IF NOT EXISTS `system_attachment` (
     `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
@@ -384,3 +372,15 @@ CREATE TABLE IF NOT EXISTS `django_session` (
     PRIMARY KEY (`session_key`),
     KEY `django_session_expire_date_a5c62663` (`expire_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Django 会话表';
+-- 周报每日工作任务（日报）：与周报逻辑关联，一个周报每天一条。
+CREATE TABLE IF NOT EXISTS `weekly_report_daily_task` (
+    `id` BIGINT NOT NULL COMMENT '主键ID，雪花算法生成',
+    `report_id` BIGINT NOT NULL COMMENT '周报逻辑ID',
+    `work_date` DATE NOT NULL COMMENT '日报日期',
+    `work_content` TEXT NOT NULL COMMENT '主要工作内容',
+    `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '创建时间',
+    `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_weekly_report_daily_task_date` (`report_id`, `work_date`),
+    KEY `idx_weekly_report_daily_task_report_date` (`report_id`, `work_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='周报每日工作任务（日报）';

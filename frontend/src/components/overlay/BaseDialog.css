@@ -21,6 +21,36 @@
   box-shadow: 0 28px 80px rgba(20, 64, 119, 0.28);
 }
 
+.dialog-panel--fixed {
+  display: grid;
+  height: min(var(--dialog-height), calc(100vh - 2.5rem));
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.dialog-panel--fixed .dialog-body {
+  min-height: 0;
+  overflow: auto;
+  overflow-x: hidden;
+}
+
+.dialog-panel--fullscreen {
+  width: 100vw;
+  height: 100vh;
+  max-height: 100vh;
+  border: 0;
+  border-radius: 0;
+}
+
+.dialog-panel--overflow-visible {
+  overflow: visible;
+}
+
+.dialog-backdrop:has(.dialog-panel--fullscreen) {
+  padding: 0;
+  overflow: hidden;
+}
+
 .dialog-header {
   display: flex;
   align-items: flex-start;
@@ -77,7 +107,7 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.65rem;
-  padding: 1.25rem 2.1rem 1.45rem;
+  padding: 0.75rem 2.1rem 0.85rem;
   border-top: 1px solid var(--line);
   background: var(--surface-soft);
 }
@@ -114,6 +144,17 @@
     width: 100%;
     max-height: calc(100vh - 1.5rem);
     border-radius: 20px;
+  }
+
+  .dialog-panel--fixed {
+    height: calc(100vh - 1.5rem);
+  }
+
+  .dialog-panel--fullscreen {
+    width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
   }
 
   .dialog-header,

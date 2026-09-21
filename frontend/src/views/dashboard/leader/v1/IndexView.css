@@ -1,0 +1,5 @@
+.leader-home-page { display: grid; gap: 10px; min-width: 0; padding: 0 0 16px; color: #0c2e68; background: radial-gradient(circle at 82% 2%, rgba(112, 190, 255, .2), transparent 34%), radial-gradient(circle at 5% 72%, rgba(145, 204, 255, .16), transparent 32%), linear-gradient(135deg, #eaf5ff 0%, #f5faff 46%, #e7f3ff 100%); }
+.leader-bottom-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr); gap: 10px; }
+.leader-state { display: grid; min-height: 220px; place-items: center; border: 1px solid rgba(177, 210, 245, .72); border-radius: 16px; color: #6f8db6; background: rgba(255, 255, 255, .8); font-size: 13px; }
+.leader-state--error { display: flex; justify-content: center; align-items: center; gap: 8px; color: #bf5962; }
+@media (max-width: 920px) { .leader-bottom-grid { grid-template-columns: 1fr; } }

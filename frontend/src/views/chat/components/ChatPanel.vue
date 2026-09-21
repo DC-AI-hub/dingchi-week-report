@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue"
 
-import BaseAlert from "@/components/feedback/BaseAlert.vue"
+import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import { useChatStore } from "@/features/chat/store"
 
 import ChatComposer from "./ChatComposer.vue"
@@ -31,7 +31,7 @@ async function submit() {
 
     <ChatMessageList :messages="chatStore.messages" :is-sending="chatStore.isSending" />
 
-    <BaseAlert v-if="chatStore.error" :message="chatStore.error" />
+    <NoticeBridge :warning-message="chatStore.error" />
 
     <ChatComposer v-model="prompt" :is-sending="chatStore.isSending" @submit="submit" />
   </section>

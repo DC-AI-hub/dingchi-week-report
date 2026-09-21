@@ -27,6 +27,15 @@
   font-weight: 700;
 }
 
+.form-field {
+  display: grid;
+  min-width: 0;
+  gap: 0.45rem;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .form-grid input,
 .form-grid select {
   box-sizing: border-box;

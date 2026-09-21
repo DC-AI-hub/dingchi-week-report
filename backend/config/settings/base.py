@@ -82,6 +82,8 @@ DATABASES = {
         "PASSWORD": env("MYSQL_PASSWORD"),
         "HOST": env("MYSQL_HOST"),
         "PORT": env.int("MYSQL_PORT"),
+        # dj_db_conn_pool 已经负责底层连接复用；Django 不保留请求级持久
+        # 连接，否则 ASGI 并发请求会把连接一直占在 QueuePool 中。
         "CONN_MAX_AGE": env.int("MYSQL_CONN_MAX_AGE"),
         "CONN_HEALTH_CHECKS": env.bool("MYSQL_CONN_HEALTH_CHECKS"),
         "OPTIONS": {

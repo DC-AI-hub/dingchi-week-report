@@ -16,6 +16,7 @@ class OrganizationGroup(SnowflakeIdModel):
     group_name = models.CharField(max_length=128)
     description = models.CharField(max_length=255, blank=True, default="")
     parent_group_id = models.BigIntegerField(null=True, blank=True)
+    is_system = models.BooleanField(default=False)
     status = models.CharField(max_length=16, default="active")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -31,6 +32,12 @@ class Role(SnowflakeIdModel):
     scope = models.CharField(max_length=16, default="self")
     description = models.CharField(max_length=255, blank=True, default="")
     report_template_code = models.CharField(max_length=64, default="general_v1")
+    role_group_code = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="角色所属分组编码，逻辑关联 organization_group.group_code。",
+    )
     status = models.CharField(max_length=16, default="active")
     sort_order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -46,6 +53,7 @@ class UserAccount(SnowflakeIdModel):
     employee_no = models.CharField(max_length=64, unique=True)
     display_name = models.CharField(max_length=128)
     email = models.EmailField(blank=True, default="")
+    phone = models.CharField(max_length=32, blank=True, default="")
     password_ciphertext = EncryptedPasswordField()
     manager_id = models.BigIntegerField(null=True, blank=True)
     group_id = models.BigIntegerField(null=True, blank=True)

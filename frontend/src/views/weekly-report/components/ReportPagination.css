@@ -1,16 +1,25 @@
 .report-pagination {
-  display: flex;
+  display: grid;
   align-items: center;
-  justify-content: space-between;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 0.8rem;
   padding-top: 1rem;
   color: var(--muted);
   font-size: 0.76rem;
 }
 
+.report-pagination > span:first-child {
+  justify-self: start;
+}
+
+.report-pagination > span:last-child {
+  justify-self: end;
+}
+
 .pagination-buttons {
   display: flex;
   align-items: center;
+  justify-self: center;
   gap: 0.3rem;
 }
 
@@ -43,7 +52,13 @@
 
 @media (max-width: 580px) {
   .report-pagination {
-    align-items: flex-start;
-    flex-direction: column;
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .report-pagination > span:first-child,
+  .report-pagination > span:last-child,
+  .pagination-buttons {
+    justify-self: center;
   }
 }

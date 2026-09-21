@@ -30,10 +30,9 @@ export interface ReportTemplateField {
 }
 
 export interface ReportTemplate {
-  role_code: string
+  role_code?: string
   role_name: string
   template_code: string
-  template_version: string
   template_name: string
   description: string
   sections: TemplateSection[]
@@ -101,17 +100,6 @@ export interface ReportMetric {
   note: string
 }
 
-export interface ReportEvidence {
-  id: string
-  report_id: string
-  item_id: string | null
-  evidence_type: string
-  file_url: string
-  file_name: string
-  description: string
-  created_at?: string
-}
-
 /** 周报独立附件；文件上传记录与周报/任务通过逻辑 ID 关联。 */
 export interface ReportAttachment {
   id: string
@@ -129,6 +117,20 @@ export interface ReportAttachment {
   description: string
   created_at: string
   updated_at: string
+}
+
+/** 周报内按日期维护的每日工作任务（日报）。 */
+export interface DailyWorkTask {
+  id: string
+  report_id: string
+  work_date: string
+  work_content: string
+  created_at: string
+  updated_at: string
+}
+
+export interface DailyWorkTaskListResponse {
+  items: DailyWorkTask[]
 }
 
 export interface WeeklyReport {
@@ -161,11 +163,13 @@ export interface WeeklyReport {
 
 export interface WeeklyReportDetail {
   report: WeeklyReport
+  /** 周报创建时绑定的版本模板；查看/编辑使用该快照而非当前角色绑定。 */
+  template?: ReportTemplate
   monthly_plan: MonthlyPlan | null
   items: ReportItem[]
   metrics: ReportMetric[]
-  evidence: ReportEvidence[]
   attachments?: ReportAttachment[]
+  daily_tasks: DailyWorkTask[]
 }
 
 export interface ReportListResponse {
@@ -199,7 +203,12 @@ export interface ReportPayload {
   expected_resolve_date: string | null
   items: Array<Partial<ReportItem> & { task_code: string }>
   metrics: Array<Partial<ReportMetric> & { metric_code: string }>
-  evidence: Array<Partial<ReportEvidence> & { task_code?: string }>
   /** 已上传附件的保留及任务关联信息；新文件通过 multipart 接口上传。 */
   attachments?: Array<{ id: string; task_code?: string }>
+  /** 新建周报阶段暂存的日报，由后端随周报在同一事务内保存。 */
+  daily_tasks?: Array<{
+    id?: string
+    work_date: string
+    work_content: string
+  }>
 }

@@ -71,6 +71,13 @@
   white-space: nowrap;
 }
 
+.detail-grid dd.detail-roles {
+  overflow: visible;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 @media (max-width: 540px) {
   .detail-grid {
     grid-template-columns: 1fr;

@@ -7,8 +7,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 
 -- 业务表（明细/记录表先删除）
 DROP TABLE IF EXISTS `system_attachment`;
-DROP TABLE IF EXISTS `weekly_report_attachment`;
-DROP TABLE IF EXISTS `weekly_report_evidence`;
+DROP TABLE IF EXISTS `weekly_report_daily_task`;
 DROP TABLE IF EXISTS `weekly_report_metric`;
 DROP TABLE IF EXISTS `weekly_report_item`;
 DROP TABLE IF EXISTS `weekly_report`;

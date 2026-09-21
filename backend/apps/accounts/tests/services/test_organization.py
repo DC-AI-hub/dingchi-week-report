@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from apps.accounts.models import Role
+from apps.accounts.models import OrganizationGroup, Role
 from apps.accounts.services.organization import (
     RoleConflictError,
     RoleNotFoundError,
@@ -14,6 +14,10 @@ from apps.dictionary.models import DictionaryItem
 
 
 def _seed_role_dictionaries() -> None:
+    OrganizationGroup.objects.get_or_create(
+        group_code="operations",
+        defaults={"group_name": "运维组", "is_system": True},
+    )
     DictionaryItem.objects.bulk_create(
         [
             DictionaryItem(dict_type="role_scope", dict_code="self", dict_name="仅本人数据"),
@@ -51,7 +55,13 @@ def test_create_role_rejects_duplicate_code() -> None:
     Role.objects.create(role_code="duplicate_role", role_name="原角色")
 
     with pytest.raises(RoleConflictError):
-        create_role(payload={"role_code": "duplicate_role", "role_name": "重复角色"})
+        create_role(
+            payload={
+                "role_code": "duplicate_role",
+                "role_name": "重复角色",
+                "role_group_code": "operations",
+            }
+        )
 
 
 @pytest.mark.django_db

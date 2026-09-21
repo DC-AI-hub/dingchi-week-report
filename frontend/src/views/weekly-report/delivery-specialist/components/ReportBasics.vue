@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import BackButton from "@/components/navigation/BackButton.vue"
-
 import WeekRangePicker from "./WeekRangePicker.vue"
 
 defineProps<{
@@ -17,7 +15,6 @@ const emit = defineEmits<{
 
 <template>
   <section class="dashboard-card basics-card">
-    <div class="basics-card__title"><BackButton :to="{ name: 'weekly-reports' }" /></div>
     <div class="basics-grid">
       <label class="period-field">周报周期<WeekRangePicker :start="periodStart" :end="periodEnd" :disabled="!isNew" :min="minPeriodStart" @update:start="emit('update:periodStart', $event)" /></label>
       <label>所属月度<input :value="monthKey" disabled /></label>

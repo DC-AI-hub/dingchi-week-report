@@ -16,7 +16,7 @@ defineProps<{ modelValue: RiskDraft; readonly?: boolean }>()
 <template>
   <div class="risk-panel">
     <div class="risk-levels" role="radiogroup" aria-label="风险等级">
-      <label v-for="item in [{ value: 'none', label: '无风险' }, { value: 'low', label: '低风险' }, { value: 'medium', label: '中风险' }, { value: 'high', label: '高风险' }]" :key="item.value" :class="{ 'risk-option': true, [`risk-option--${item.value}`]: true, 'is-active': modelValue.risk_level === item.value }">
+      <label v-for="item in [{ value: 'none', label: '无风险' }, { value: 'low', label: '低风险' }, { value: 'medium', label: '中风险' }, { value: 'high', label: '高风险' } ]" :key="item.value" :class="{ 'risk-option': true, [`risk-option--${item.value}`]: true, 'is-active': modelValue.risk_level === item.value }">
         <input v-if="!readonly" v-model="modelValue.risk_level" type="radio" :value="item.value" />
         <span>{{ item.label }}</span>
       </label>

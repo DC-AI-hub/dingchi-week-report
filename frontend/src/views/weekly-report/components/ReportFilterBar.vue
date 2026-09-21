@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue"
 
+import GroupTreeSelect from "@/features/directory/components/GroupTreeSelect.vue"
 import type { DirectoryGroup } from "@/features/directory/types"
 
 withDefaults(
@@ -108,17 +109,14 @@ function updatePeriodStart(value: string) {
         />
       </div>
     </label>
-    <label v-if="showGroup">
+    <label v-if="showGroup" class="group-filter">
       分组
-      <select
-        :value="groupId"
-        @change="emit('update:groupId', ($event.target as HTMLSelectElement).value)"
-      >
-        <option value="">全部分组</option>
-        <option v-for="group in groupOptions" :key="group.id" :value="group.id">
-          {{ group.group_name }}
-        </option>
-      </select>
+      <GroupTreeSelect
+        :model-value="groupId || null"
+        :groups="groupOptions"
+        empty-label="全部分组"
+        @update:model-value="emit('update:groupId', $event || '')"
+      />
     </label>
     <div class="report-filter-actions">
       <button class="primary-button" type="submit">查询</button>

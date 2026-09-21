@@ -5,6 +5,7 @@ export interface Role {
   scope: "self" | "team" | "all" | string
   description: string
   report_template_code: string
+  role_group_code?: string
   status: string
 }
 

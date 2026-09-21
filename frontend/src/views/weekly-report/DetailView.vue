@@ -2,22 +2,23 @@
 import { computed, onMounted, ref } from "vue"
 import { RouterLink, useRoute } from "vue-router"
 
-import BackButton from "@/components/navigation/BackButton.vue"
+import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import { useAuthStore } from "@/features/auth/store"
 import { getReportDetail, getReportTemplate } from "@/features/weekly-report/api"
 import type { ReportTemplate, WeeklyReportDetail } from "@/features/weekly-report/types"
 import { formatDateTime } from "@/utils/date"
 
 import MetricSection from "./components/MetricSection.vue"
+import DailyTaskSection from "./components/DailyTaskSection.vue"
 import ReportHeader from "./components/ReportHeader.vue"
 import ReportStatusTag from "./components/ReportStatusTag.vue"
-import RiskPanel from "./components/RiskPanel.vue"
-import TaskPlanTable from "./components/TaskPlanTable.vue"
+import ReportTaskTable from "./components/ReportTaskTable.vue"
 
 const authStore = useAuthStore()
 const route = useRoute()
 const detail = ref<WeeklyReportDetail | null>(null)
 const template = ref<ReportTemplate | null>(null)
+const taskTableRef = ref<InstanceType<typeof ReportTaskTable> | null>(null)
 const isLoading = ref(true)
 const errorMessage = ref("")
 
@@ -32,12 +33,17 @@ async function load() {
   errorMessage.value = ""
   try {
     detail.value = await getReportDetail(String(route.params.reportId))
-    template.value = await getReportTemplate(detail.value.report.role_code)
+    template.value = detail.value.template
+      || await getReportTemplate(detail.value.report.template_code)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "周报详情加载失败。"
   } finally {
     isLoading.value = false
   }
+}
+
+function openTaskColumns() {
+  taskTableRef.value?.openColumns()
 }
 
 onMounted(() => void load())
@@ -47,41 +53,65 @@ onMounted(() => void load())
   <div class="report-detail-page">
     <div v-if="isLoading" class="loading-card dashboard-card">正在加载周报详情</div>
     <template v-else-if="detail">
-      <BackButton :to="{ name: 'weekly-reports' }" />
-      <ReportHeader :report="detail.report" :role-name="template?.role_name" />
+      <ReportHeader
+        :report="detail.report"
+        :role-name="template?.role_name"
+        :show-status="false"
+        meta-layout="vertical"
+      >
+        <template #actions>
+          <div class="report-header-actions report-header-actions--vertical">
+            <div class="detail-status">
+              <ReportStatusTag :status="detail.report.status" />
+              <time class="detail-updated-at" :datetime="detail.report.updated_at">
+                更新于 {{ formatDateTime(detail.report.updated_at) }}
+              </time>
+            </div>
+            <RouterLink
+              v-if="canEdit"
+              class="primary-button"
+              :to="{
+                name: 'weekly-report-edit',
+                params: { reportId: detail.report.id },
+              }"
+            >
+              编辑周报
+            </RouterLink>
+          </div>
+        </template>
+      </ReportHeader>
 
-      <section class="dashboard-card detail-toolbar">
-        <div class="detail-status">
-          <span>当前状态</span>
-          <ReportStatusTag :status="detail.report.status" />
-          <span>更新时间 {{ formatDateTime(detail.report.updated_at) }}</span>
+      <section class="dashboard-card detail-card detail-monthly-plan">
+        <div class="section-heading">
+          <h2>月度目标</h2>
+          <span v-if="detail.monthly_plan?.month_key" class="section-meta">
+            {{ detail.monthly_plan.month_key }}
+          </span>
         </div>
-        <RouterLink
-          v-if="canEdit"
-          class="primary-button"
-          :to="{
-            name: detail.report.role_code === 'delivery_specialist'
-              ? 'delivery-specialist-report-edit'
-              : 'weekly-report-edit',
-            params: { reportId: detail.report.id },
-          }"
-        >
-          编辑周报
-        </RouterLink>
+        <p class="summary-text">{{ detail.monthly_plan?.summary || "暂无月度目标" }}</p>
       </section>
-
+      <section class="dashboard-card detail-card">
+        <div class="section-heading section-heading--tasks">
+          <h2>本周工作任务</h2>
+          <button class="ghost-button" type="button" @click="openTaskColumns">选择展示字段</button>
+        </div>
+        <ReportTaskTable
+          ref="taskTableRef"
+          :items="detail.items"
+          :fields="template?.fields"
+          :attachments="detail.attachments"
+          :show-columns-button="false"
+        />
+      </section>
       <section class="dashboard-card detail-card">
         <div class="section-heading"><h2>本周总结</h2></div>
         <p class="summary-text">{{ detail.report.summary || "暂无总结" }}</p>
       </section>
-      <section class="dashboard-card detail-card">
-        <div class="section-heading"><h2>工作任务</h2></div>
-        <TaskPlanTable
-          :items="detail.items.map((item) => ({ ...item, task_code: item.task_code }))"
-          :template-tasks="template?.tasks || []"
-          readonly
-        />
-      </section>
+      <DailyTaskSection
+        :report="detail.report"
+        :daily-tasks="detail.daily_tasks"
+        :can-edit="canEdit"
+      />
       <section class="dashboard-card detail-card">
         <div class="section-heading"><h2>角色指标</h2></div>
         <MetricSection
@@ -90,15 +120,10 @@ onMounted(() => void load())
           readonly
         />
       </section>
-      <section class="dashboard-card detail-card">
-        <div class="section-heading"><h2>风险与行动</h2></div>
-        <RiskPanel :model-value="detail.report" readonly />
-      </section>
     </template>
-    <p v-else class="page-alert" role="alert">
-      {{ errorMessage || "未找到周报。" }}
-      <BackButton />
-    </p>
+    <div v-else class="detail-error-state">
+      <NoticeBridge :warning-message="errorMessage || '未找到周报。'" />
+    </div>
   </div>
 </template>
 

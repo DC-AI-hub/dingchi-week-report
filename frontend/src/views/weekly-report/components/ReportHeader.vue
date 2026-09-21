@@ -5,14 +5,25 @@ import { formatPeriod } from "@/utils/date"
 
 import ReportStatusTag from "./ReportStatusTag.vue"
 
-defineProps<{
-  report?: Partial<WeeklyReport> | null
-  roleName?: string
-}>()
+withDefaults(
+  defineProps<{
+    report?: Partial<WeeklyReport> | null
+    roleName?: string
+    showStatus?: boolean
+    metaLayout?: "horizontal" | "vertical"
+  }>(),
+  { showStatus: true, metaLayout: "horizontal" },
+)
 </script>
 
 <template>
-  <section class="report-header dashboard-card">
+  <section
+    :class="[
+      'report-header',
+      'dashboard-card',
+      { 'report-header--vertical': metaLayout === 'vertical' },
+    ]"
+  >
     <div>
       <h1>{{ report?.employee_name || "填写周报" }}</h1>
       <p>{{ getReportRoleName(report?.role_code || "", roleName || report?.role_name) }}</p>
@@ -22,7 +33,8 @@ defineProps<{
         <span>报告周期</span>
         <strong>{{ formatPeriod(report?.period_start, report?.period_end) }}</strong>
       </div>
-      <ReportStatusTag v-if="report?.status" :status="report.status" />
+      <ReportStatusTag v-if="showStatus && report?.status" :status="report.status" />
+      <slot name="actions" />
     </div>
   </section>
 </template>

@@ -32,6 +32,11 @@
   grid-column: 1 / -1;
 }
 
+/* 没有“客户/模块”字段的模板，工作任务占满第一行，避免留下空白网格列。 */
+.task-editor__field--full {
+  grid-column: 1 / -1;
+}
+
 .task-editor__customer-field {
   position: relative;
 }

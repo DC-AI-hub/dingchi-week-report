@@ -1,6 +1,6 @@
 .report-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
   padding: 1.5rem 1.7rem;
@@ -24,13 +24,56 @@
 .report-header-meta {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 1rem;
   text-align: right;
+}
+
+.report-header--vertical {
+  align-items: center;
+  padding: 1.05rem 1.35rem;
+}
+
+.report-header--vertical .report-header-meta {
+  min-width: min(100%, 24rem);
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.report-header--vertical .period-field {
+  width: 100%;
+  gap: 0.12rem;
+  padding-right: 0;
+  border-right: 0;
+  text-align: right;
+}
+
+.report-header--vertical .period-field strong {
+  font-size: 0.88rem;
+}
+
+.report-header-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.8rem;
+}
+
+.report-header--vertical .report-header-actions {
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.65rem;
 }
 
 .period-field {
   display: grid;
   gap: 0.28rem;
+  padding-right: 1.1rem;
+  border-right: 1px solid rgba(116, 171, 236, 0.28);
   color: var(--muted);
   font-size: 0.74rem;
 }
@@ -49,7 +92,29 @@
     text-align: left;
   }
 
+  .report-header-actions {
+    justify-content: flex-start;
+  }
+
+  .report-header--vertical .report-header-meta,
+  .report-header--vertical .report-header-actions {
+    align-items: flex-start;
+  }
+
+  .report-header--vertical .report-header-meta {
+    width: 100%;
+  }
+
+  .report-header--vertical .period-field {
+    text-align: left;
+  }
+
   .report-header-meta {
     gap: 0.7rem;
+  }
+
+  .period-field {
+    padding-right: 0;
+    border-right: 0;
   }
 }

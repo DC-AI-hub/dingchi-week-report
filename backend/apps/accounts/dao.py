@@ -10,12 +10,12 @@ from typing import Any
 
 from django.db import connection
 
-from .models import Role, UserAccount, UserRole
+from .models import OrganizationGroup, Role, UserAccount, UserRole
 
 
 def list_roles() -> list[dict[str, Any]]:
     """Return visible role configurations with a simple single-table ORM query."""
-    return list(
+    rows = list(
         Role.objects.exclude(status="deleted")
         .order_by("sort_order", "id")
         .values(
@@ -25,15 +25,29 @@ def list_roles() -> list[dict[str, Any]]:
             "scope",
             "description",
             "report_template_code",
+            "role_group_code",
             "status",
             "sort_order",
         )
     )
+    for row in rows:
+        row["id"] = str(row["id"])
+    return rows
 
 
 def find_role_by_id(role_id: int) -> Role | None:
     """Find one non-deleted role for management operations."""
     return Role.objects.exclude(status="deleted").filter(id=role_id).first()
+
+
+def find_group_by_id(group_id: int) -> OrganizationGroup | None:
+    """Find one non-deleted group for management operations."""
+    return OrganizationGroup.objects.exclude(status="deleted").filter(id=group_id).first()
+
+
+def find_user_by_id(user_id: int) -> UserAccount | None:
+    """Find one non-deleted directory user for management operations."""
+    return UserAccount.objects.exclude(status="deleted").filter(id=user_id).first()
 
 
 def role_code_exists(role_code: str) -> bool:
@@ -64,7 +78,7 @@ def list_groups() -> list[dict[str, Any]]:
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            SELECT id, group_code, group_name, description, parent_group_id, status
+            SELECT id, group_code, group_name, description, parent_group_id, is_system, status
             FROM organization_group
             WHERE status = %s
             ORDER BY group_code
@@ -81,7 +95,7 @@ def list_groups() -> list[dict[str, Any]]:
 
 
 def list_users(
-    *, role_code: str | None = None, group_id: str | None = None
+    *, role_code: str | None = None, group_id: str | None = None, keyword: str | None = None
 ) -> list[dict[str, Any]]:
     clauses = ["u.status = %s"]
     params: list[Any] = ["active"]
@@ -91,11 +105,18 @@ def list_users(
     if group_id:
         clauses.append("CAST(u.group_id AS CHAR) = %s")
         params.append(group_id)
+    if keyword and keyword.strip():
+        search = f"%{keyword.strip()}%"
+        clauses.append(
+            "(u.username LIKE %s OR u.employee_no LIKE %s OR u.display_name LIKE %s "
+            "OR u.email LIKE %s OR u.phone LIKE %s)"
+        )
+        params.extend([search] * 5)
     where_sql = " AND ".join(clauses)
     with connection.cursor() as cursor:
         cursor.execute(
             f"""
-            SELECT u.id, u.username, u.employee_no, u.display_name, u.email,
+            SELECT u.id, u.username, u.employee_no, u.display_name, u.email, u.phone,
                    u.manager_id, u.group_id, g.group_name, u.avatar_color, u.status,
                    GROUP_CONCAT(r.role_code) AS role_codes_csv,
                    GROUP_CONCAT(r.role_name) AS role_names_csv
@@ -104,7 +125,7 @@ def list_users(
             LEFT JOIN user_role ur ON ur.user_id = u.id AND ur.status = %s
             LEFT JOIN role r ON r.id = ur.role_id AND r.status = %s
             WHERE {where_sql}
-            GROUP BY u.id, u.username, u.employee_no, u.display_name, u.email,
+            GROUP BY u.id, u.username, u.employee_no, u.display_name, u.email, u.phone,
                      u.manager_id, u.group_id, g.group_name, u.avatar_color, u.status
             ORDER BY u.employee_no
             """,

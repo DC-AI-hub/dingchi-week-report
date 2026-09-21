@@ -1,0 +1,46 @@
+.team-report-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr); gap: 10px; }
+.team-panel { min-width: 0; overflow: hidden; padding: 17px 18px 14px; border: 1px solid rgba(101, 164, 232, 0.2); border-radius: 15px; background: rgba(255, 255, 255, 0.96); box-shadow: 0 6px 16px rgba(65, 132, 205, 0.07); }
+.team-panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; min-height: 38px; }
+.team-panel-title { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.team-panel-title > div { display: grid; gap: 2px; min-width: 0; }
+.team-panel-title span:not(.team-panel-icon) { color: #52739e; font-size: 12px; }
+.team-panel-title strong { color: #102d5f; font-size: 17px; font-weight: 750; }
+.team-panel-icon { display: grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; border-radius: 8px; }
+.team-panel-icon--blue { color: #2d83ee; background: #e5f1ff; }
+.team-panel-icon--green { color: #05a37a; background: #dcf8ee; }
+.team-panel-icon--orange { color: #e3981e; background: #fff3dc; }
+.team-panel-note { display: inline-flex; align-items: center; gap: 4px; color: #7d96b8; font-size: 11px; }
+.team-panel-empty { display: grid; place-items: center; color: #8298b7; font-size: 12px; }
+.team-own-report-panel, .team-submission-panel, .team-focus-panel { min-height: 196px; }
+.report-status { display: inline-flex; align-items: center; justify-content: center; min-width: 54px; padding: 4px 8px; border-radius: 99px; font-size: 11px; white-space: nowrap; }
+.report-status--done { color: #078b67; background: #e0f8ed; }
+.report-status--progress { color: #286fc8; background: #e5f1ff; }
+.report-status--risk { color: #d6524f; background: #ffeaeb; }
+.own-report-body { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 126px; }
+.own-report-rate { display: grid; min-width: 80px; gap: 4px; padding: 13px 14px; border-radius: 12px; background: linear-gradient(135deg, #eaf4ff, #eef9ff); }
+.own-report-rate strong { color: #1f70d2; font-size: 29px; line-height: 1; }
+.own-report-rate span { color: #7995b8; font-size: 11px; }
+.own-report-copy { display: grid; min-width: 0; gap: 7px; }
+.own-report-copy strong { overflow: hidden; color: #183968; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.own-report-copy span { color: #8299b8; font-size: 11px; }
+.report-arrow { color: #398aeb; }
+.own-report-empty { min-height: 126px; gap: 7px; }
+.submission-list { display: grid; gap: 7px; margin-top: 8px; }
+.submission-item { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 9px; background: #f5f9fe; }
+.submission-avatar { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 50%; color: #fff; background: linear-gradient(135deg, #2585ec, #57bfca); font-size: 12px; font-weight: 700; }
+.submission-item div { display: grid; min-width: 0; gap: 1px; }
+.submission-item strong { overflow: hidden; color: #193b6c; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.submission-item small { overflow: hidden; color: #8aa0be; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.focus-list { display: grid; gap: 4px; margin-top: 8px; }
+.focus-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid #edf3fa; }
+.focus-item:last-child { border-bottom: 0; }
+.focus-item-main { display: grid; min-width: 0; gap: 3px; }
+.focus-item-main strong { color: #1a3e70; font-size: 12px; }
+.focus-item-main span { overflow: hidden; color: #8299b8; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.focus-rate { font-size: 12px; }
+.focus-rate--done { color: #08916c; }
+.focus-rate--progress { color: #287dd9; }
+.focus-rate--risk { color: #d65752; }
+
+@media (max-width: 1120px) { .team-report-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .team-focus-panel { grid-column: 1 / -1; } }
+@media (max-width: 720px) { .team-report-grid { grid-template-columns: 1fr; } .team-focus-panel { grid-column: auto; } .team-panel { padding: 14px; } }

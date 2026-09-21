@@ -22,33 +22,15 @@ const routes: RouteRecordRaw[] = [
     meta: { title: "我的周报", requiresAuth: true },
   },
   {
-    path: "/monthly-plan",
-    name: "delivery-specialist-monthly-plan",
-    component: () => import("@/views/weekly-report/delivery-specialist/MonthlyPlanView.vue"),
-    meta: { title: "月度计划", requiresAuth: true, roleCode: "delivery_specialist" },
-  },
-  {
-    path: "/weekly-reports/delivery-specialist/new",
-    name: "delivery-specialist-report-new",
-    component: () => import("@/views/weekly-report/delivery-specialist/EditView.vue"),
-    meta: { title: "填写交付专员周报", requiresAuth: true, roleCode: "delivery_specialist" },
-  },
-  {
-    path: "/weekly-reports/delivery-specialist/:reportId/edit",
-    name: "delivery-specialist-report-edit",
-    component: () => import("@/views/weekly-report/delivery-specialist/EditView.vue"),
-    meta: { title: "编辑交付专员周报", requiresAuth: true, roleCode: "delivery_specialist" },
-  },
-  {
     path: "/weekly-reports/new",
     name: "weekly-report-new",
-    component: () => import("@/views/weekly-report/EditView.vue"),
+    component: () => import("@/views/weekly-report/TemplateEditorView.vue"),
     meta: { title: "填写周报", requiresAuth: true },
   },
   {
     path: "/weekly-reports/:reportId/edit",
     name: "weekly-report-edit",
-    component: () => import("@/views/weekly-report/EditView.vue"),
+    component: () => import("@/views/weekly-report/TemplateEditorView.vue"),
     meta: { title: "编辑周报", requiresAuth: true },
   },
   {
@@ -61,13 +43,13 @@ const routes: RouteRecordRaw[] = [
     path: "/users",
     name: "users",
     component: () => import("@/views/users/IndexView.vue"),
-    meta: { title: "用户管理", requiresAuth: true },
+    meta: { title: "用户管理", requiresAuth: true, adminOnly: true },
   },
   {
     path: "/roles",
     name: "roles",
     component: () => import("@/views/roles/IndexView.vue"),
-    meta: { title: "角色管理", requiresAuth: true },
+    meta: { title: "角色管理", requiresAuth: true, adminOnly: true },
   },
   {
     path: "/ai-chat",
@@ -99,8 +81,8 @@ router.beforeEach(async (to) => {
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: "login", query: { redirect: to.fullPath } }
   }
-  if (to.meta.roleCode && authStore.activeRole?.role_code !== to.meta.roleCode) {
-    return { name: "weekly-reports" }
+  if (to.meta.adminOnly && authStore.activeRole?.role_code !== "system_admin") {
+    return { name: "dashboard" }
   }
   return true
 })

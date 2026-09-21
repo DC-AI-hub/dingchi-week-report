@@ -3,6 +3,7 @@ import { onMounted, ref } from "vue"
 
 import { useAuthStore } from "@/features/auth/store"
 import type { DirectoryRole, RoleMutationPayload } from "@/features/directory/types"
+import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 
 import RoleCatalog from "./components/RoleCatalog.vue"
 import RoleDeleteDialog from "./components/RoleDeleteDialog.vue"
@@ -51,15 +52,11 @@ onMounted(() => {
   <div class="roles-page">
     <RolePageHeader @create="openCreateDialog" />
 
-    <p v-if="roleManagement.errorMessage.value" class="page-alert" role="alert">
-      {{ roleManagement.errorMessage.value }}
-    </p>
-    <p v-if="roleManagement.successMessage.value" class="page-success" role="status">
-      {{ roleManagement.successMessage.value }}
-    </p>
-    <p v-if="roleManagement.dictionaryErrorMessage.value" class="page-alert" role="alert">
-      {{ roleManagement.dictionaryErrorMessage.value }}
-    </p>
+    <NoticeBridge
+      :warning-message="roleManagement.errorMessage.value"
+      :reminder-message="roleManagement.successMessage.value"
+    />
+    <NoticeBridge :warning-message="roleManagement.dictionaryErrorMessage.value" />
 
     <RoleCatalog
       :active-role-code="authStore.activeRole?.role_code"
@@ -67,6 +64,7 @@ onMounted(() => {
       :roles="roleManagement.roles.value"
       :scope-options="roleManagement.scopeOptions.value"
       :template-options="roleManagement.templateOptions.value"
+      :group-options="roleManagement.groupOptions.value"
       @delete="deletingRole = $event"
       @edit="openEditDialog"
     />
@@ -78,6 +76,7 @@ onMounted(() => {
       :role="editingRole"
       :scope-options="roleManagement.scopeOptions.value"
       :template-options="roleManagement.templateOptions.value"
+      :group-options="roleManagement.groupOptions.value"
       @close="closeEditorDialog"
       @submit="submitRole"
     />

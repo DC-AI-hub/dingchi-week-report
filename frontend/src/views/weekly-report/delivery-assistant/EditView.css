@@ -1,0 +1,6 @@
+.delivery-assistant-report-page { display: grid; min-width: 0; max-width: 100%; gap: 18px; padding-bottom: 32px; overflow-x: hidden; }
+.loading-card { padding: 32px; color: #58749c; }
+.weekly-summary { padding: 22px; }
+.weekly-summary textarea { box-sizing: border-box; width: 100%; border: 1px solid #cfe0f5; border-radius: 12px; background: #f7faff; color: #153562; padding: 12px 14px; font: inherit; resize: vertical; }
+.form-actions { display: flex; justify-content: flex-end; }
+.form-actions .primary-button { min-width: 148px; }

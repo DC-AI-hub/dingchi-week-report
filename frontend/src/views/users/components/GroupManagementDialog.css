@@ -1,6 +1,8 @@
 .group-management {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 24vw);
   gap: 1rem;
 }
 
@@ -14,12 +16,89 @@
 }
 
 .group-tree-card {
-  min-height: 22rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.group-tree-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+  scrollbar-color: #a9c8ed transparent;
+  scrollbar-width: thin;
+}
+
+.organization-node__name {
+  display: block;
+  overflow: hidden;
+  padding-right: 2.35rem;
+  font-size: 0.82rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.organization-node__tag {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.5rem;
+  display: inline-block;
+  padding: 0.15rem 0.38rem;
+  border-radius: 999px;
+  color: #3975c4;
+  background: #e6f1ff;
+  font-size: 0.62rem;
+}
+
+.organization-node__actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.25rem;
+  margin-top: 0.45rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid #dce9f8;
+}
+
+.organization-node__actions button {
+  padding: 0.16rem 0.24rem;
+  border: 0;
+  color: var(--accent-dark);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.61rem;
+}
+
+.organization-node__actions button.is-danger {
+  color: #c94950;
+}
+
+.organization-node__actions button:disabled {
+  color: #a9b6c8;
+  cursor: not-allowed;
+}
+
+.group-tree-scroll::-webkit-scrollbar {
+  width: 7px;
+}
+
+.group-tree-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #a9c8ed;
+}
+
+.group-tree-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .group-detail-card {
   display: flex;
-  min-height: 22rem;
+  height: 100%;
+  min-height: 0;
   flex-direction: column;
   background: #fbfdff;
 }

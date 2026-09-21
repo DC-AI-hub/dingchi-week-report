@@ -6,6 +6,7 @@ import type { DirectoryGroup } from "@/features/directory/types"
 import { useAuthStore } from "@/features/auth/store"
 import { useReportList } from "@/features/weekly-report/composables/useReportList"
 import type { ReportListFilters, WeeklyReport } from "@/features/weekly-report/types"
+import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 
 import ReportFilterBar from "../components/ReportFilterBar.vue"
 import ReportListTable from "../components/ReportListTable.vue"
@@ -82,7 +83,7 @@ watch(() => authStore.activeRole?.role_code, () => {
 
 <template>
   <div class="weekly-report-page">
-    <p v-if="errorMessage" class="page-alert" role="alert">{{ errorMessage }}</p>
+    <NoticeBridge :warning-message="errorMessage" />
 
     <section class="dashboard-card report-list-card">
       <div class="report-list-heading">

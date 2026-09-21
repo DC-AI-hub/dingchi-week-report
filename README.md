@@ -54,15 +54,15 @@ python manage.py migrate --plan
 python manage.py migrate
 ```
 
-首次初始化演示数据（项目启动不会自动执行）：
+首次初始化系统配置种子（项目启动不会自动执行；不会写入周报、月度计划等业务数据）：
 
 ```powershell
 mysql -uroot -p dingchi_week_report < "docs/数据库脚本/02_初始化DML.sql"
 ```
 
-演示账号：`delivery.specialist / Worker@123`、`recruiter / Worker@123`、
-`delivery.manager / Manager@123`、`recruitment.manager / Manager@123`、
-`president / President@123`、`admin / Admin@123`。总裁账号同时拥有总裁和系统管理员角色，可在页面右上角切换。
+演示账号密码统一为 `aa123456`：`delivery.specialist`、`delivery.assistant`、`recruiter`、
+`delivery.manager`、`recruitment.manager`、`ito.sales`、`innovation.sales`、`president`、`admin`。
+总裁账号同时拥有总裁和系统管理员角色，可在页面右上角切换。
 
 必须使用 ASGI 命令启动，MCP 的 Streamable HTTP 生命周期才会同时运行。后端入口：
 

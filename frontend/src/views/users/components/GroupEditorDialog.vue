@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, watch } from "vue"
 
+import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
+import GroupTreeSelect from "@/features/directory/components/GroupTreeSelect.vue"
 import type { DirectoryGroup, GroupMutationPayload } from "@/features/directory/types"
 
 const props = withDefaults(
@@ -26,6 +28,7 @@ const emit = defineEmits<{
 }>()
 
 const isEditing = computed(() => Boolean(props.group))
+const isCreatingChild = computed(() => !props.group && Boolean(props.initialParentGroupId))
 const formError = ref("")
 const groupCodeInput = ref<HTMLInputElement | null>(null)
 const form = reactive<GroupMutationPayload>({
@@ -54,11 +57,7 @@ const excludedParentIds = computed(() => {
   return excluded
 })
 
-const availableParents = computed(() =>
-  [...props.groups]
-    .filter((group) => !excludedParentIds.value.has(group.id))
-    .sort((left, right) => left.group_name.localeCompare(right.group_name, "zh-CN")),
-)
+const availableParentGroups = computed(() => props.groups.filter((group) => !excludedParentIds.value.has(String(group.id))))
 
 watch(
   () => ({ open: props.open, group: props.group, initialParentGroupId: props.initialParentGroupId }),
@@ -71,13 +70,13 @@ watch(
             group_code: group.group_code,
             group_name: group.group_name,
             description: group.description,
-            parent_group_id: group.parent_group_id,
+            parent_group_id: group.parent_group_id ? String(group.parent_group_id) : null,
           }
         : {
             group_code: "",
             group_name: "",
             description: "",
-            parent_group_id: initialParentGroupId,
+            parent_group_id: initialParentGroupId ? String(initialParentGroupId) : null,
           },
     )
     formError.value = ""
@@ -91,7 +90,11 @@ function submitForm() {
     group_code: form.group_code.trim(),
     group_name: form.group_name.trim(),
     description: form.description.trim(),
-    parent_group_id: form.parent_group_id || null,
+    parent_group_id: isCreatingChild.value
+      ? String(props.initialParentGroupId)
+      : form.parent_group_id
+        ? String(form.parent_group_id)
+        : null,
   }
   if (!payload.group_code || !payload.group_name) {
     formError.value = "请填写分组编码和分组名称。"
@@ -110,12 +113,13 @@ function submitForm() {
   <BaseDialog
     :busy="isSaving"
     :open="open"
+    overflow-visible
     :title="isEditing ? '编辑分组' : '新增分组'"
     width="700px"
     @close="emit('close')"
   >
     <form id="group-editor-form" class="group-form" @submit.prevent="submitForm">
-      <p v-if="formError" class="form-error" role="alert">{{ formError }}</p>
+      <NoticeBridge :warning-message="formError" />
       <div class="form-grid">
         <label>
           <span>分组编码</span>
@@ -132,15 +136,16 @@ function submitForm() {
           <span>分组名称</span>
           <input v-model="form.group_name" maxlength="128" placeholder="交付中心" :disabled="isSaving" />
         </label>
-        <label>
+        <div class="form-field">
           <span>上级分组</span>
-          <select v-model="form.parent_group_id" :disabled="isSaving">
-            <option value="">顶级分组</option>
-            <option v-for="group in availableParents" :key="group.id" :value="group.id">
-              {{ group.group_name }}
-            </option>
-          </select>
-        </label>
+          <GroupTreeSelect
+            v-model="form.parent_group_id"
+            :allow-empty="true"
+            empty-label="顶级分组"
+            :groups="availableParentGroups"
+            :disabled="isSaving || isCreatingChild"
+          />
+        </div>
         <label>
           <span>分组说明</span>
           <input v-model="form.description" maxlength="255" placeholder="分组职责说明" :disabled="isSaving" />

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, watch } from "vue"
 
+import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
+import GroupTreeSelect from "@/features/directory/components/GroupTreeSelect.vue"
 import type {
   DirectoryGroup,
   DirectoryRole,
@@ -40,6 +42,7 @@ const form = reactive<UserMutationPayload>({
   employee_no: "",
   display_name: "",
   email: "",
+  phone: "",
   password: "",
   group_id: null,
   manager_id: null,
@@ -61,6 +64,7 @@ watch(
             employee_no: user.employee_no,
             display_name: user.display_name,
             email: user.email,
+            phone: user.phone || "",
             password: "",
             group_id: user.group_id,
             manager_id: user.manager_id,
@@ -72,6 +76,7 @@ watch(
             employee_no: "",
             display_name: "",
             email: "",
+            phone: "",
             password: "",
             group_id: null,
             manager_id: null,
@@ -94,17 +99,18 @@ function toggleRole(roleCode: string) {
 function submitForm() {
   const payload: UserMutationPayload = {
     username: form.username.trim(),
-    employee_no: form.employee_no.trim(),
+    employee_no: form.employee_no?.trim() || undefined,
     display_name: form.display_name.trim(),
     email: form.email.trim(),
+    phone: form.phone.trim(),
     password: form.password?.trim() || undefined,
     group_id: form.group_id || null,
     manager_id: form.manager_id || null,
     role_codes: [...form.role_codes],
     status: form.status || "active",
   }
-  if (!payload.username || !payload.employee_no || !payload.display_name) {
-    formError.value = "请填写登录账号、工号和姓名。"
+  if (!payload.username || !payload.display_name) {
+    formError.value = "请填写登录账号和姓名。"
     return
   }
   if (!isEditing.value && !payload.password) {
@@ -133,15 +139,21 @@ function submitForm() {
     @close="emit('close')"
   >
     <form id="user-editor-form" class="user-form" @submit.prevent="submitForm">
-      <p v-if="formError" class="form-error" role="alert">{{ formError }}</p>
+      <NoticeBridge :warning-message="formError" />
       <div class="form-grid">
         <label>
           <span>登录账号</span>
           <input v-model="form.username" autocomplete="off" maxlength="64" placeholder="zhangsan" :disabled="isEditing || isSaving" />
         </label>
-        <label>
+        <label v-if="isEditing">
           <span>工号</span>
-          <input v-model="form.employee_no" autocomplete="off" maxlength="64" placeholder="E1008" :disabled="isEditing || isSaving" />
+          <input
+            v-model="form.employee_no"
+            autocomplete="off"
+            maxlength="64"
+            readonly
+            :disabled="isSaving"
+          />
         </label>
         <label>
           <span>姓名</span>
@@ -152,15 +164,16 @@ function submitForm() {
           <input v-model="form.email" autocomplete="email" maxlength="254" placeholder="name@example.com" type="email" :disabled="isSaving" />
         </label>
         <label>
+          <span>手机号</span>
+          <input v-model="form.phone" autocomplete="tel" maxlength="32" placeholder="请输入手机号" type="tel" :disabled="isSaving" />
+        </label>
+        <label>
           <span>{{ isEditing ? "重置密码" : "初始密码" }}</span>
           <input v-model="form.password" autocomplete="new-password" placeholder="请输入密码" type="password" :disabled="isSaving" />
         </label>
         <label>
           <span>所属分组</span>
-          <select v-model="form.group_id" :disabled="isSaving">
-            <option :value="null">未分组</option>
-            <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.group_name }}</option>
-          </select>
+          <GroupTreeSelect v-model="form.group_id" :disabled="isSaving" :groups="groups" />
         </label>
         <label>
           <span>直属上级</span>

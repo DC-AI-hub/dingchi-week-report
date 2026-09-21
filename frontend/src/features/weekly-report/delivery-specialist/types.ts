@@ -57,7 +57,7 @@ export interface DeliveryTaskFieldDefinition {
   default_visible: boolean
 }
 
-/** 与交付/交互 Excel 模板一致的内置顺序，后端字典返回后可覆盖。 */
+/** 与交付专员 Excel 模板一致的内置顺序，后端字典返回后可覆盖。 */
 export const deliveryTaskFieldDefinitions: DeliveryTaskFieldDefinition[] = [
   { code: "customer_name", label: "客户", sort_order: 1, default_visible: true },
   { code: "task_name", label: "工作任务", sort_order: 2, default_visible: true },

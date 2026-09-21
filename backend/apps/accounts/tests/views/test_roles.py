@@ -6,11 +6,15 @@ from unittest.mock import patch
 import pytest
 from django.urls import reverse
 
-from apps.accounts.models import Role, UserRole
+from apps.accounts.models import OrganizationGroup, Role, UserRole
 from apps.dictionary.models import DictionaryItem
 
 
 def _seed_role_dictionaries() -> None:
+    OrganizationGroup.objects.get_or_create(
+        group_code="delivery",
+        defaults={"group_name": "交付组", "is_system": True},
+    )
     DictionaryItem.objects.bulk_create(
         [
             DictionaryItem(dict_type="role_scope", dict_code="self", dict_name="仅本人数据"),
@@ -34,6 +38,7 @@ def test_patch_role_uses_unified_detail_endpoint(client) -> None:
         role_name="项目专员",
         scope="self",
         report_template_code="general_v1",
+        role_group_code="delivery",
     )
 
     with patch(
@@ -49,6 +54,7 @@ def test_patch_role_uses_unified_detail_endpoint(client) -> None:
                     "scope": "team",
                     "description": "负责项目交付管理",
                     "report_template_code": "project_v1",
+                    "role_group_code": "delivery",
                 }
             ),
             content_type="application/json",

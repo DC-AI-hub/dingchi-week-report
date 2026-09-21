@@ -5,6 +5,7 @@ export interface DirectoryRole {
   scope: "self" | "team" | "all" | string
   description: string
   report_template_code: string
+  role_group_code: string
   status: string
   sort_order?: number
 }
@@ -15,6 +16,7 @@ export interface RoleMutationPayload {
   scope: string
   description: string
   report_template_code: string
+  role_group_code: string
 }
 
 export interface DeleteRoleResult {
@@ -33,6 +35,7 @@ export interface DirectoryGroup {
   group_name: string
   description: string
   parent_group_id: string | null
+  is_system?: boolean
   status: string
 }
 
@@ -42,6 +45,7 @@ export interface DirectoryUser {
   employee_no: string
   display_name: string
   email: string
+  phone: string
   manager_id: string | null
   group_id: string | null
   group_name?: string | null
@@ -69,9 +73,10 @@ export interface GroupMutationPayload {
 
 export interface UserMutationPayload {
   username: string
-  employee_no: string
+  employee_no?: string
   display_name: string
   email: string
+  phone: string
   password?: string
   group_id: string | null
   manager_id: string | null

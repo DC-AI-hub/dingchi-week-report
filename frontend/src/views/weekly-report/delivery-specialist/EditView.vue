@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import { computed, onMounted, ref } from "vue"
 import { useRoute, useRouter } from "vue-router"
 
@@ -7,10 +8,10 @@ import {
   deliveryMonthlyPlanSample,
   deliveryMonthlyPlanSampleFields,
 } from "@/features/weekly-report/delivery-specialist/samples"
-import ExamplePreviewButton from "@/components/feedback/ExamplePreviewButton.vue"
+import MonthlyPlanSection from "@/views/weekly-report/components/MonthlyPlanSection.vue"
+import DailyTaskSection from "@/views/weekly-report/components/DailyTaskSection.vue"
 
 import ReportBasics from "./components/ReportBasics.vue"
-import MonthlyPlanEditorDialog from "./components/MonthlyPlanEditorDialog.vue"
 import TaskCollectionSection from "./components/TaskCollectionSection.vue"
 
 const route = useRoute()
@@ -55,22 +56,21 @@ onMounted(() => void form.load())
         :min-period-start="currentPeriodStart"
         @update:period-start="form.setPeriodStart"
       />
-      <p v-if="form.errorMessage.value" class="page-alert" role="alert">{{ form.errorMessage.value }}</p>
+      <NoticeBridge :warning-message="form.errorMessage.value" />
 
-      <section class="dashboard-card monthly-summary">
-        <div class="monthly-summary__heading">
-          <h2>月度计划</h2>
-          <div class="monthly-summary__actions">
-            <ExamplePreviewButton
-              :content="deliveryMonthlyPlanSample"
-              :fields="deliveryMonthlyPlanSampleFields"
-              panel-title="月度计划填写样例"
-            />
-            <button class="ghost-button" type="button" @click="openMonthlyPlanDialog">编辑月度计划</button>
-          </div>
-        </div>
-        <textarea :value="form.monthlySummary.value" rows="4" readonly />
-      </section>
+      <MonthlyPlanSection
+        :editor-open="monthlyPlanDialogOpen"
+        :month-key="form.monthKey.value"
+        :summary="form.monthlySummary.value"
+        :locked="form.monthlyPlanLocked.value"
+        :sample-content="deliveryMonthlyPlanSample"
+        :sample-fields="deliveryMonthlyPlanSampleFields"
+        :busy="form.isMonthlyPlanSaving.value"
+        :error-message="form.monthlyPlanErrorMessage.value"
+        @open="openMonthlyPlanDialog"
+        @close="monthlyPlanDialogOpen = false"
+        @save="saveMonthlyPlan"
+      />
       <TaskCollectionSection
         v-model:tasks="form.weeklyTasks.value"
         title="本周工作任务"
@@ -80,16 +80,13 @@ onMounted(() => void form.load())
       <section class="dashboard-card weekly-summary">
         <label>本周总结<textarea v-model.trim="form.report.summary" rows="4" /></label>
       </section>
-      <footer class="form-actions"><button class="primary-button" type="button" :disabled="form.isSaving.value" @click="save">{{ form.isSaving.value ? "保存中" : "保存周报" }}</button></footer>
-      <MonthlyPlanEditorDialog
-        :open="monthlyPlanDialogOpen"
-        :month-key="form.monthKey.value"
-        :summary="form.monthlySummary.value"
-        :busy="form.isMonthlyPlanSaving.value"
-        :error-message="form.monthlyPlanErrorMessage.value"
-        @close="monthlyPlanDialogOpen = false"
-        @save="saveMonthlyPlan"
+      <DailyTaskSection
+        :report="form.report"
+        v-model:daily-tasks="form.dailyTasks.value"
+        :defer-save="form.isNew.value"
+        can-edit
       />
+      <footer class="form-actions"><button class="primary-button" type="button" :disabled="form.isSaving.value" @click="save">{{ form.isSaving.value ? "保存中" : "保存周报" }}</button></footer>
     </template>
   </div>
 </template>

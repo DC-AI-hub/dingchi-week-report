@@ -9,10 +9,9 @@ from django.http import HttpRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from apps.core.http import api_error, api_success
+from apps.core.http import api_error, api_success, log_unhandled_exception
 
-from .dao import list_groups, list_user_options, list_users
-from .models import OrganizationGroup, UserAccount
+from .dao import find_group_by_id, find_user_by_id, list_groups, list_user_options, list_users
 from .services.auth import (
     AuthenticationError,
     AuthorizationError,
@@ -71,6 +70,7 @@ def _error_from_exception(exc: Exception) -> JsonResponse:
         return api_error("INVALID_JSON", "请求体不是有效的 JSON。", status=400)
     if isinstance(exc, ValueError):
         return api_error("INVALID_REQUEST", str(exc), status=400)
+    log_unhandled_exception(exc, context="accounts")
     return api_error("INTERNAL_ERROR", "服务暂时不可用。", status=500)
 
 
@@ -177,7 +177,8 @@ def role_create_view(request: HttpRequest) -> JsonResponse:
     """新增角色定义，供系统管理员维护角色模板映射。
 
     方法/路径：POST /api/v1/roles/new/；认证：总裁或系统管理员；幂等：否。
-    请求体：role_code、role_name、scope、report_template_code 必填，description 可为空；
+    请求体：role_code、role_name、scope、report_template_code、role_group_code 必填，
+    description 可为空；
     scope 必须是 role_scope 字典中的启用编码，report_template_code 必须是
     report_template 字典中的启用编码；role_code 使用小写字母、数字和下划线。
     成功响应：201 角色对象，ID 为字符串；失败：400 INVALID_REQUEST、401、403，
@@ -198,7 +199,8 @@ def role_detail_view(request: HttpRequest, role_id: str) -> JsonResponse:
     """修改或删除一个角色配置。
 
     方法/路径：PATCH、DELETE /api/v1/roles/{id}/；认证：总裁或系统管理员。
-    PATCH 请求体：可选 role_name、scope、description、report_template_code、status、sort_order；
+    PATCH 请求体：可选 role_name、scope、description、report_template_code、role_group_code、
+    status、sort_order；
     role_code 不可修改。响应为更新后的角色对象。
     DELETE 请求体：无；执行软删除并停用用户角色分配，历史周报保留；响应包含字符串 id 和
     deleted=true。系统管理员角色及调用方当前角色禁止删除。
@@ -271,9 +273,7 @@ def group_update_view(request: HttpRequest, group_id: str) -> JsonResponse:
         if request.method == "DELETE":
             deleted_group = delete_group(group_id=parsed_group_id)
             return api_success({"id": str(deleted_group.id), "deleted": True})
-        group = (
-            OrganizationGroup.objects.exclude(status="deleted").filter(id=parsed_group_id).first()
-        )
+        group = find_group_by_id(parsed_group_id)
         if group is None:
             raise GroupNotFoundError("分组不存在或已被删除。")
         return api_success(
@@ -287,7 +287,8 @@ def group_update_view(request: HttpRequest, group_id: str) -> JsonResponse:
 def users_view(request: HttpRequest) -> JsonResponse:
     """查询用户、上下级和分组信息，供组织管理页面使用。
 
-    方法/路径：GET /api/v1/users/；认证：总裁或系统管理员；参数：可选 role_code、group_id。
+    方法/路径：GET /api/v1/users/；认证：总裁或系统管理员；参数：可选 role_code、group_id、keyword。
+    keyword 会在登录账号、工号、姓名、邮箱和手机号字段中执行模糊匹配。
     成功响应：data.items 为用户数组；失败：401/403；响应带 X-Trace-ID；ID 均为字符串。
     """
     try:
@@ -297,7 +298,9 @@ def users_view(request: HttpRequest) -> JsonResponse:
         return api_success(
             {
                 "items": list_users(
-                    role_code=request.GET.get("role_code"), group_id=request.GET.get("group_id")
+                    role_code=request.GET.get("role_code"),
+                    group_id=request.GET.get("group_id"),
+                    keyword=request.GET.get("keyword"),
                 )
             }
         )
@@ -326,7 +329,8 @@ def user_create_view(request: HttpRequest) -> JsonResponse:
     """新增用户并一次性分配角色、上级和主分组。
 
     方法/路径：POST /api/v1/users/new/；认证：总裁或系统管理员；
-    参数：用户 JSON，password 必须 RSA 密文。
+    参数：用户 JSON，password 必须 RSA 密文；employee_no 由服务端按 DC 加六位序号自动生成，
+    客户端无需传入。
     成功响应：201 用户对象；失败：400/401/403；响应带 X-Trace-ID，绝不返回密码。
     """
     try:
@@ -355,7 +359,7 @@ def user_update_view(request: HttpRequest, user_id: str) -> JsonResponse:
         if request.method == "DELETE":
             deleted_user = delete_user(user_id=parsed_user_id, acting_user_id=int(acting_user.id))
             return api_success({"id": str(deleted_user.id), "deleted": True})
-        user = UserAccount.objects.exclude(status="deleted").filter(id=parsed_user_id).first()
+        user = find_user_by_id(parsed_user_id)
         if user is None:
             raise UserNotFoundError("用户不存在或已被删除。")
         return api_success(serialize_user(update_user(user=user, payload=_json_payload(request))))

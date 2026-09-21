@@ -2,9 +2,8 @@
 import { computed, ref, watch } from "vue"
 
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
+import OrganizationChart from "@/features/directory/components/OrganizationChart.vue"
 import type { DirectoryGroup } from "@/features/directory/types"
-
-import GroupTree from "./GroupTree.vue"
 
 const props = withDefaults(
   defineProps<{
@@ -23,51 +22,73 @@ const emit = defineEmits<{
 }>()
 
 const selectedId = ref<string | null>(null)
-const selectedGroup = computed(() => props.groups.find((group) => group.id === selectedId.value) || null)
+const selectedGroup = computed(
+  () => props.groups.find((group) => String(group.id) === String(selectedId.value)) || null,
+)
 
 watch(
   () => ({ open: props.open, groups: props.groups }),
   ({ open, groups }) => {
     if (!open) return
-    if (selectedId.value && groups.some((group) => group.id === selectedId.value)) return
-    selectedId.value = groups[0]?.id || null
+    if (selectedId.value && groups.some((group) => String(group.id) === String(selectedId.value))) return
+    selectedId.value = groups[0]?.id ? String(groups[0].id) : null
   },
   { immediate: true, deep: true },
 )
 
 function selectGroup(group: DirectoryGroup) {
-  selectedId.value = group.id
+  selectedId.value = String(group.id)
 }
 </script>
 
 <template>
-  <BaseDialog :busy="isSaving" :open="open" title="分组管理" width="980px" @close="emit('close')">
+  <BaseDialog
+    :busy="isSaving"
+    fullscreen
+    :open="open"
+    title="分组管理"
+    @close="emit('close')"
+  >
     <div class="group-management">
       <section class="group-tree-card">
         <div class="panel-heading">
           <div>
-            <span class="section-caption">HIERARCHY</span>
             <h3>组织分组</h3>
           </div>
           <button class="ghost-button" type="button" :disabled="isSaving" @click="emit('create', null)">
             新增根分组
           </button>
         </div>
-        <GroupTree
-          :groups="groups"
-          :selected-id="selectedId"
-          @create="emit('create', $event.id)"
-          @delete="emit('delete', $event)"
-          @edit="emit('edit', $event)"
-          @select="selectGroup"
-        />
+        <div class="group-tree-scroll">
+          <OrganizationChart
+            :groups="groups"
+            :selected-id="selectedId"
+            @select="selectGroup"
+          >
+            <template #node="{ group }">
+              <span class="organization-node__name">{{ group.group_name }}</span>
+              <span v-if="group.is_system" class="organization-node__tag">预设</span>
+              <span class="organization-node__actions" @click.stop>
+                <button type="button" @click="emit('create', String(group.id))">新增下级</button>
+                <button type="button" @click="emit('edit', group)">编辑</button>
+                <button
+                  class="is-danger"
+                  type="button"
+                  :disabled="group.is_system"
+                  @click="emit('delete', group)"
+                >
+                  删除
+                </button>
+              </span>
+            </template>
+          </OrganizationChart>
+        </div>
       </section>
 
       <section class="group-detail-card">
         <template v-if="selectedGroup">
           <div class="panel-heading">
             <div>
-              <span class="section-caption">GROUP DETAIL</span>
               <h3>{{ selectedGroup.group_name }}</h3>
             </div>
             <span class="group-state">{{ selectedGroup.status === "active" ? "启用" : "停用" }}</span>
@@ -80,7 +101,7 @@ function selectGroup(group: DirectoryGroup) {
             <div>
               <dt>上级分组</dt>
               <dd>
-                {{ groups.find((group) => group.id === selectedGroup?.parent_group_id)?.group_name || "顶级分组" }}
+                {{ groups.find((group) => String(group.id) === String(selectedGroup?.parent_group_id))?.group_name || "顶级分组" }}
               </dd>
             </div>
             <div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import { computed, reactive, ref, watch } from "vue"
 
 import SearchableSelect from "@/components/form/SearchableSelect.vue"
@@ -18,10 +19,14 @@ const props = withDefaults(
     mode: "monthly" | "weekly"
     ownerName?: string
     users?: DirectoryUserOption[]
+    includeCustomer?: boolean
+    readonly?: boolean
   }>(),
   {
     ownerName: "",
     users: () => [],
+    includeCustomer: true,
+    readonly: false,
   },
 )
 const emit = defineEmits<{
@@ -97,7 +102,7 @@ watch(
 watch(() => props.users, syncAssignmentFields, { deep: true })
 
 watch(
-  () => [form.customer_name, form.task_name],
+  () => [form.customer_name, form.task_name, form.work_content, form.output_description, form.planned_completion_date],
   () => {
     validationMessage.value = ""
   },
@@ -144,22 +149,31 @@ function normalizeProgress(value: number | null) {
 }
 
 function submit(action: "close" | "next") {
-  const customerName = form.customer_name.trim()
+  const customerName = props.includeCustomer ? form.customer_name.trim() : ""
   const taskName = form.task_name.trim()
-  if (!customerName || !taskName) {
-    validationMessage.value = !customerName && !taskName
-      ? "客户、工作任务不能为空。"
-      : !customerName
-        ? "客户不能为空。"
-        : "工作任务不能为空。"
+  const workContent = form.work_content.trim()
+  const outputDescription = form.output_description.trim()
+  const plannedCompletionDate = String(form.planned_completion_date || "").trim()
+  const missingFields = [
+    props.includeCustomer && !customerName && "客户",
+    !taskName && "工作任务",
+    !workContent && "主要工作内容",
+    !outputDescription && "输出成果",
+    !plannedCompletionDate && "计划完成时间",
+  ].filter(Boolean)
+  if (missingFields.length) {
+    validationMessage.value = `${missingFields.join("、")}不能为空。`
     return
   }
   Object.assign(form, {
     customer_name: customerName,
     task_name: taskName,
+    work_content: workContent,
+    output_description: outputDescription,
+    planned_completion_date: plannedCompletionDate,
     progress_percent: normalizeProgress(form.progress_percent),
   })
-  rememberCustomer(customerName)
+  if (props.includeCustomer) rememberCustomer(customerName)
   customerHistoryOpen.value = false
   emit("save", {
     ...form,
@@ -197,23 +211,24 @@ function removeAttachment(index: number) {
 </script>
 
 <template>
-  <BaseDialog :open="open" :title="task ? '编辑任务' : '新增任务'" width="980px" @close="emit('close')">
+  <BaseDialog :open="open" :title="readonly ? '任务详情' : (task ? '编辑任务' : '新增任务')" width="980px" height="88vh" @close="emit('close')">
     <form class="task-editor" @submit.prevent="submit('close')">
       <div class="task-editor__row">
-        <div class="task-editor__field task-editor__customer-field">
-          <label for="task-customer-name">客户</label>
+        <div v-if="includeCustomer" class="task-editor__field task-editor__customer-field">
+          <label for="task-customer-name"><span class="task-editor__label">客户<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span></label>
           <div class="customer-input-wrap">
             <input
               id="task-customer-name"
               v-model.trim="form.customer_name"
               maxlength="255"
               required
+              :readonly="readonly"
               autocomplete="off"
               aria-autocomplete="list"
               aria-controls="customer-history-list"
               :aria-expanded="customerHistoryOpen"
-              @focus="openCustomerHistory"
-              @click="openCustomerHistory"
+              @focus="!readonly && openCustomerHistory()"
+              @click="!readonly && openCustomerHistory()"
               @blur="scheduleCustomerHistoryClose"
             />
             <div
@@ -235,31 +250,37 @@ function removeAttachment(index: number) {
             </div>
           </div>
         </div>
-        <label class="task-editor__field">工作任务<input v-model.trim="form.task_name" maxlength="255" required /></label>
+        <label
+          class="task-editor__field"
+          :class="{ 'task-editor__field--full': !includeCustomer }"
+        >
+          <span class="task-editor__label">工作任务<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span>
+          <input v-model.trim="form.task_name" maxlength="255" required :readonly="readonly" />
+        </label>
       </div>
 
       <label class="task-editor__field task-editor__field--wide">
-        主要工作内容
-        <textarea v-model.trim="form.work_content" rows="4" />
+        <span class="task-editor__label">主要工作内容<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span>
+        <textarea v-model.trim="form.work_content" rows="4" required :readonly="readonly" />
       </label>
       <label class="task-editor__field task-editor__field--wide">
-        输出成果
-        <textarea v-model.trim="form.output_description" rows="4" />
+        <span class="task-editor__label">输出成果<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span>
+        <textarea v-model.trim="form.output_description" rows="4" required :readonly="readonly" />
       </label>
 
       <div class="task-editor__row">
-        <label class="task-editor__field">计划完成时间<input v-model="form.planned_completion_date" type="date" /></label>
-        <label v-if="mode === 'weekly'" class="task-editor__field">实际完成时间<input v-model="form.actual_completion_date" type="date" /></label>
+        <label class="task-editor__field"><span class="task-editor__label">计划完成时间<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span><input v-model="form.planned_completion_date" type="date" required :disabled="readonly" /></label>
+        <label v-if="mode === 'weekly'" class="task-editor__field">实际完成时间<input v-model="form.actual_completion_date" type="date" :disabled="readonly" /></label>
       </div>
 
       <div v-if="mode === 'weekly'" class="task-editor__row">
         <label class="task-editor__field">
           完成进度（百分比）
-          <input v-model.number="form.progress_percent" min="0" max="100" step="5" type="number" @change="form.progress_percent = normalizeProgress(form.progress_percent)" />
+          <input v-model.number="form.progress_percent" min="0" max="100" step="5" type="number" :readonly="readonly" @change="form.progress_percent = normalizeProgress(form.progress_percent)" />
         </label>
         <label class="task-editor__field">
           是否在计划时间内完成
-          <select v-model="form.on_time_status">
+          <select v-model="form.on_time_status" :disabled="readonly">
             <option value="in_progress">进行中</option>
             <option value="on_time">是，按计划完成</option>
             <option value="late">否，已延期完成</option>
@@ -272,7 +293,7 @@ function removeAttachment(index: number) {
       <div class="task-editor__row">
         <label class="task-editor__field">
           责任人
-          <SearchableSelect v-model="ownerId" :options="userOptions" aria-label="选择责任人" placeholder="输入文字筛选" />
+          <SearchableSelect v-model="ownerId" :options="userOptions" :disabled="readonly" aria-label="选择责任人" placeholder="输入文字筛选" />
         </label>
         <label class="task-editor__field">
           协作人
@@ -280,6 +301,7 @@ function removeAttachment(index: number) {
             v-model="collaboratorIds"
             :options="userOptions"
             :multiple="true"
+            :disabled="readonly"
             aria-label="选择协作人"
             placeholder="输入文字筛选"
           />
@@ -288,8 +310,8 @@ function removeAttachment(index: number) {
 
       <div class="task-editor__field task-editor__field--wide task-editor__evidence">
         <label for="task-document-links">相关文档链接或佐证材料</label>
-        <textarea id="task-document-links" v-model.trim="form.document_links" rows="3" />
-        <div class="task-editor__attachment-toolbar">
+        <textarea id="task-document-links" v-model.trim="form.document_links" rows="3" :readonly="readonly" />
+        <div v-if="!readonly" class="task-editor__attachment-toolbar">
           <button class="ghost-button" type="button" @click="openFilePicker">上传附件</button>
           <input ref="fileInputRef" class="task-editor__file-input" type="file" multiple @change="handleFiles" />
           <span>可选择多个文件</span>
@@ -301,19 +323,22 @@ function removeAttachment(index: number) {
               <span v-else>{{ attachment.file_name }}</span>
               <small>{{ attachment.file ? "待保存后上传" : "已上传" }}</small>
             </div>
-            <input v-model.trim="attachment.description" maxlength="500" placeholder="附件说明（可选）" />
-            <button class="link-button danger" type="button" @click="removeAttachment(index)">移除</button>
+            <input v-model.trim="attachment.description" maxlength="500" placeholder="附件说明（可选）" :readonly="readonly" />
+            <button v-if="!readonly" class="link-button danger" type="button" @click="removeAttachment(index)">移除</button>
           </div>
         </div>
       </div>
 
       <template v-if="mode === 'weekly'">
-        <label class="task-editor__field task-editor__field--wide">工作进展（截至月日）<textarea v-model.trim="form.progress_text" rows="4" /></label>
-        <label class="task-editor__field task-editor__field--wide">进度缓慢原因说明<textarea v-model.trim="form.delay_reason" rows="3" /></label>
+        <label class="task-editor__field task-editor__field--wide">工作进展（截至月日）<textarea v-model.trim="form.progress_text" rows="4" :readonly="readonly" /></label>
+        <label class="task-editor__field task-editor__field--wide">进度缓慢原因说明<textarea v-model.trim="form.delay_reason" rows="3" :readonly="readonly" /></label>
       </template>
-      <p v-if="validationMessage" class="task-editor__error" role="alert">{{ validationMessage }}</p>
+      <NoticeBridge :warning-message="validationMessage" />
     </form>
-    <template #actions>
+    <template v-if="readonly" #actions>
+      <button class="primary-button" type="button" @click="emit('close')">关闭</button>
+    </template>
+    <template v-else #actions>
       <button class="ghost-button" type="button" @click="emit('close')">取消</button>
       <button class="ghost-button" type="button" @click="submit('close')">保存&amp;关闭</button>
       <button class="primary-button" type="button" @click="submit('next')">保存&amp;下一个</button>

@@ -28,11 +28,11 @@ from ..models import (
     ReportTemplate,
     ReportTemplateItem,
     WeeklyReport,
-    WeeklyReportEvidence,
+    WeeklyReportDailyTask,
     WeeklyReportItem,
     WeeklyReportMetric,
 )
-from ..templates import get_default_task_fields, get_default_template
+from ..templates import ROLE_TEMPLATES, get_default_task_fields, get_default_template
 
 
 class ReportError(ValueError):
@@ -53,6 +53,12 @@ class ReportConflictError(ReportError):
     code = "REPORT_CONFLICT"
 
 
+class MonthlyPlanLockedError(ReportConflictError):
+    """A monthly plan already exists and is intentionally immutable."""
+
+    code = "MONTHLY_PLAN_LOCKED"
+
+
 class ReportPermissionError(ReportError):
     """The current role cannot access or mutate the report."""
 
@@ -64,15 +70,47 @@ REPORT_STATUS_PENDING = "pending_activation"
 REPORT_STATUS_ARCHIVED = "archived"
 
 
-def get_template(role_code: str) -> dict[str, Any]:
-    """Return a role template from DB, falling back to the built-in contract."""
-    template = (
-        ReportTemplate.objects.filter(role_code=role_code, status="active").order_by("-id").first()
-    )
+def get_template_by_code(
+    template_code: str,
+    *,
+    role_code: str | None = None,
+    allow_inactive: bool = False,
+) -> dict[str, Any]:
+    """Return one exact versioned template.
+
+    A template code is globally unique and already contains its version.  The
+    optional role code only supplies display context when a custom role reuses
+    an existing template; it is never used to select the template.
+    """
+    normalized_code = str(template_code or "").strip()
+    if not normalized_code:
+        raise ReportError("周报模板编码不能为空。")
+    template = ReportTemplate.objects.filter(template_code=normalized_code).first()
     if template is None:
-        return get_default_template(role_code)
+        try:
+            fallback = get_default_template(normalized_code, role_code=role_code)
+            # A custom role may reuse a built-in template.  Keep the template
+            # structure from the built-in code, but expose the active role's
+            # display name when it is available.
+            if role_code:
+                bound_role = Role.objects.filter(role_code=role_code).first()
+                if bound_role is not None:
+                    fallback["role_name"] = bound_role.role_name
+            return fallback
+        except ValueError as exc:
+            raise ReportNotFoundError(str(exc)) from exc
+    if template.status != "active" and not allow_inactive:
+        raise ReportError(f"周报模板未启用：{normalized_code}")
     rows = list(
         ReportTemplateItem.objects.filter(template_id=template.id).order_by("sort_order", "id")
+    )
+    template_role_code = role_code or next(
+        (
+            candidate_role
+            for candidate_role, source in ROLE_TEMPLATES.items()
+            if source["template_code"] == template.template_code
+        ),
+        "",
     )
     tasks = [_serialize_template_item(row) for row in rows if row.item_type == "task"]
     metrics = [_serialize_template_item(row) for row in rows if row.item_type == "metric"]
@@ -85,17 +123,29 @@ def get_template(role_code: str) -> dict[str, Any]:
         if row.item_type == "task":
             section_map[row.section_code]["tasks"].append(_serialize_template_item(row))
     return {
-        "role_code": template.role_code,
-        "role_name": _role_name(role_code),
+        "role_code": template_role_code,
+        "role_name": (
+            _role_name(template_role_code) if template_role_code else template.template_name
+        ),
         "template_code": template.template_code,
-        "template_version": template.template_version,
         "template_name": template.template_name,
         "description": template.description,
         "sections": list(section_map.values()),
         "tasks": tasks,
         "metrics": metrics,
-        "fields": _get_template_fields(role_code),
+        "fields": _get_template_fields(template.template_code),
     }
+
+
+def resolve_role_template(role_code: str) -> dict[str, Any]:
+    """Resolve the active role's explicitly bound versioned template code."""
+    role = Role.objects.filter(role_code=role_code, status="active").first()
+    if role is None:
+        raise ReportPermissionError("当前角色不存在或已停用。")
+    template_code = str(role.report_template_code or "").strip()
+    if not template_code:
+        raise ReportError("当前角色未配置周报模板。")
+    return get_template_by_code(template_code, role_code=role_code)
 
 
 def visible_employee_ids(user: UserAccount, role_code: str) -> list[int]:
@@ -178,7 +228,6 @@ def create_or_update_report(
 ) -> dict[str, Any]:
     if _role_scope(role_code) == "all":
         raise ReportPermissionError("全员数据角色仅支持查看周报。")
-    template = get_template(role_code)
     current_start = _current_period_start()
     period_start = _parse_date(payload.get("period_start"), default=current_start)
     period_end = _parse_date(payload.get("period_end"), default=period_start + timedelta(days=6))
@@ -197,6 +246,14 @@ def create_or_update_report(
         report_id=report_id,
         period_start=period_start,
     )
+    # New reports use the active role binding.  Editing always uses the
+    # report's stored template snapshot so changing a role's binding does not
+    # rewrite historical/current report data to another template version.
+    template = (
+        get_template_by_code(report.template_code, role_code=role_code, allow_inactive=True)
+        if report is not None
+        else resolve_role_template(role_code)
+    )
     period_status = _period_status(period_start, period_end)
     with transaction.atomic():
         existing_attachments: list[Attachment] = []
@@ -211,7 +268,6 @@ def create_or_update_report(
                 report = WeeklyReport.objects.create(
                     role_code=role_code,
                     template_code=template["template_code"],
-                    template_version=template["template_version"],
                     employee_id=user.id,
                     group_id=user.group_id,
                     period_type="week",
@@ -232,8 +288,6 @@ def create_or_update_report(
             report.period_end = period_end
             report.as_of_date = as_of_date
             report.month_key = period_start.strftime("%Y-%m")
-            report.template_code = template["template_code"]
-            report.template_version = template["template_version"]
             report.group_id = user.group_id
             report.status = period_status
         report.summary = str(payload.get("summary") or "").strip()
@@ -253,15 +307,14 @@ def create_or_update_report(
             )
         WeeklyReportItem.objects.filter(report_id=report.id).delete()
         WeeklyReportMetric.objects.filter(report_id=report.id).delete()
-        WeeklyReportEvidence.objects.filter(report_id=report.id).delete()
         item_id_map = _save_items(report, payload.get("items"), template["tasks"], user.id)
         _save_metrics(report, payload.get("metrics"), template["metrics"], item_id_map)
-        _save_evidence(report, payload.get("evidence"), item_id_map)
         _sync_attachments(
             value=payload.get("attachments"),
             item_id_map=item_id_map,
             existing=existing_attachments,
         )
+        _save_daily_tasks(report, payload.get("daily_tasks"))
     return get_report_detail(user=user, role_code=role_code, report_id=int(report.id))
 
 
@@ -279,7 +332,6 @@ def delete_report(*, user: UserAccount, role_code: str, report_id: int) -> dict[
     with transaction.atomic():
         WeeklyReportItem.objects.filter(report_id=report.id).delete()
         WeeklyReportMetric.objects.filter(report_id=report.id).delete()
-        WeeklyReportEvidence.objects.filter(report_id=report.id).delete()
         for attachment in Attachment.objects.filter(
             attachment_type="weekly_report", relation_id=report.id
         ):
@@ -290,9 +342,17 @@ def delete_report(*, user: UserAccount, role_code: str, report_id: int) -> dict[
 
 
 def get_report_detail(*, user: UserAccount, role_code: str, report_id: int) -> dict[str, Any]:
+    from .daily_tasks import list_daily_tasks_for_report
+
     header = _get_accessible_report(user=user, role_code=role_code, report_id=report_id)
+    template = get_template_by_code(
+        str(header.get("template_code") or ""),
+        role_code=str(header.get("role_code") or ""),
+        allow_inactive=True,
+    )
     return {
         "report": _serialize_report_row(header),
+        "template": template,
         "monthly_plan": get_monthly_plan(
             user=user,
             access_role_code=role_code,
@@ -302,8 +362,8 @@ def get_report_detail(*, user: UserAccount, role_code: str, report_id: int) -> d
         ),
         "items": [_serialize_row(row) for row in dao.get_report_items(report_id)],
         "metrics": [_serialize_row(row) for row in dao.get_report_metrics(report_id)],
-        "evidence": [_serialize_row(row) for row in dao.get_report_evidence(report_id)],
         "attachments": [_serialize_row(row) for row in dao.get_report_attachments(report_id)],
+        "daily_tasks": list_daily_tasks_for_report(report_id),
     }
 
 
@@ -414,7 +474,7 @@ def get_monthly_plan(
 def save_monthly_plan(
     *, user: UserAccount, role_code: str, month_key: Any, summary: Any
 ) -> dict[str, Any]:
-    """保存本人当前角色指定月份的单一月度计划文本。"""
+    """首次保存本人当前角色指定月份的计划，保存后永久只读。"""
     if _role_scope(role_code) == "all":
         raise ReportPermissionError("全员数据角色不支持编写月度计划。")
     parsed_month_key = _parse_month_key(month_key, required=True)
@@ -445,10 +505,25 @@ def dashboard_summary(*, user: UserAccount, role_code: str) -> dict[str, Any]:
         for row in rows
         if (_as_date(row.get("period_start")) or current_start) >= current_start
     ]
-    report_ids = [int(row["id"]) for row in current_rows]
     items = []
-    for report_id in report_ids:
-        items.extend(dao.get_report_items(report_id))
+    team_items: list[dict[str, Any]] = []
+    for row in current_rows:
+        report_id = int(row["id"])
+        report_items = dao.get_report_items(report_id)
+        items.extend(report_items)
+        for item in report_items:
+            team_items.append(
+                {
+                    **item,
+                    "employee_id": row.get("employee_id"),
+                    "employee_name": row.get("employee_name") or "",
+                    "role_code": row.get("role_code") or "",
+                    "group_name": row.get("group_name") or "",
+                    "report_status": row.get("status") or "",
+                    "report_period_start": row.get("period_start"),
+                    "report_period_end": row.get("period_end"),
+                }
+            )
     progress_values = [
         Decimal(str(item["completion_rate"]))
         for item in items
@@ -493,6 +568,8 @@ def dashboard_summary(*, user: UserAccount, role_code: str) -> dict[str, Any]:
         ],
         "my_tasks": [_serialize_row(item) for item in own_items[:8]],
         "reports": [_serialize_row(row) for row in current_rows[:12]],
+        # 领导首页需要按部门和责任人展示当前可见任务；任务仍来自周报明细，避免前端生成演示数据。
+        "team_tasks": [_serialize_row(item) for item in team_items[:200]],
     }
 
 
@@ -500,24 +577,47 @@ def _save_monthly_plan(
     *, user: UserAccount, role_code: str, month_key: str, value: Mapping[str, Any]
 ) -> None:
     summary = str(value.get("summary") or "").strip()
-    plan, _ = MonthlyPlan.objects.get_or_create(
+    if not summary:
+        raise ReportError("月度计划不能为空。")
+
+    # 月度计划是同一用户、角色、月份下跨周复用的基线。首次保存后不允许
+    # 覆盖，使用行锁确保并发请求也不会产生第二次写入。
+    existing = MonthlyPlan.objects.select_for_update().filter(
         employee_id=user.id,
         role_code=role_code,
         month_key=month_key,
-        defaults={"group_id": user.group_id},
-    )
-    plan.group_id = user.group_id
-    plan.summary = summary
-    plan.save()
+    ).first()
+    if existing is not None:
+        raise MonthlyPlanLockedError("月度计划不支持修改。")
+    try:
+        MonthlyPlan.objects.create(
+            employee_id=user.id,
+            role_code=role_code,
+            month_key=month_key,
+            group_id=user.group_id,
+            summary=summary,
+        )
+    except IntegrityError as exc:
+        # 唯一约束兜底处理并发创建，向调用方返回明确的锁定提示。
+        raise MonthlyPlanLockedError("月度计划不支持修改。") from exc
 
 
 def _save_items(
     report: WeeklyReport, value: Any, template_items: Sequence[Mapping[str, Any]], owner_id: int
 ) -> dict[str, int]:
     submitted = value if isinstance(value, list) else []
-    if report.role_code == "delivery_specialist" and not submitted:
+    if any(bool(item.get("required")) for item in template_items) and not submitted:
         raise ReportError("本周工作至少需要一条任务。")
     template_map = {str(item["task_code"]): item for item in template_items}
+    # 不同模板的固定主字段不同：交付类使用“客户”，招聘类使用“维度”。
+    # 由模板字段字典决定校验规则，避免把某一角色的业务字段硬编码到公共保存逻辑；
+    # 职能组模板不设置客户/维度字段，直接使用模板任务分组作为逻辑模块。
+    template_field_codes = {
+        str(field.get("field_code") or "").strip()
+        for field in _get_template_fields(report.template_code)
+    }
+    requires_customer = "customer_name" in template_field_codes
+    requires_dimension = "dimension" in template_field_codes
     item_id_map: dict[str, int] = {}
     for index, raw in enumerate(submitted):
         if not isinstance(raw, Mapping):
@@ -525,16 +625,31 @@ def _save_items(
         task_code = str(raw.get("task_code") or f"task_{index + 1}").strip()
         config = template_map.get(task_code, {})
         customer_name = str(raw.get("customer_name_snapshot") or "").strip()
+        dimension = str(
+            raw.get("dimension")
+            or raw.get("section_name")
+            or raw.get("section_code")
+            or ""
+        ).strip()
         task_name = str(raw.get("task_name_snapshot") or config.get("label") or "").strip()
-        if report.role_code == "delivery_specialist":
-            if not customer_name:
-                raise ReportError(f"本周工作第 {index + 1} 条任务客户不能为空。")
-            if not task_name:
-                raise ReportError(f"本周工作第 {index + 1} 条任务名称不能为空。")
+        if requires_customer and not customer_name:
+            raise ReportError(f"本周工作第 {index + 1} 条任务客户不能为空。")
+        if requires_dimension and not dimension:
+            raise ReportError(f"本周工作第 {index + 1} 条任务维度不能为空。")
+        if not task_name:
+            raise ReportError(f"本周工作第 {index + 1} 条任务名称不能为空。")
+        work_content = str(raw.get("work_content") or "").strip()
+        output_description = str(raw.get("output_description") or "").strip()
+        if not work_content:
+            raise ReportError(f"本周工作第 {index + 1} 条任务主要工作内容不能为空。")
+        if not output_description:
+            raise ReportError(f"本周工作第 {index + 1} 条任务输出成果不能为空。")
         progress = _percent(raw.get("progress_percent"))
         quality = _percent(raw.get("quality_percent"))
         completion = _completion_rate(progress, quality)
         planned = _parse_optional_date(raw.get("planned_completion_date"))
+        if planned is None:
+            raise ReportError(f"本周工作第 {index + 1} 条任务计划完成时间不能为空。")
         actual = _parse_optional_date(raw.get("actual_completion_date"))
         expected = _parse_optional_date(raw.get("expected_completion_date"))
         calculated_on_time = _on_time_status(progress, planned, actual, report.as_of_date)
@@ -554,14 +669,16 @@ def _save_items(
             scope_type=str(raw.get("scope_type") or config.get("scope_type") or "overall"),
             customer_id=_optional_int(raw.get("customer_id")),
             customer_name_snapshot=customer_name,
-            section_code=str(raw.get("section_code") or config.get("section_code") or "other"),
+            section_code=str(
+                dimension or raw.get("section_code") or config.get("section_code") or "other"
+            ),
             task_code=task_code,
             task_name_snapshot=task_name or task_code,
             guidance_snapshot=str(
                 raw.get("guidance_snapshot") or config.get("guidance") or ""
             ).strip(),
-            work_content=str(raw.get("work_content") or "").strip(),
-            output_description=str(raw.get("output_description") or "").strip(),
+            work_content=work_content,
+            output_description=output_description,
             planned_completion_date=planned,
             progress_text=str(raw.get("progress_text") or "").strip(),
             progress_percent=progress,
@@ -633,25 +750,6 @@ def _save_metrics(
         )
 
 
-def _save_evidence(report: WeeklyReport, value: Any, item_id_map: Mapping[str, int]) -> None:
-    submitted = value if isinstance(value, list) else []
-    for raw in submitted:
-        if not isinstance(raw, Mapping):
-            continue
-        url = str(raw.get("file_url") or "").strip()
-        if not url and not str(raw.get("description") or "").strip():
-            continue
-        WeeklyReportEvidence.objects.create(
-            report_id=report.id,
-            item_id=item_id_map.get(str(raw.get("task_code") or ""))
-            or _optional_int(raw.get("item_id")),
-            evidence_type=str(raw.get("evidence_type") or "link").strip(),
-            file_url=url,
-            file_name=str(raw.get("file_name") or "").strip(),
-            description=str(raw.get("description") or "").strip(),
-        )
-
-
 def _sync_attachments(
     *, value: Any, item_id_map: Mapping[str, int], existing: Sequence[Attachment]
 ) -> None:
@@ -660,10 +758,9 @@ def _sync_attachments(
     文件上传由独立的 multipart 接口完成；周报保存只接收已有附件 ID，确保
     删除任务或移除附件时可以同步清理附件表中的逻辑关联。
     """
-    # 兼容没有附件字段的旧客户端：不改变已有附件记录。
-    if value is None:
-        return
-    submitted = value if isinstance(value, list) else []
+    if not isinstance(value, list):
+        raise ReportError("附件列表格式无效。")
+    submitted = value
     requested: dict[int, str] = {}
     for raw in submitted:
         if not isinstance(raw, Mapping):
@@ -691,6 +788,65 @@ def _sync_attachments(
         else:
             attachment.relation_sub_id = None
         attachment.save(update_fields=["relation_sub_id", "updated_at"])
+
+
+def _save_daily_tasks(report: WeeklyReport, value: Any) -> None:
+    """在周报保存事务内同步日报，保证新建周报可以一并提交日报。"""
+
+    if value is None:
+        return
+    if not isinstance(value, list):
+        raise ReportError("日报列表格式无效。")
+    if value and _period_status(report.period_start, report.period_end) != REPORT_STATUS_ACTIVE:
+        raise ReportError("仅当前周报周期可以填写日报。")
+
+    existing = {
+        int(row.id): row
+        for row in WeeklyReportDailyTask.objects.filter(report_id=report.id)
+    }
+    requested_ids: set[int] = set()
+    requested_dates: set[date] = set()
+    normalized: list[tuple[int | None, date, str]] = []
+    for index, raw in enumerate(value):
+        if not isinstance(raw, Mapping):
+            raise ReportError(f"第 {index + 1} 条日报格式无效。")
+        work_date = _parse_optional_date(raw.get("work_date"))
+        if work_date is None:
+            raise ReportError(f"第 {index + 1} 条日报日期不能为空。")
+        if work_date < report.period_start or work_date > report.period_end:
+            raise ReportError("日报日期必须在本周范围内。")
+        if work_date in requested_dates:
+            raise ReportConflictError("同一个日期只能填写一条日报。")
+        work_content = str(raw.get("work_content") or "").strip()
+        if not work_content:
+            raise ReportError(f"第 {index + 1} 条日报主要工作内容不能为空。")
+        daily_task_id = _optional_int(raw.get("id"))
+        if daily_task_id is not None:
+            if daily_task_id not in existing or daily_task_id in requested_ids:
+                raise ReportError("日报不存在或不属于当前周报。")
+            requested_ids.add(daily_task_id)
+        requested_dates.add(work_date)
+        normalized.append((daily_task_id, work_date, work_content))
+
+    for daily_task_id, task in existing.items():
+        if daily_task_id not in requested_ids:
+            task.delete()
+
+    for daily_task_id, work_date, work_content in normalized:
+        if daily_task_id is None:
+            try:
+                WeeklyReportDailyTask.objects.create(
+                    report_id=report.id,
+                    work_date=work_date,
+                    work_content=work_content,
+                )
+            except IntegrityError as exc:
+                raise ReportConflictError("同一个日期只能填写一条日报。") from exc
+            continue
+        task = existing[daily_task_id]
+        task.work_date = work_date
+        task.work_content = work_content
+        task.save(update_fields=["work_date", "work_content", "updated_at"])
 
 
 def _delete_attachment_record(attachment: Attachment) -> None:
@@ -820,20 +976,21 @@ def _as_date(value: Any) -> date | None:
 
 def _role_name(role_code: str) -> str:
     role = Role.objects.filter(role_code=role_code).first()
-    return role.role_name if role else get_default_template(role_code)["role_name"]
+    if role:
+        return role.role_name
+    source = ROLE_TEMPLATES.get(role_code)
+    return str(source.get("role_name") if source else role_code)
 
 
-def _get_template_fields(role_code: str) -> list[dict[str, Any]]:
-    """Load task-list columns from the role dictionary, with a safe fallback.
+def _get_template_fields(template_code: str) -> list[dict[str, Any]]:
+    """Load task-list columns from the versioned template dictionary.
 
     ``system_dictionary`` is deliberately used instead of adding a schema
-    table: each role gets an independent dictionary type, so its available
-    columns, order and default visibility can evolve without coupling role
-    templates.  The report API remains usable before the optional seed rows
-    are loaded by returning the built-in Excel order.
+    table: each template/version gets an independent dictionary type, so its
+    available columns, order and default visibility can evolve independently.
     """
-    fallback = get_default_task_fields(role_code)
-    dict_type = f"weekly_report_fields_{role_code}"
+    fallback = get_default_task_fields(template_code)
+    dict_type = f"weekly_report_fields_{template_code}"
     try:
         values = list_active_dictionary_items(dict_type)
     except (OperationalError, ProgrammingError, ValueError):
@@ -912,7 +1069,10 @@ def _percent(value: Any) -> Decimal | None:
         raise ReportError("进度和质量必须是数字。") from exc
     if not 0 <= number <= 100:
         raise ReportError("进度和质量必须在 0—100 范围内。")
-    return number.quantize(Decimal("0.01"))
+    # 页面控件按 5% 步进；服务端同样强制校验，避免绕过前端提交任意小数。
+    if number != number.to_integral_value() or number % Decimal("5") != 0:
+        raise ReportError("进度和质量必须以 5% 为步长填写。")
+    return number.quantize(Decimal("1"))
 
 
 def _completion_rate(progress: Decimal | None, quality: Decimal | None) -> Decimal | None:

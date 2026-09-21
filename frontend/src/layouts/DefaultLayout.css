@@ -1,27 +1,28 @@
 .app-shell {
+  --sidebar-width: 92px;
   display: grid;
-  grid-template-columns: 112px minmax(0, 1fr);
+  grid-template-columns: 100px minmax(0, 1fr);
   min-height: 100vh;
 }
 
 .app-sidebar {
   position: fixed;
-  inset: 8px auto 8px 8px;
+  inset: 8px auto 8px 0;
   z-index: 20;
   display: flex;
-  width: 104px;
+  width: var(--sidebar-width);
   flex-direction: column;
   align-items: center;
-  padding: 12px 7px 10px;
+  padding: 11px 0 9px;
   border: 1px solid rgba(255, 255, 255, 0.26);
-  border-radius: 22px;
+  border-radius: 20px;
   color: rgba(255, 255, 255, 0.9);
   background:
     radial-gradient(circle at 15% 4%, rgba(160, 216, 255, 0.42), transparent 24%),
     radial-gradient(circle at 85% 72%, rgba(109, 196, 255, 0.25), transparent 31%),
     linear-gradient(178deg, #3a88ed 0%, #286fd7 42%, #317ee4 72%, #58a5f1 100%);
   box-shadow:
-    10px 0 30px rgba(32, 94, 181, 0.17),
+    4px 0 18px rgba(32, 94, 181, 0.11),
     inset 1px 0 rgba(255, 255, 255, 0.28),
     inset -1px 0 rgba(13, 85, 187, 0.12);
 }
@@ -44,11 +45,12 @@
 
 .app-sidebar::after {
   z-index: 1;
-  top: 15px;
-  right: 5px;
+  top: 16px;
+  right: 0;
   width: 1px;
-  height: calc(100% - 30px);
-  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  height: calc(100% - 32px);
+  border-radius: 999px;
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.34) 18% 82%, transparent);
 }
 
 .app-content {
@@ -66,57 +68,57 @@
   display: grid;
   width: 100%;
   justify-items: center;
-  gap: 6px;
+  gap: 5px;
   padding-top: 2px;
   color: white;
   font-weight: 750;
 }
 
 .brand-name {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   letter-spacing: 0.025em;
   white-space: nowrap;
 }
 
 .brand-mark {
   display: grid;
-  width: 46px;
-  height: 46px;
+  width: 43px;
+  height: 43px;
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.7);
-  border-radius: 14px;
+  border-radius: 13px;
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 8px 20px rgba(11, 58, 139, 0.2);
 }
 
 .brand-mark img {
   display: block;
-  width: 37px;
-  height: 37px;
+  width: 35px;
+  height: 35px;
   object-fit: contain;
 }
 
 .side-nav {
   display: grid;
   width: 100%;
-  gap: 7px;
-  margin-top: 20px;
+  gap: 5px;
+  margin-top: 18px;
 }
 
 .side-nav :deep(a) {
   position: relative;
   display: grid;
-  min-height: 68px;
-  grid-template-rows: 30px auto;
+  min-height: 64px;
+  grid-template-rows: 28px auto;
   gap: 4px;
   place-items: center;
   overflow: hidden;
-  padding: 7px 3px 6px;
+  padding: 7px 0 6px;
   border: 1px solid transparent;
-  border-radius: 13px;
+  border-radius: 12px;
   color: rgba(255, 255, 255, 0.88);
   background: transparent;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   line-height: 1.25;
   text-align: center;
   text-shadow: 0 1px 3px rgba(7, 55, 130, 0.14);
@@ -177,8 +179,8 @@
   min-height: 270px;
   flex-direction: column;
   justify-content: flex-end;
-  padding: 160px 7px 10px;
-  border-radius: 0 0 21px 21px;
+  padding: 160px 0 9px;
+  border-radius: 0 0 19px 19px;
 }
 
 .sidebar-lower::before {
@@ -207,9 +209,9 @@
   position: absolute;
   z-index: 1;
   top: 22px;
-  left: -40px;
+  left: -43px;
   display: block;
-  width: 184px;
+  width: 168px;
   height: 132px;
   object-fit: contain;
   opacity: 0.24;
@@ -229,18 +231,47 @@
   top: 0;
   z-index: 10;
   display: flex;
-  min-height: 68px;
+  min-height: 88px;
   align-items: center;
-  padding: 0 2.2rem;
-  border-bottom: 1px solid rgba(104, 161, 232, 0.17);
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  gap: 0.9rem;
+  margin: 8px 8px 0;
+  padding: 0 1.75rem;
+  border: 1px solid rgba(107, 169, 237, 0.2);
+  border-radius: 18px;
+  background:
+    linear-gradient(133deg, transparent 43%, rgba(255, 255, 255, 0.72) 43.3% 44%, transparent 44.4%),
+    linear-gradient(113deg, rgba(255, 255, 255, 0.97), rgba(242, 249, 255, 0.94) 50%, rgba(222, 241, 255, 0.9));
+  box-shadow: 0 5px 16px rgba(55, 116, 194, 0.08);
   backdrop-filter: blur(18px);
+}
+
+.header-back {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.header-back :deep(.back-button) {
+  width: 38px;
+  height: 38px;
+  flex-basis: 38px;
+  border-radius: 11px;
 }
 
 .header-context {
   display: flex;
   align-items: center;
   gap: 1rem;
+}
+
+.header-context::before {
+  width: 4px;
+  height: 38px;
+  flex: 0 0 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #cfedff, #2687ef 52%, #83d1ff);
+  box-shadow: 0 0 12px rgba(45, 137, 235, 0.3);
+  content: "";
 }
 
 .header-kicker {
@@ -255,7 +286,10 @@
 }
 
 .app-main {
-  width: min(1540px, calc(100% - 4rem));
+  width: calc(100% - 1rem);
+  max-width: none;
+  min-width: 0;
+  overflow-x: hidden;
   margin: 0 auto;
   padding: 1.6rem 0 2.4rem;
 }
@@ -263,18 +297,21 @@
 .app-main--dashboard {
   width: calc(100% - 1rem);
   max-width: none;
+  min-width: 0;
+  overflow-x: hidden;
   padding: 0.4rem 0 1rem;
 }
 
 @media (max-width: 840px) {
   .app-shell {
+    --sidebar-width: 64px;
     grid-template-columns: 76px minmax(0, 1fr);
   }
 
   .app-sidebar {
-    inset: 6px auto 6px 6px;
+    inset: 6px auto 6px 0;
     width: 64px;
-    padding: 9px 5px 8px;
+    padding: 9px 0 8px;
     border-radius: 18px;
   }
 
@@ -313,7 +350,7 @@
 
   .sidebar-lower {
     min-height: 225px;
-    padding: 132px 5px 8px;
+    padding: 132px 0 8px;
     border-radius: 0 0 17px 17px;
   }
 
@@ -325,7 +362,9 @@
   }
 
   .app-header {
-    padding: 0.8rem 1rem;
+    min-height: 76px;
+    margin: 6px 8px 0;
+    padding: 0.8rem 1.25rem;
   }
 
   .header-context {
@@ -333,7 +372,7 @@
   }
 
   .app-main {
-    width: min(100% - 2rem, 720px);
+    width: calc(100% - 1rem);
   }
 
   .app-main--dashboard {
@@ -343,12 +382,13 @@
 
 @media (max-width: 540px) {
   .app-shell {
+    --sidebar-width: 0px;
     grid-template-columns: 1fr;
   }
 
   .app-sidebar {
-    inset: auto 6px 6px;
-    width: calc(100% - 12px);
+    inset: auto 0 6px;
+    width: 100%;
     height: 66px;
     flex-direction: row;
     align-items: center;
@@ -359,6 +399,10 @@
 
   .brand,
   .sidebar-data-art {
+    display: none;
+  }
+
+  .app-sidebar::after {
     display: none;
   }
 
@@ -402,6 +446,13 @@
 
   .app-content {
     grid-column: 1;
+  }
+
+  .app-header {
+    min-height: 68px;
+    margin: 6px 6px 0;
+    padding: 0.8rem 1rem;
+    border-radius: 14px;
   }
 
   .app-main {

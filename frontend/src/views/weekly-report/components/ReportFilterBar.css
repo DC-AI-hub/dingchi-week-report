@@ -23,6 +23,20 @@
   flex: 0 0 180px;
 }
 
+.report-filter-bar .group-filter {
+  width: 180px;
+  min-width: 180px;
+  flex: 0 0 180px;
+}
+
+.report-filter-bar .group-filter :deep(.group-tree-select__trigger) {
+  min-height: 40px;
+  padding: 0.5rem 0.65rem;
+  border-radius: 9px;
+  background: #fff;
+  font-size: inherit;
+}
+
 .report-filter-bar input,
 .report-filter-bar select {
   min-height: 40px;
@@ -122,6 +136,12 @@
   }
 
   .report-filter-bar .period-range-field {
+    width: auto;
+    min-width: min(100%, 260px);
+    flex: 1 1 100%;
+  }
+
+  .report-filter-bar .group-filter {
     width: auto;
     min-width: min(100%, 260px);
     flex: 1 1 100%;

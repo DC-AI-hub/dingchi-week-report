@@ -24,8 +24,9 @@ export function listRoles(): Promise<{ items: DirectoryRole[] }> {
 
 /**
  * 新增角色并建立周报模板与数据范围映射。
- * 方法/路径：POST /v1/roles/new/；请求体必填 role_code、role_name、scope、
- * report_template_code，description 可为空；scope 和 report_template_code 必须使用字典接口返回的编码。
+ * 方法/路径：POST /v1/roles/new/；请求体必填 role_code、role_name、scope、report_template_code、
+ * role_group_code，description 可为空；scope 和 report_template_code 必须使用字典接口返回的编码，
+ * role_group_code 必须使用分组接口返回的启用编码。
  * 响应：创建后的角色对象；编码重复返回 ROLE_CONFLICT，参数非法返回 INVALID_REQUEST。
  * 请求由统一客户端携带 Bearer Token 与 X-Trace-ID，角色编码创建后不可修改。
  */
@@ -90,9 +91,9 @@ export function deleteGroup(id: string): Promise<DeleteDirectoryResult> {
   return request<DeleteDirectoryResult>({ method: "DELETE", url: `/v1/groups/${id}/` })
 }
 
-/** 查询用户目录：GET /v1/users/；可选 role_code/group_id；响应 data.items 含上下级和角色。 */
+/** 查询用户目录：GET /v1/users/；可选 role_code/group_id/keyword；keyword 模糊匹配账号、工号、姓名、邮箱和手机号。 */
 export function listUsers(
-  filters: { role_code?: string; group_id?: string } = {},
+  filters: { role_code?: string; group_id?: string; keyword?: string } = {},
 ): Promise<{ items: DirectoryUser[] }> {
   return request<{ items: DirectoryUser[] }>({ method: "GET", url: "/v1/users/", params: filters })
 }
@@ -108,10 +109,11 @@ export function listUserOptions(): Promise<{ items: DirectoryUserOption[] }> {
 
 /**
  * 新增用户并分配角色、分组和直属上级。
- * 方法/路径：POST /v1/users/new/；请求体：username、employee_no、display_name、password、role_codes 必填，
+ * 方法/路径：POST /v1/users/new/；请求体：username、display_name、password、role_codes 必填，
+ * employee_no 不需要传入，由后端按 DC 加六位序号自动生成；
  * email/group_id/manager_id 可为空；password 必须由前端 RSA-OAEP-SHA256 加密；响应不返回密码。
  */
-export function createUser(payload: UserMutationPayload & { password: string }): Promise<DirectoryUser> {
+export function createUser(payload: Omit<UserMutationPayload, "employee_no"> & { password: string }): Promise<DirectoryUser> {
   return request<DirectoryUser>({ method: "POST", url: "/v1/users/new/", data: payload })
 }
 

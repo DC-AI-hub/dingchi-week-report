@@ -171,25 +171,6 @@
   font-size: 0.78rem;
 }
 
-.demo-tip {
-  display: grid;
-  gap: 0.25rem;
-  padding: 0.85rem 1rem;
-  border-radius: 13px;
-  color: #6a81a5;
-  background: #f1f7ff;
-  font-size: 0.72rem;
-}
-
-.demo-tip span {
-  color: var(--accent);
-  font-weight: 800;
-}
-
-.demo-tip p {
-  margin: 0;
-}
-
 .login-footer {
   position: absolute;
   bottom: 1.25rem;

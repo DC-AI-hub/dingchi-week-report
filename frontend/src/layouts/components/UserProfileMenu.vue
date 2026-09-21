@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue"
 import { useRouter } from "vue-router"
 
 import { useAppStore } from "@/app/stores/app"
+import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import { useAuthStore } from "@/features/auth/store"
 
 const appStore = useAppStore()
@@ -113,7 +114,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <p v-if="authStore.errorMessage" class="profile-error" role="status">{{ authStore.errorMessage }}</p>
+        <NoticeBridge :warning-message="authStore.errorMessage" />
 
         <div class="profile-panel-actions">
           <button type="button" @click="appStore.toggleTheme">

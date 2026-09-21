@@ -8,6 +8,7 @@ import { useAuthStore } from "@/features/auth/store"
 import { deleteReport } from "@/features/weekly-report/api"
 import { useReportList } from "@/features/weekly-report/composables/useReportList"
 import type { ReportListFilters, WeeklyReport } from "@/features/weekly-report/types"
+import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 
 import ReportFilterBar from "../components/ReportFilterBar.vue"
 import ReportListTable from "../components/ReportListTable.vue"
@@ -32,9 +33,7 @@ const page = computed(() => reportList.page.value)
 const pageSize = computed(() => reportList.pageSize.value)
 const total = computed(() => reportList.total.value)
 const totalPages = computed(() => reportList.totalPages.value)
-const createRouteName = computed(() => authStore.activeRole?.role_code === "delivery_specialist"
-  ? "delivery-specialist-report-new"
-  : "weekly-report-new")
+const createRouteName = computed(() => "weekly-report-new")
 
 function queryFilters(): ReportListFilters {
   return {
@@ -113,7 +112,7 @@ watch(() => authStore.activeRole?.role_code, () => {
 
 <template>
   <div class="weekly-report-page">
-    <p v-if="errorMessage" class="page-alert" role="alert">{{ errorMessage }}</p>
+    <NoticeBridge :warning-message="errorMessage" />
 
     <section class="dashboard-card report-list-card">
       <div class="report-list-heading">

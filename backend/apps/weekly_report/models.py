@@ -7,8 +7,6 @@ from apps.core.models.base import SnowflakeIdModel
 
 class ReportTemplate(SnowflakeIdModel):
     template_code = models.CharField(max_length=64)
-    template_version = models.CharField(max_length=16, default="1.0")
-    role_code = models.CharField(max_length=64)
     template_name = models.CharField(max_length=128)
     description = models.CharField(max_length=500, blank=True, default="")
     status = models.CharField(max_length=16, default="active")
@@ -21,11 +19,11 @@ class ReportTemplate(SnowflakeIdModel):
         db_table = "report_template"
         constraints = [
             models.UniqueConstraint(
-                fields=["template_code", "template_version"],
-                name="uq_report_template_version",
+                fields=["template_code"],
+                name="uq_report_template_code",
             ),
         ]
-        ordering = ["role_code", "template_code", "template_version"]
+        ordering = ["template_code"]
 
 
 class ReportTemplateItem(SnowflakeIdModel):
@@ -60,7 +58,6 @@ class ReportTemplateItem(SnowflakeIdModel):
 class WeeklyReport(SnowflakeIdModel):
     role_code = models.CharField(max_length=64)
     template_code = models.CharField(max_length=64)
-    template_version = models.CharField(max_length=16, default="1.0")
     employee_id = models.BigIntegerField()
     group_id = models.BigIntegerField(null=True, blank=True)
     period_type = models.CharField(max_length=16, default="week")
@@ -173,14 +170,21 @@ class WeeklyReportMetric(SnowflakeIdModel):
         ordering = ["metric_code", "id"]
 
 
-class WeeklyReportEvidence(SnowflakeIdModel):
+class WeeklyReportDailyTask(SnowflakeIdModel):
+    """日报记录；与周报通过逻辑 report_id 关联，不建立数据库外键。"""
+
     report_id = models.BigIntegerField()
-    item_id = models.BigIntegerField(null=True, blank=True)
-    evidence_type = models.CharField(max_length=16, default="link")
-    file_url = models.TextField(blank=True, default="")
-    file_name = models.CharField(max_length=255, blank=True, default="")
-    description = models.CharField(max_length=500, blank=True, default="")
+    work_date = models.DateField()
+    work_content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = "weekly_report_evidence"
+        db_table = "weekly_report_daily_task"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["report_id", "work_date"],
+                name="uq_weekly_report_daily_task_date",
+            ),
+        ]
+        ordering = ["work_date", "id"]

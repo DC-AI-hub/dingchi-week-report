@@ -134,11 +134,10 @@ def switch_role(*, user: UserAccount, role_code: str) -> dict[str, Any]:
 def create_user(*, payload: Mapping[str, Any]) -> UserAccount:
     """Create a user and logical role memberships in one transaction."""
     username = str(payload.get("username") or "").strip()
-    employee_no = str(payload.get("employee_no") or "").strip()
     display_name = str(payload.get("display_name") or "").strip()
     password_ciphertext = str(payload.get("password") or "")
-    if not username or not employee_no or not display_name or not password_ciphertext:
-        raise ValueError("用户名、工号、姓名和加密密码均不能为空。")
+    if not username or not display_name or not password_ciphertext:
+        raise ValueError("用户名、姓名和加密密码均不能为空。")
     try:
         plaintext = decrypt_client_password(password_ciphertext)
     except CryptoPayloadError as exc:
@@ -152,11 +151,13 @@ def create_user(*, payload: Mapping[str, Any]) -> UserAccount:
     group_id = _optional_int(payload.get("group_id"))
     manager_id = _optional_int(payload.get("manager_id"))
     with transaction.atomic():
+        employee_no = _next_employee_no()
         user = UserAccount.objects.create(
             username=username,
             employee_no=employee_no,
             display_name=display_name,
             email=str(payload.get("email") or "").strip(),
+            phone=str(payload.get("phone") or "").strip(),
             password_ciphertext=plaintext,
             group_id=group_id,
             manager_id=manager_id,
@@ -168,15 +169,38 @@ def create_user(*, payload: Mapping[str, Any]) -> UserAccount:
     return user
 
 
+def _next_employee_no() -> str:
+    """Generate the next employee number in the ``DC000001`` sequence.
+
+    User creation locks the current user rows before calling this helper.  The
+    number is derived from the largest existing DC sequence, so deleted users
+    do not cause a previously issued number to be reused.
+    """
+    employee_numbers = list(
+        UserAccount.objects.select_for_update().values_list("employee_no", flat=True)
+    )
+    max_sequence = 0
+    for value in employee_numbers:
+        employee_no = str(value or "")
+        if not employee_no.startswith("DC"):
+            continue
+        suffix = employee_no[2:]
+        if suffix.isdigit():
+            max_sequence = max(max_sequence, int(suffix))
+    if max_sequence >= 999999:
+        raise ValueError("工号序号已达到上限，无法自动生成新的工号。")
+    return f"DC{max_sequence + 1:06d}"
+
+
 def update_user(*, user: UserAccount, payload: Mapping[str, Any]) -> UserAccount:
     """Update profile/hierarchy and optionally replace the encrypted password."""
-    allowed = {"display_name", "email", "group_id", "manager_id", "avatar_color", "status"}
+    allowed = {"display_name", "email", "phone", "group_id", "manager_id", "avatar_color", "status"}
     for field in allowed:
         if field in payload:
             value = payload[field]
             if field in {"group_id", "manager_id"}:
                 value = _optional_int(value)
-            elif field in {"display_name", "email", "avatar_color", "status"}:
+            elif field in {"display_name", "email", "phone", "avatar_color", "status"}:
                 value = str(value or "").strip()
             setattr(user, field, value)
     if payload.get("password"):
@@ -227,6 +251,7 @@ def serialize_user(user: UserAccount) -> dict[str, Any]:
         "employee_no": user.employee_no,
         "display_name": user.display_name,
         "email": user.email,
+        "phone": user.phone,
         "manager_id": str(user.manager_id) if user.manager_id is not None else None,
         "group_id": str(user.group_id) if user.group_id is not None else None,
         "avatar_color": user.avatar_color,
@@ -242,6 +267,7 @@ def serialize_role(role: Role) -> dict[str, Any]:
         "scope": role.scope,
         "description": role.description,
         "report_template_code": role.report_template_code,
+        "role_group_code": role.role_group_code,
         "status": role.status,
         "sort_order": role.sort_order,
     }

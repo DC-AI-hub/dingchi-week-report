@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue"
 
-import ExamplePreviewButton from "@/components/feedback/ExamplePreviewButton.vue"
+import ExamplePreviewButton, {
+  type ExamplePreviewField,
+} from "@/components/feedback/ExamplePreviewButton.vue"
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
 import { listUserOptions } from "@/features/directory/api"
 import type { DirectoryUserOption } from "@/features/directory/types"
@@ -19,17 +21,24 @@ import {
 import { formatDateTime } from "@/utils/date"
 
 import ReportPagination from "../../components/ReportPagination.vue"
-import TaskDetailDialog from "./TaskDetailDialog.vue"
 import TaskEditorDialog from "./TaskEditorDialog.vue"
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   title: string
   mode: "monthly" | "weekly"
   tasks: DeliveryTaskDraft[]
   ownerName?: string
   /** 后端按角色返回的列配置；未返回时使用 Excel 顺序的内置配置。 */
   fieldDefinitions?: DeliveryTaskFieldDefinition[]
-}>()
+  /** 客户是交付专员模板专属字段；职能组模板不展示客户列。 */
+  includeCustomer?: boolean
+  sampleContent?: string
+  sampleFields?: ReadonlyArray<ExamplePreviewField>
+}>(), {
+  includeCustomer: true,
+  sampleContent: deliveryWeeklyTaskSample,
+  sampleFields: () => deliveryWeeklyTaskSampleFields,
+})
 const emit = defineEmits<{ "update:tasks": [tasks: DeliveryTaskDraft[]] }>()
 const editorOpen = ref(false)
 const editorKey = ref(0)
@@ -40,6 +49,7 @@ const detailOpen = ref(false)
 const detailTask = ref<DeliveryTaskDraft | null>(null)
 const users = ref<DirectoryUserOption[]>([])
 const customerFilter = ref("")
+const plannedDateFilter = ref("")
 const taskPage = ref(1)
 const taskPageSize = 10
 const monthlyColumns: DeliveryTaskColumn[] = ["customer_name", "task_name", "work_content", "planned_completion_date", "owner_name"]
@@ -50,6 +60,7 @@ const weeklyFallbackColumns: DeliveryTaskColumn[] = [
   "on_time_status",
 ]
 const selectedColumns = ref<DeliveryTaskColumn[]>([])
+const showCustomer = computed(() => props.includeCustomer)
 
 const customerOptions = computed(() =>
   Array.from(
@@ -60,9 +71,13 @@ const customerOptions = computed(() =>
 const filteredTaskEntries = computed(() =>
   props.tasks
     .map((task, index) => ({ task, index }))
-    .filter(({ task }) => !customerFilter.value || task.customer_name === customerFilter.value)
+    .filter(({ task }) =>
+      (!customerFilter.value || task.customer_name === customerFilter.value) &&
+      (!plannedDateFilter.value || task.planned_completion_date === plannedDateFilter.value),
+    )
     // 列表按客户归组，保证同一客户的连续行可以使用 rowspan 合并展示。
     .sort((left, right) => {
+      if (!showCustomer.value) return left.index - right.index
       const customerOrder = left.task.customer_name.localeCompare(
         right.task.customer_name,
         "zh-CN",
@@ -84,7 +99,8 @@ const availableFields = computed<DeliveryTaskFieldDefinition[]>(() => {
     : deliveryTaskFieldDefinitions
   const monthlyAllowed = new Set(monthlyColumns)
   const fields = source
-    .filter((field) => field.code !== "customer_name" && field.code !== "task_name")
+    .filter((field) => (showCustomer.value ? true : field.code !== "customer_name"))
+    .filter((field) => field.code !== "task_name")
     .filter((field) => props.mode === "weekly" || monthlyAllowed.has(field.code))
     .sort((left, right) => left.sort_order - right.sort_order)
   if (fields.length) return fields
@@ -111,7 +127,7 @@ watch(availableFields, (fields) => {
   selectedColumns.value = defaultColumns(fields)
 }, { immediate: true, deep: true })
 
-watch([customerFilter, () => props.tasks.length], () => {
+watch([customerFilter, plannedDateFilter, () => props.tasks.length], () => {
   taskPage.value = 1
 })
 
@@ -188,6 +204,7 @@ function removeTask(index: number) {
 }
 
 function customerRowspan(index: number) {
+  if (!showCustomer.value) return 1
   const entries = pagedTaskEntries.value
   const currentCustomer = entries[index]?.task.customer_name || ""
   if (index > 0 && (entries[index - 1]?.task.customer_name || "") === currentCustomer) return 0
@@ -209,11 +226,11 @@ onMounted(() => void loadUsers())
 <template>
   <section class="dashboard-card task-section">
     <header class="task-section__header">
-      <div><h2>{{ title }}</h2><span>共 {{ tasks.length }} 条</span></div>
+      <div><h2>{{ title }}</h2></div>
       <div class="task-section__actions">
         <ExamplePreviewButton
-          :content="deliveryWeeklyTaskSample"
-          :fields="deliveryWeeklyTaskSampleFields"
+          :content="sampleContent"
+          :fields="sampleFields"
           panel-title="本周工作任务填写样例"
         />
         <button class="ghost-button" type="button" @click="columnsOpen = true">选择展示字段</button>
@@ -221,12 +238,13 @@ onMounted(() => void loadUsers())
       </div>
     </header>
     <div class="task-section__filters">
+      <select v-if="showCustomer" v-model="customerFilter" aria-label="按客户筛选">
+        <option value="">全部客户</option>
+        <option v-for="customer in customerOptions" :key="customer" :value="customer">{{ customer }}</option>
+      </select>
       <label>
-        <span>客户</span>
-        <select v-model="customerFilter" aria-label="按客户筛选">
-          <option value="">全部客户</option>
-          <option v-for="customer in customerOptions" :key="customer" :value="customer">{{ customer }}</option>
-        </select>
+        <span>计划完成时间</span>
+        <input v-model="plannedDateFilter" type="date" aria-label="按计划完成时间筛选" />
       </label>
     </div>
     <div class="task-table-wrap">
@@ -234,8 +252,11 @@ onMounted(() => void loadUsers())
         <thead>
           <tr>
             <th class="fixed-col serial-col">序号</th>
-            <th class="fixed-col customer-col">客户</th>
-            <th class="fixed-col task-col">工作任务</th>
+            <th v-if="showCustomer" class="fixed-col customer-col">客户</th>
+            <th
+              class="fixed-col task-col"
+              :class="{ 'task-col--without-customer': !showCustomer }"
+            >工作任务</th>
             <th v-for="field in selectedFields" :key="field.code" class="dynamic-column">{{ field.label }}</th>
             <th class="fixed-col updated-at-col">更新时间</th>
             <th class="fixed-col actions-col">操作</th>
@@ -245,13 +266,16 @@ onMounted(() => void loadUsers())
           <tr v-for="(entry, pageIndex) in pagedTaskEntries" :key="entry.task.client_key">
             <td class="fixed-col serial-col">{{ (taskPage - 1) * taskPageSize + pageIndex + 1 }}</td>
             <td
-              v-if="customerRowspan(pageIndex) > 0"
+              v-if="showCustomer && customerRowspan(pageIndex) > 0"
               class="fixed-col customer-col customer-cell"
               :rowspan="customerRowspan(pageIndex)"
             >
               <span class="cell-text" :title="displayValue(entry.task, 'customer_name')">{{ displayValue(entry.task, "customer_name") }}</span>
             </td>
-            <td class="fixed-col task-col task-cell">
+            <td
+              class="fixed-col task-col task-cell"
+              :class="{ 'task-col--without-customer': !showCustomer }"
+            >
               <button class="task-link" type="button" :title="displayValue(entry.task, 'task_name')" @click="openTaskDetail(entry.task)">
                 {{ displayValue(entry.task, "task_name") }}
               </button>
@@ -265,7 +289,7 @@ onMounted(() => void loadUsers())
             <td class="fixed-col updated-at-col date-cell">{{ formatDateTime(entry.task.updated_at) }}</td>
             <td class="fixed-col actions-col"><button class="link-button" type="button" @click="editTask(entry.index)">编辑</button><button class="link-button danger" type="button" @click="removeTask(entry.index)">删除</button></td>
           </tr>
-          <tr v-if="!filteredTaskEntries.length"><td :colspan="selectedFields.length + 5" class="empty">暂无任务，请新增</td></tr>
+          <tr v-if="!filteredTaskEntries.length"><td :colspan="selectedFields.length + (showCustomer ? 5 : 4)" class="empty">暂无任务，请新增</td></tr>
         </tbody>
       </table>
     </div>
@@ -278,8 +302,17 @@ onMounted(() => void loadUsers())
     />
   </section>
 
-  <TaskEditorDialog :key="editorKey" :open="editorOpen" :task="editingTask" :mode="mode" :owner-name="ownerName" :users="users" @close="editorOpen = false" @save="saveTask" />
-  <TaskDetailDialog :open="detailOpen" :task="detailTask" :mode="mode" @close="detailOpen = false" />
+  <TaskEditorDialog :key="editorKey" :open="editorOpen" :task="editingTask" :mode="mode" :owner-name="ownerName" :users="users" :include-customer="showCustomer" @close="editorOpen = false" @save="saveTask" />
+  <TaskEditorDialog
+    :open="detailOpen"
+    :task="detailTask"
+    :mode="mode"
+    :owner-name="ownerName"
+    :users="users"
+    :include-customer="showCustomer"
+    :readonly="true"
+    @close="detailOpen = false"
+  />
   <BaseDialog :open="columnsOpen" title="选择展示字段" width="620px" @close="columnsOpen = false">
     <div class="column-options">
       <label v-for="field in availableFields" :key="field.code"><input v-model="selectedColumns" :value="field.code" type="checkbox" />{{ field.label }}</label>

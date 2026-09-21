@@ -19,7 +19,7 @@ src/
 │  ├─ auth/              # 登录、Bearer 会话和角色切换
 │  ├─ dashboard/         # 驾驶舱聚合数据
 │  ├─ directory/         # 用户、角色、分组管理
-│  ├─ weekly-report/     # 周报模板、草稿、提交和审核
+│  ├─ weekly-report/     # 周报模板、周期状态和附件
 │  └─ chat/
 ├─ layouts/             # 页面布局
 ├─ shared/api/          # Axios 实例、统一响应、错误处理和安全接口
@@ -27,9 +27,6 @@ src/
 ├─ styles/              # 全局样式入口、主题变量、重置和基础类
 ├─ utils/               # 无业务语义的全局纯工具函数
 └─ views/               # 按功能模块组织的路由页面
-   ├─ home/
-   │  ├─ IndexView.vue  # 模块主入口页面
-   │  └─ components/    # 仅供本模块使用的页面组件
    ├─ chat/
    │  ├─ IndexView.vue
    │  └─ components/
@@ -38,9 +35,10 @@ src/
    │  └─ components/
    ├─ weekly-report/
    │  ├─ IndexView.vue
+   │  ├─ TemplateEditorView.vue
    │  ├─ EditView.vue
    │  ├─ DetailView.vue
-   │  ├─ ReviewView.vue
+   │  ├─ templates/       # 按 template_code/{version} 隔离的专用页面
    │  └─ components/
    ├─ users/
    │  └─ IndexView.vue
@@ -88,6 +86,6 @@ npm run preview
 
 - `/login`：RSA-OAEP-SHA256 密码传输登录，支持本地演示账号。
 - `/`：蓝白风格周报驾驶舱，趋势图和环形图使用 ECharts Canvas 渲染。
-- `/weekly-reports`、`/weekly-reports/new`：周报列表、角色模板驱动填写、保存草稿和提交。
-- `/weekly-reports/all`：总裁和系统管理员查看全量周报。
+- `/weekly-reports`、`/weekly-reports/new`：周报列表和模板编码驱动的填写；招聘专员与招聘经理共同绑定 `recruitment_v1`，页面入口位于 `views/weekly-report/templates/recruitment/v1/`。
+- `/weekly-reports/:id`：公共详情页，按周报保存的 `template_code` 展示任务字段。
 - `/users`、`/roles`：用户上下级/分组、角色和模板范围管理。

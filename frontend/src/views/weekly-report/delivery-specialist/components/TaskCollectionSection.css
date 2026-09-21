@@ -1,4 +1,4 @@
-.task-section { padding: 22px; }
+.task-section { min-width: 0; max-width: 100%; padding: 22px; }
 .task-section__header,
 .task-section__header > div,
 .task-section__actions { display: flex; align-items: center; }
@@ -8,10 +8,11 @@
 .task-section__header span { color: #7891b5; }
 .task-section__actions { gap: 10px; }
 .task-section__filters { display: flex; align-items: center; gap: 12px; margin: -4px 0 14px; }
+.task-section__filters input[type="date"] { min-width: 170px; border: 1px solid #cfe0f5; border-radius: 10px; padding: 9px 12px; color: #173764; background: #f7faff; font: inherit; }
 .task-section__filters label { display: flex; align-items: center; gap: 8px; color: #58749c; font-size: 14px; font-weight: 700; }
 .task-section__filters select { min-width: 220px; border: 1px solid #cfe0f5; border-radius: 10px; padding: 9px 12px; color: #173764; background: #f7faff; font: inherit; font-weight: 500; }
 .task-section__filters select:focus { border-color: #2778e8; outline: 3px solid rgba(39, 120, 232, 0.12); }
-.task-table-wrap { overflow-x: auto; border: 1px solid #d9e7f8; border-radius: 14px; }
+.task-table-wrap { width: 100%; min-width: 0; max-width: 100%; overflow-x: auto; overflow-y: hidden; border: 1px solid #d9e7f8; border-radius: 14px; overscroll-behavior-x: contain; }
 .task-table { width: 100%; min-width: 1080px; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
 .task-table th {
   padding: 13px 3px;
@@ -42,6 +43,7 @@
 .task-table .serial-col { left: 0; width: 56px; min-width: 56px; max-width: 56px; text-align: center; }
 .task-table .customer-col { left: 56px; width: 150px; min-width: 150px; max-width: 150px; }
 .task-table .task-col { left: 206px; width: 220px; min-width: 220px; max-width: 220px; box-shadow: 2px 0 0 #c4d8ee; }
+.task-table .task-col--without-customer { left: 56px; }
 .task-table .updated-at-col { right: 112px; width: 174px; min-width: 174px; max-width: 174px; white-space: nowrap; box-shadow: -2px 0 0 #c4d8ee; }
 .task-table .actions-col { right: 0; width: 112px; min-width: 112px; max-width: 112px; white-space: nowrap; }
 .task-table .dynamic-column { width: 180px; min-width: 180px; max-width: 180px; }

@@ -8,7 +8,7 @@ import { useAuthStore } from "@/features/auth/store"
 const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
-const form = reactive({ username: "delivery.specialist", password: "Worker@123" })
+const form = reactive({ username: "delivery.specialist", password: "aa123456" })
 const showPassword = ref(false)
 const localError = ref("")
 
@@ -75,11 +75,6 @@ async function handleSubmit() {
         </button>
       </form>
 
-      <div class="demo-tip">
-        <span>本地演示账号</span>
-        <p>交付专员：delivery.specialist / Worker@123</p>
-        <p>系统管理员：admin / Admin@123</p>
-      </div>
     </section>
     <p class="login-footer">DingChi Week Report · Local Development</p>
   </div>

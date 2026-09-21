@@ -8,11 +8,17 @@ const props = withDefaults(
     description?: string
     busy?: boolean
     width?: string
+    height?: string
+    fullscreen?: boolean
+    overflowVisible?: boolean
   }>(),
   {
     description: "",
     busy: false,
     width: "640px",
+    height: "",
+    fullscreen: false,
+    overflowVisible: false,
   },
 )
 
@@ -47,9 +53,14 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown))
         <section
           aria-modal="true"
           class="dialog-panel"
+          :class="{
+            'dialog-panel--fixed': Boolean(height) || fullscreen,
+            'dialog-panel--fullscreen': fullscreen,
+            'dialog-panel--overflow-visible': overflowVisible,
+          }"
           role="dialog"
           :aria-label="title"
-          :style="{ '--dialog-width': width }"
+          :style="{ '--dialog-width': width, '--dialog-height': height || undefined }"
         >
           <header class="dialog-header">
             <div>
