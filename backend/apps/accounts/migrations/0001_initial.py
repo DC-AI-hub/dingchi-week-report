@@ -39,7 +39,7 @@ class Migration(migrations.Migration):
                 ('role_name', models.CharField(max_length=128)),
                 ('scope', models.CharField(default='self', max_length=16)),
                 ('description', models.CharField(blank=True, default='', max_length=255)),
-                ('report_template_code', models.CharField(default='general_v1', max_length=64)),
+                ('report_template_code', models.CharField(blank=True, default='', max_length=64)),
                 ('role_group_code', models.CharField(blank=True, default='', help_text='角色所属分组编码，逻辑关联 organization_group.group_code。', max_length=64)),
                 ('status', models.CharField(default='active', max_length=16)),
                 ('sort_order', models.PositiveIntegerField(default=0)),

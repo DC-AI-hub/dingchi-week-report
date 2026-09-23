@@ -9,6 +9,7 @@
 | `01_建表DDL.sql` | 创建当前项目已知的业务表和 Django 框架表。所有建表语句均为 `CREATE TABLE IF NOT EXISTS`，已有表不会被覆盖。表名、字段名均使用下划线命名，并为表和每个字段提供中文注释。 |
 | `02_初始化DML.sql` | 唯一的系统配置初始化脚本，包含字典、组织、角色、用户、周报模板及模板字段；执行时先清空配置表，再重新插入，可重复执行，不初始化或清理周报、月度计划等业务数据。 |
 | `03_查询所有表.sql` | 只读查询脚本：先查询当前数据库的表名、表注释和估算行数，再逐表查询业务表及 Django 框架表数据。 |
+| `04_统一周报任务状态.sql` | 已初始化数据库的增量脚本：移除废弃的 `weekly_report_item.item_status` 字段，任务状态统一使用 `on_time_status`。 |
 | `05_新增用户手机号字段.sql` | 已初始化数据库的增量脚本，为 `user_account` 增加手机号字段；新库的 `01_建表DDL.sql` 已直接包含该字段。 |
 | `06_新增每日工作任务表.sql` | 已初始化数据库的增量脚本，新增周报日报表；按周报 ID 和日期唯一约束，一个周报每天只能填写一条日报。 |
 | `99_删除所有表.sql` | 删除本项目当前已知的全部业务表和 Django 框架表。脚本会删除数据，执行前必须确认数据库和备份。 |
@@ -41,6 +42,8 @@
 文档链接保存在周报任务的 `document_links` 字段；用户上传的实际文件统一写入系统通用附件表 `system_attachment`。附件通过 `attachment_type` 标识业务类型（当前周报接口固定写入 `weekly_report`），通过 `relation_id` 逻辑关联业务主记录（周报 ID），通过可选 `relation_sub_id` 逻辑关联业务子记录（周报任务 ID）。后续其他功能复用此表时，只需定义新的业务类型和对应的关联 ID，不需要再建一张业务专用附件表。文件实际存储根目录由 `.env` 的 `MEDIA_ROOT` 配置：填写相对路径时相对 `backend` 目录，填写 `/opt/dingchi-week-report/data/files` 这类绝对路径时直接使用宿主机目录；`ATTACHMENT_UPLOAD_DIR` 是相对于 `MEDIA_ROOT` 的分类子目录（默认 `weekly-report`）。因此默认文件路径为 `backend/media/weekly-report/{report_id}/...`，配置绝对根目录后则为 `/opt/dingchi-week-report/data/files/weekly-report/{report_id}/...`。表中同时保存 `storage_key`、访问地址、原始文件名、MIME 类型和字节大小。
 
 周报任务列表字段使用 `system_dictionary` 管理：字典类型为 `weekly_report_fields_{template_code}`（模板编码含版本号），`dict_code` 为字段编码，`dict_name` 为页面中文列名，`sort_order` 为展示顺序，`dict_value` 为默认展示标记（`1` 展示、`0` 隐藏）。目前已初始化交付专员、交付助理、招聘、ITO 销售和创新业务销售模板的 Excel 字段顺序；后续模板版本可按同一规则新增独立字典项。
+
+周报任务明细只保留 `on_time_status` 一个状态字段，允许值为 `pending`（待完成）、`in_progress`（进行中）、`on_time`（按时完成）、`late`（延期完成）、`overdue`（逾期未完成）、`not_applicable`（不适用）和 `completed`（已完成）。`item_status` 已废弃，后端查询、保存、统计和前端展示均不再读取或写入该字段。
 
 本目录统一管理数据库 SQL（建表 DDL、初始化 DML 和删除脚本）。`backend/scripts/` 仅保留密钥生成、服务探测等可执行 Python 工具，不属于数据库脚本。
 ### 每日工作任务

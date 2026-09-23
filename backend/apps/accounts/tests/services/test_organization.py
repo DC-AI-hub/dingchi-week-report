@@ -24,7 +24,7 @@ def _seed_role_dictionaries() -> None:
             DictionaryItem(dict_type="role_scope", dict_code="team", dict_name="本人及下属团队"),
             DictionaryItem(dict_type="role_scope", dict_code="all", dict_name="全部数据"),
             DictionaryItem(
-                dict_type="report_template", dict_code="general_v1", dict_name="通用周报"
+                dict_type="report_template", dict_code="delivery_specialist_v1", dict_name="交付专员周报"
             ),
         ]
     )
@@ -60,6 +60,7 @@ def test_create_role_rejects_duplicate_code() -> None:
                 "role_code": "duplicate_role",
                 "role_name": "重复角色",
                 "role_group_code": "operations",
+                "report_template_code": "delivery_specialist_v1",
             }
         )
 
@@ -74,7 +75,7 @@ def test_create_role_requires_active_dictionary_codes() -> None:
                 "role_code": "invalid_scope_role",
                 "role_name": "非法范围角色",
                 "scope": "department",
-                "report_template_code": "general_v1",
+                "report_template_code": "delivery_specialist_v1",
             }
         )
 

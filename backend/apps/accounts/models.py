@@ -31,7 +31,9 @@ class Role(SnowflakeIdModel):
     role_name = models.CharField(max_length=128)
     scope = models.CharField(max_length=16, default="self")
     description = models.CharField(max_length=255, blank=True, default="")
-    report_template_code = models.CharField(max_length=64, default="general_v1")
+    # 角色可以暂不绑定模板；填写或查看周报时由业务层明确提示配置模板，
+    # 不再隐式落到已经废弃的通用周报页面。
+    report_template_code = models.CharField(max_length=64, blank=True, default="")
     role_group_code = models.CharField(
         max_length=64,
         blank=True,

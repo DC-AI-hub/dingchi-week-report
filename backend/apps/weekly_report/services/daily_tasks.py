@@ -11,14 +11,14 @@ from apps.accounts.models import UserAccount
 
 from ..models import WeeklyReport, WeeklyReportDailyTask
 from .reports import (
-    REPORT_STATUS_ACTIVE,
+    REPORT_STATUS_IN_PROGRESS,
     ReportConflictError,
     ReportError,
     ReportNotFoundError,
     ReportPermissionError,
     _get_accessible_report,
+    _effective_report_status,
     _parse_optional_date,
-    _period_status,
     _serialize_row,
 )
 
@@ -103,8 +103,8 @@ def _get_editable_report(
         raise ReportNotFoundError("周报不存在。")
     if int(report.employee_id) != int(user.id) or report.role_code != role_code:
         raise ReportPermissionError("只能维护当前角色下自己的日报。")
-    if _period_status(report.period_start, report.period_end) != REPORT_STATUS_ACTIVE:
-        raise ReportError("仅当前周报周期可以填写或修改日报。")
+    if _effective_report_status(report.status, report.period_start) != REPORT_STATUS_IN_PROGRESS:
+        raise ReportError("仅进行中的周报可以填写或修改日报。")
     return report
 
 

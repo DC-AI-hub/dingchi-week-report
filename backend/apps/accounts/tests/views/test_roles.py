@@ -21,7 +21,7 @@ def _seed_role_dictionaries() -> None:
             DictionaryItem(dict_type="role_scope", dict_code="team", dict_name="本人及下属团队"),
             DictionaryItem(dict_type="role_scope", dict_code="all", dict_name="全部数据"),
             DictionaryItem(
-                dict_type="report_template", dict_code="general_v1", dict_name="通用周报"
+                dict_type="report_template", dict_code="delivery_specialist_v1", dict_name="交付专员周报"
             ),
             DictionaryItem(
                 dict_type="report_template", dict_code="project_v1", dict_name="项目周报"
@@ -37,7 +37,7 @@ def test_patch_role_uses_unified_detail_endpoint(client) -> None:
         role_code="project_specialist",
         role_name="项目专员",
         scope="self",
-        report_template_code="general_v1",
+        report_template_code="delivery_specialist_v1",
         role_group_code="delivery",
     )
 

@@ -68,6 +68,11 @@
   background: #edf6ff;
 }
 
+.results-more--disabled {
+  color: #b1c2d8;
+  cursor: default;
+}
+
 .result-list {
   display: grid;
   gap: 7px;

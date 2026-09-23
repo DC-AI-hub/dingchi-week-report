@@ -9,6 +9,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS `system_attachment`;
 DROP TABLE IF EXISTS `weekly_report_daily_task`;
 DROP TABLE IF EXISTS `weekly_report_metric`;
+DROP TABLE IF EXISTS `weekly_report_item_progress_history`;
 DROP TABLE IF EXISTS `weekly_report_item`;
 DROP TABLE IF EXISTS `weekly_report`;
 DROP TABLE IF EXISTS `monthly_plan`;

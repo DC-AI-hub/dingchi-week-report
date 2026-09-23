@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue"
-import { useRoute } from "vue-router"
+import { useRoute, useRouter } from "vue-router"
 
 import { useAuthStore } from "@/features/auth/store"
+import AlertDialog from "@/components/feedback/AlertDialog.vue"
 import { getReportDetail } from "@/features/weekly-report/api"
 import { resolveTemplateEditor } from "@/features/weekly-report/template-registry"
-import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const templateCode = ref("")
 const isLoading = ref(true)
@@ -32,6 +33,9 @@ async function loadTemplateCode() {
       templateCode.value = routeTemplateCode || roleTemplateCode
     }
     if (!templateCode.value) throw new Error("当前角色未配置周报模板。")
+    if (!resolveTemplateEditor(templateCode.value)) {
+      throw new Error("当前角色绑定的周报模板暂不支持填写。")
+    }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "周报模板加载失败。"
   } finally {
@@ -39,11 +43,21 @@ async function loadTemplateCode() {
   }
 }
 
+function closeTemplateError() {
+  errorMessage.value = ""
+  void router.replace({ name: "weekly-reports" })
+}
+
 onMounted(() => void loadTemplateCode())
 </script>
 
 <template>
   <div v-if="isLoading" class="dashboard-card loading-card">正在加载周报模板</div>
-  <NoticeBridge v-else-if="errorMessage" :warning-message="errorMessage" />
   <component :is="editor" v-else-if="editor" />
+  <AlertDialog
+    :open="Boolean(errorMessage)"
+    title="周报模板不可用"
+    :message="errorMessage"
+    @close="closeTemplateError"
+  />
 </template>

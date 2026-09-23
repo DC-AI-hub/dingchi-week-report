@@ -31,7 +31,7 @@ function percent(value: number | null) {
       <span class="task-progress-value">{{ percent(task.progress_percent) }}</span>
       <span class="task-rate">{{ percent(task.completion_rate) }}</span>
       <span class="status-pill" :class="`status-pill--${task.on_time_status}`">
-        {{ task.on_time_status === "overdue" || task.on_time_status === "late" ? "延期" : task.on_time_status === "on_time" ? "已完成" : "进行中" }}
+        {{ task.on_time_status === "pending" ? "待完成" : task.on_time_status === "overdue" || task.on_time_status === "late" ? "延期" : task.on_time_status === "on_time" || task.on_time_status === "completed" ? "已完成" : "进行中" }}
       </span>
     </article>
   </div>

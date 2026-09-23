@@ -2,6 +2,7 @@
 import { BarChart3, Building2, ListChecks, PieChart } from "lucide-vue-next"
 
 import type { DashboardDistribution, DashboardTrendPoint } from "@/features/dashboard/types"
+import personalOverallCompletionBg from "@/assets/dashboard/personal-overall-completion-bg.png"
 
 import LeaderGaugeChart from "./LeaderGaugeChart.vue"
 import LeaderOutputChart from "./LeaderOutputChart.vue"
@@ -22,7 +23,11 @@ const props = defineProps<{
     <article class="leader-panel leader-panel--trend">
       <div class="leader-panel-heading">
         <span class="leader-panel-icon leader-panel-icon--blue"><BarChart3 :size="16" /></span>
-        <div><span class="leader-panel-kicker">执行走势</span><h2 class="leader-panel-title">总体执行趋势</h2></div>
+        <div><h2 class="leader-panel-title">总体执行趋势</h2></div>
+        <div v-if="props.trend.length" class="leader-trend-legend" aria-label="趋势图例">
+          <span class="leader-legend-blue">任务进度</span>
+          <span class="leader-legend-green">完成率</span>
+        </div>
       </div>
       <LeaderTrendChart :points="props.trend" />
     </article>
@@ -30,14 +35,14 @@ const props = defineProps<{
     <article class="leader-panel">
       <div class="leader-panel-heading">
         <span class="leader-panel-icon leader-panel-icon--purple"><Building2 :size="16" /></span>
-        <div><span class="leader-panel-kicker">团队表现</span><h2 class="leader-panel-title">部门完成情况</h2></div>
+        <div><h2 class="leader-panel-title">部门完成情况</h2></div>
       </div>
       <div v-if="!props.departments.length" class="leader-panel-empty">暂无部门数据</div>
       <div v-else class="department-list">
         <div v-for="department in props.departments" :key="department.name" class="department-row">
-          <div class="department-row__meta"><span>{{ department.name }}</span><strong>{{ department.rate }}%</strong></div>
+          <span class="department-name" :title="department.name">{{ department.name }}</span>
           <div class="department-track"><span :style="{ width: `${Math.min(100, Math.max(0, department.rate))}%` }" /></div>
-          <small>{{ department.taskCount }} 项任务</small>
+          <strong>{{ department.rate }}%</strong>
         </div>
       </div>
     </article>
@@ -45,7 +50,7 @@ const props = defineProps<{
     <article class="leader-panel leader-panel--output">
       <div class="leader-panel-heading">
         <span class="leader-panel-icon leader-panel-icon--green"><PieChart :size="16" /></span>
-        <div><span class="leader-panel-kicker">成果沉淀</span><h2 class="leader-panel-title">输出成果构成</h2></div>
+        <div><h2 class="leader-panel-title">输出成果构成</h2></div>
       </div>
       <div class="output-layout">
         <LeaderOutputChart :data="props.outputDistribution" :total="props.outputTotal" />
@@ -61,9 +66,10 @@ const props = defineProps<{
     </article>
 
     <article class="leader-panel leader-panel--completion">
+      <img class="leader-completion-artwork" :src="personalOverallCompletionBg" alt="" aria-hidden="true" />
       <div class="leader-panel-heading">
         <span class="leader-panel-icon leader-panel-icon--amber"><ListChecks :size="16" /></span>
-        <div><span class="leader-panel-kicker">计划执行</span><h2 class="leader-panel-title">按计划完成情况</h2></div>
+        <div><h2 class="leader-panel-title">按计划完成情况</h2></div>
       </div>
       <LeaderGaugeChart :value="props.completionRate" />
       <p class="completion-note">按当前周报任务的计划完成情况计算</p>

@@ -65,8 +65,8 @@ class WeeklyReport(SnowflakeIdModel):
     period_start = models.DateField()
     period_end = models.DateField()
     as_of_date = models.DateField()
-    # 状态由周报周期动态决定：active/pending_activation/archived。
-    status = models.CharField(max_length=24, default="active")
+    # 状态持久化保存：not_started/in_progress/completed；提交只由用户手动触发。
+    status = models.CharField(max_length=24, default="in_progress")
     summary = models.TextField(blank=True, default="")
     risk_level = models.CharField(max_length=16, default="none")
     risk_blocked = models.BooleanField(default=False)
@@ -133,7 +133,6 @@ class WeeklyReportItem(SnowflakeIdModel):
     owner_name_snapshot = models.CharField(max_length=128, blank=True, default="")
     collaborator_names = models.CharField(max_length=500, blank=True, default="")
     document_links = models.TextField(blank=True, default="")
-    item_status = models.CharField(max_length=16, default="pending")
     sort_order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -141,6 +140,32 @@ class WeeklyReportItem(SnowflakeIdModel):
     class Meta:
         db_table = "weekly_report_item"
         ordering = ["sort_order", "id"]
+
+
+class WeeklyReportItemProgressHistory(SnowflakeIdModel):
+    """任务进度历史快照；通过逻辑 ID 关联周报和任务，不建立数据库外键。"""
+
+    report_id = models.BigIntegerField()
+    report_item_id = models.BigIntegerField()
+    task_code_snapshot = models.CharField(max_length=64)
+    progress_percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    quality_percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    completion_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    on_time_status = models.CharField(max_length=24, default="in_progress")
+    record_date = models.DateField()
+    recorded_by = models.BigIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "weekly_report_item_progress_history"
+        indexes = [
+            models.Index(fields=["report_id", "record_date"], name="idx_wriph_report_date"),
+            models.Index(
+                fields=["report_id", "task_code_snapshot", "created_at"],
+                name="idx_wriph_task_time",
+            ),
+        ]
+        ordering = ["record_date", "created_at", "id"]
 
 
 class WeeklyReportMetric(SnowflakeIdModel):

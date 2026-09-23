@@ -1,17 +1,13 @@
 <script setup lang="ts">
-import { CalendarDays } from "lucide-vue-next"
-
 import personalProgressMotto from "@/assets/dashboard/personal-progress-motto.png"
+import WeekPeriodPicker from "@/components/form/WeekPeriodPicker.vue"
 
 defineProps<{
   period: { start: string; end: string }
   roleName: string
   userName: string
 }>()
-
-function formatPeriod(value: string) {
-  return value ? value.replaceAll("-", ".") : "—"
-}
+const emit = defineEmits<{ "update:start": [value: string] }>()
 </script>
 
 <template>
@@ -29,11 +25,7 @@ function formatPeriod(value: string) {
     <img class="header-motto-art" :src="personalProgressMotto" alt="持续进步，遇见更好的自己！" />
 
     <div class="header-period">
-      <div class="period-main">
-        <span>本周</span>
-        <strong>{{ formatPeriod(period.start) }} - {{ formatPeriod(period.end) }}</strong>
-        <CalendarDays class="period-calendar" :size="17" :stroke-width="2" aria-hidden="true" />
-      </div>
+      <WeekPeriodPicker class="period-main" :start="period.start" :end="period.end" @update:start="emit('update:start', $event)" />
       <div class="period-owner">专注当下 · 积累成长 · 创造更大价值</div>
     </div>
   </header>

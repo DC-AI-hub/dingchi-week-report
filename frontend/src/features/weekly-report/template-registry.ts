@@ -27,9 +27,7 @@ const templateEditors: Record<string, Component> = {
   ),
 }
 
-const genericEditor = defineAsyncComponent(() => import("@/views/weekly-report/EditView.vue"))
-
-export function resolveTemplateEditor(templateCode: string): Component {
-  // 未注册的模板使用通用 schema 编辑器，不会误用其他模板版本的页面。
-  return templateEditors[templateCode] || genericEditor
+export function resolveTemplateEditor(templateCode: string): Component | null {
+  // 模板编码必须精确匹配已注册的版本页面；未知编码不能回退到默认页面。
+  return templateEditors[templateCode] || null
 }

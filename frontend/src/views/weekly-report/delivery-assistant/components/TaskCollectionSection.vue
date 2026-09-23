@@ -45,7 +45,7 @@ function removeTask(index: number) { emit("update:tasks", props.tasks.filter((_,
 function customerRowspan(index: number) { const entries = pagedTaskEntries.value; const current = entries[index]?.task.customer_name || ""; if (index > 0 && (entries[index - 1]?.task.customer_name || "") === current) return 0; let rowspan = 1; while (entries[index + rowspan]?.task.customer_name === current) rowspan += 1; return rowspan }
 function displayValue(task: DeliveryAssistantTaskDraft, column: DeliveryAssistantTaskColumn) {
   if (column === "progress_percent" || column === "quality_percent" || column === "completion_rate") return `${Math.round(Number(task[column] ?? 0))}%`
-  if (column === "on_time_status") return ({ in_progress: "进行中", on_time: "按时完成", late: "延期完成", overdue: "逾期未完成", not_applicable: "不适用" } as Record<string, string>)[task[column]] || "—"
+  if (column === "on_time_status") return ({ pending: "待完成", in_progress: "进行中", on_time: "按时完成", late: "延期完成", overdue: "逾期未完成", completed: "已完成", not_applicable: "不适用" } as Record<string, string>)[task[column]] || "—"
   return task[column] || "—"
 }
 onMounted(() => void loadUsers())

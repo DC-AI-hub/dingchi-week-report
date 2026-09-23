@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BarChart3, CheckCircle2, FileText, ListChecks, Star } from "lucide-vue-next"
+import { BarChart3, CheckCircle2, FileText, ListChecks, Settings, Star } from "lucide-vue-next"
 
 import type { DashboardTeamTask } from "@/features/dashboard/types"
 
@@ -17,7 +17,7 @@ function formatProgress(value: number | string | null | undefined) {
 }
 
 function taskState(task: DashboardTeamTask) {
-  return task.report_status === "active" ? "进行中" : task.report_status === "archived" ? "已归档" : "待激活"
+  return task.report_status === "completed" ? "已完成" : task.report_status === "in_progress" ? "进行中" : "待开始"
 }
 </script>
 
@@ -32,7 +32,7 @@ function taskState(task: DashboardTeamTask) {
         <table class="leader-task-table">
           <thead><tr><th>序号</th><th>工作任务</th><th>主要工作内容</th><th>输出成果</th><th>计划完成时间</th><th>工作进度</th><th>完成进度</th><th>计划执行情况</th><th>责任人</th><th>协作人</th></tr></thead>
           <tbody>
-            <tr v-for="(task, index) in props.tasks.slice(0, 8)" :key="task.id">
+            <tr v-for="(task, index) in props.tasks.slice(0, 3)" :key="task.id">
               <td>{{ index + 1 }}</td>
               <td class="leader-task-table__strong" :title="task.task_name_snapshot || undefined">{{ task.task_name_snapshot || "未命名任务" }}</td>
               <td :title="task.work_content || undefined">{{ task.work_content || "—" }}</td>
@@ -40,7 +40,7 @@ function taskState(task: DashboardTeamTask) {
               <td>{{ formatDate(task.planned_completion_date) }}</td>
               <td :title="task.progress_text || undefined">{{ task.progress_text || "—" }}</td>
               <td><span class="leader-progress"><i :style="{ width: `${Math.min(100, Math.max(0, Number(task.completion_rate) || 0))}%` }" /><b>{{ formatProgress(task.completion_rate) }}</b></span></td>
-              <td><span class="leader-status" :class="`leader-status--${taskState(task) === '进行中' ? 'active' : taskState(task) === '已归档' ? 'archived' : 'pending'}`">{{ taskState(task) }}</span></td>
+              <td><span class="leader-status" :class="`leader-status--${taskState(task) === '进行中' ? 'progress' : taskState(task) === '已完成' ? 'done' : 'pending'}`">{{ taskState(task) }}</span></td>
               <td>{{ task.employee_name || "—" }}</td>
               <td :title="task.collaborator_names || undefined">{{ task.collaborator_names || "—" }}</td>
             </tr>
@@ -48,7 +48,7 @@ function taskState(task: DashboardTeamTask) {
           </tbody>
         </table>
       </div>
-      <div v-if="props.tasks.length > 8" class="leader-work-foot">展示前 8 项任务，其余可在周报列表中查看</div>
+      <div v-if="props.tasks.length > 3" class="leader-work-foot">展示前 3 项任务，其余可在周报列表中查看</div>
     </article>
 
     <article class="leader-result-panel">
@@ -58,8 +58,12 @@ function taskState(task: DashboardTeamTask) {
       </div>
       <div v-if="!props.results.length" class="leader-result-empty"><FileText :size="22" /><span>暂无成果记录</span></div>
       <div v-else class="leader-result-list">
-        <div v-for="result in props.results" :key="result.id" class="leader-result-card">
-          <span class="leader-result-card__icon"><CheckCircle2 :size="17" /></span>
+        <div v-for="(result, index) in props.results.slice(0, 3)" :key="result.id" class="leader-result-card">
+          <span class="leader-result-card__icon">
+            <CheckCircle2 v-if="index === 0" :size="22" />
+            <BarChart3 v-else-if="index === 1" :size="22" />
+            <Settings v-else :size="22" />
+          </span>
           <div class="leader-result-card__body"><strong :title="result.name">{{ result.name }}</strong><span>{{ result.category }} · {{ result.owner || "未填写负责人" }}</span><small :title="result.file">{{ result.file }}</small></div>
         </div>
       </div>

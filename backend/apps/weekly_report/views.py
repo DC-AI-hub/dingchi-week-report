@@ -23,8 +23,10 @@ from .services.reports import (
     ReportError,
     ReportNotFoundError,
     ReportPermissionError,
+    submit_report,
     create_or_update_report,
     dashboard_summary,
+    dashboard_next_week,
     delete_report,
     get_monthly_plan,
     get_report_detail,
@@ -67,13 +69,40 @@ def _error(exc: Exception) -> JsonResponse:
 def dashboard_view(request: HttpRequest) -> JsonResponse:
     """按当前激活角色返回驾驶舱 KPI、趋势、状态分布和可见周报。
 
-    方法/路径：GET /api/v1/dashboard/summary/；认证：Bearer；参数：无；幂等：是。
+    方法/路径：GET /api/v1/dashboard/summary/；认证：Bearer；参数：period_start（可选，YYYY-MM-DD，必须为周一）；幂等：是。
     权限：个人仅自己，经理含下属，总裁/系统管理员含全部；成功响应为 dashboard JSON。
     失败：401 AUTHENTICATION_FAILED；追踪：响应带 X-Trace-ID；字段只增不改。
     """
     try:
         user, role_code = require_request_user(request)
-        return api_success(dashboard_summary(user=user, role_code=role_code))
+        return api_success(
+            dashboard_summary(
+                user=user,
+                role_code=role_code,
+                period_start=request.GET.get("period_start"),
+            )
+        )
+    except Exception as exc:
+        return _error(exc)
+
+
+@require_GET
+def dashboard_next_week_view(request: HttpRequest) -> JsonResponse:
+    """获取所选周期紧邻下一周的计划数据。
+
+    方法/路径：GET /api/v1/dashboard/next-week/；认证：Bearer；参数：period_start
+    （可选，YYYY-MM-DD，必须为周一）。接口只查询 period_start 后第 7 天开始的周期；
+    该周期没有周报时返回空数组，不会读取更远周期的数据。
+    """
+    try:
+        user, role_code = require_request_user(request)
+        return api_success(
+            dashboard_next_week(
+                user=user,
+                role_code=role_code,
+                period_start=request.GET.get("period_start"),
+            )
+        )
     except Exception as exc:
         return _error(exc)
 
@@ -131,6 +160,7 @@ def report_list_view(request: HttpRequest) -> JsonResponse:
                 period_end=request.GET.get("period_end"),
                 month_key=request.GET.get("month_key"),
                 group_id=request.GET.get("group_id"),
+                employee_id=request.GET.get("employee_id"),
                 employee_scope=request.GET.get("employee_scope"),
             )
         )
@@ -176,7 +206,7 @@ def report_detail_view(request: HttpRequest, report_id: str) -> JsonResponse:
     """获取、修改或删除周报。
 
     方法/路径：GET/PATCH/DELETE /api/v1/weekly-reports/{id}/；认证：Bearer；参数：路径 report_id。
-    PATCH 仅允许修改本人当前周报周期；DELETE 仅允许删除本人当前周报周期。
+    PATCH/DELETE 仅允许操作本人且未完成的周报；提交请调用独立的 submit 接口。
     成功响应：report/template/monthly_plan/items/metrics/attachments/daily_tasks，
     或 id/deleted=true；
     失败：400/401/403/404/409；响应带 X-Trace-ID。
@@ -204,6 +234,24 @@ def report_detail_view(request: HttpRequest, report_id: str) -> JsonResponse:
 
 
 @csrf_exempt
+@require_POST
+def report_submit_view(request: HttpRequest, report_id: str) -> JsonResponse:
+    """提交本人当前角色的周报。
+
+    方法/路径：POST /api/v1/weekly-reports/{id}/submit/；认证：Bearer；参数：路径 report_id。
+    只有周报本人可以提交处于进行中状态的周报；提交后周报、任务、日报和附件均只读，
+    不会再因周期结束自动变更状态。成功响应为 {id, status, submitted}。
+    """
+    try:
+        user, role_code = require_request_user(request)
+        return api_success(
+            submit_report(user=user, role_code=role_code, report_id=int(report_id))
+        )
+    except Exception as exc:
+        return _error(exc)
+
+
+@csrf_exempt
 @require_http_methods(["GET", "POST"])
 def daily_task_list_view(request: HttpRequest, report_id: str) -> JsonResponse:
     """查询或新增指定周报的每日工作任务。
@@ -211,8 +259,8 @@ def daily_task_list_view(request: HttpRequest, report_id: str) -> JsonResponse:
     方法/路径：GET/POST /api/v1/weekly-reports/{report_id}/daily-tasks/；认证：Bearer。
     GET 无分页参数，成功响应 data.items 为按日期升序排列的日报数组；字段为 id、report_id、
     work_date（YYYY-MM-DD）、work_content、created_at、updated_at，逻辑 ID 序列化为字符串。
-    POST 请求体为 {work_date: YYYY-MM-DD, work_content: string}，日期必须位于当前周报周期内，
-    且一个周报日期只能保存一条；仅周报本人且当前周期可新增。失败：400/401/403/404/409；
+    POST 请求体为 {work_date: YYYY-MM-DD, work_content: string}，日期必须位于周报周期内，
+    且一个周报日期只能保存一条；仅进行中状态周报本人可新增。失败：400/401/403/404/409；
     响应带 X-Trace-ID，页面不依赖数据库实现细节。
     """
     try:
@@ -243,8 +291,8 @@ def daily_task_detail_view(
     """修改或删除指定周报的一条日报。
 
     方法/路径：PATCH/DELETE /api/v1/weekly-reports/{report_id}/daily-tasks/{daily_task_id}/；
-    认证：Bearer。PATCH 请求体为 {work_date: YYYY-MM-DD, work_content: string}，日期必须在本周
-    范围且不能与同周报已有日期重复；DELETE 无请求体。仅周报本人且当前周期可操作；成功响应为
+    认证：Bearer。PATCH 请求体为 {work_date: YYYY-MM-DD, work_content: string}，日期必须在周报
+    范围且不能与同周报已有日期重复；DELETE 无请求体。仅进行中状态周报本人可操作；成功响应为
     日报记录或 {id, deleted: true}。失败：400/401/403/404/409；响应带 X-Trace-ID。
     """
     try:
@@ -281,7 +329,7 @@ def attachment_upload_view(request: HttpRequest, report_id: str) -> JsonResponse
     方法/路径：POST /api/v1/weekly-reports/{report_id}/attachments/；认证：Bearer；
     请求体：multipart/form-data；file 必填；item_id、description 可选，
     附件类型固定为 weekly_report。
-    成功响应：201，data 为系统通用附件记录；仅本人当前或未来周期可上传，历史周期只读；
+    成功响应：201，data 为系统通用附件记录；仅本人未完成周报可上传，提交后只读；
     失败：400/401/403/404；响应带 X-Trace-ID，文件名、URL 和逻辑 ID 均按统一 JSON 契约返回。
     """
     try:

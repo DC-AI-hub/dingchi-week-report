@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, watch } from "vue"
+import { useRoute } from "vue-router"
 
 import { listGroups } from "@/features/directory/api"
 import type { DirectoryGroup } from "@/features/directory/types"
@@ -13,6 +14,7 @@ import ReportListTable from "../components/ReportListTable.vue"
 import ReportPagination from "../components/ReportPagination.vue"
 
 const authStore = useAuthStore()
+const route = useRoute()
 const reportList = useReportList()
 const groups = reactive<DirectoryGroup[]>([])
 const filters = reactive({
@@ -20,6 +22,7 @@ const filters = reactive({
   period_start: "",
   period_end: "",
   group_id: "",
+  employee_id: "",
 })
 const reports = computed(() => reportList.reports.value)
 const isLoading = computed(() => reportList.isLoading.value)
@@ -35,7 +38,20 @@ function queryFilters(): ReportListFilters {
     period_start: filters.period_start || undefined,
     period_end: filters.period_end || undefined,
     group_id: filters.group_id || undefined,
+    employee_id: filters.employee_id || undefined,
   }
+}
+
+function queryValue(value: unknown) {
+  return Array.isArray(value) ? String(value[0] || "") : String(value || "")
+}
+
+function syncRouteFilters() {
+  filters.month_key = queryValue(route.query.month_key)
+  filters.period_start = queryValue(route.query.period_start)
+  filters.period_end = queryValue(route.query.period_end)
+  filters.group_id = queryValue(route.query.group_id)
+  filters.employee_id = queryValue(route.query.employee_id)
 }
 
 async function loadReports() {
@@ -60,6 +76,7 @@ function resetFilters() {
   filters.period_start = ""
   filters.period_end = ""
   filters.group_id = ""
+  filters.employee_id = ""
   search()
 }
 
@@ -73,12 +90,18 @@ function cannotEditOrDelete(_report: WeeklyReport) {
 }
 
 onMounted(() => {
+  syncRouteFilters()
   void Promise.all([loadReports(), loadGroups()])
 })
 watch(() => authStore.activeRole?.role_code, () => {
   reportList.resetPage()
   void loadReports()
 })
+watch(() => route.query, () => {
+  syncRouteFilters()
+  reportList.resetPage()
+  void loadReports()
+}, { deep: true })
 </script>
 
 <template>

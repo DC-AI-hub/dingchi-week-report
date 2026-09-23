@@ -12,6 +12,7 @@ import LeaderHomeHeader from "./components/LeaderHomeHeader.vue"
 import LeaderMetricGrid from "./components/LeaderMetricGrid.vue"
 import LeaderPlansPanel from "./components/LeaderPlansPanel.vue"
 import LeaderRelationsPanel from "./components/LeaderRelationsPanel.vue"
+import LeaderTaskStatsPanel from "./components/LeaderTaskStatsPanel.vue"
 import LeaderWorkGrid from "./components/LeaderWorkGrid.vue"
 import type { LeaderDepartment, LeaderPlan, LeaderRelation, LeaderResult } from "./types"
 
@@ -19,6 +20,14 @@ const authStore = useAuthStore()
 const dashboardStore = useDashboardStore()
 const summary = computed(() => dashboardStore.summary)
 const tasks = computed<DashboardTeamTask[]>(() => summary.value.team_tasks || [])
+const nextWeekTasks = computed<DashboardTeamTask[]>(() => dashboardStore.nextWeek.team_tasks || [])
+const currentTasks = computed<DashboardTeamTask[]>(() => {
+  const selectedStart = summary.value.period.start?.slice(0, 10)
+  if (!selectedStart) return tasks.value
+  return tasks.value.filter((task) => task.report_period_start?.slice(0, 10) === selectedStart)
+})
+const memberStats = computed(() => summary.value.member_stats || [])
+const groupStats = computed(() => summary.value.group_stats || [])
 
 const roleNameMap: Record<string, string> = {
   system_admin: "系统管理员",
@@ -39,7 +48,7 @@ function formatDate(value: string | null | undefined) {
 }
 
 function sectionLabel(value: string | null | undefined) {
-  const labels: Record<string, string> = { overall: "总体事项", recruitment: "招聘工作", delivery: "交付工作", sales: "销售工作", risk: "风险事项", other: "其他事项" }
+  const labels: Record<string, string> = { overall: "总体事项", recruitment: "招聘工作", delivery: "交付工作", sales: "销售工作", risk: "风险事项", weekly_tasks: "周报任务", other: "其他事项" }
   return labels[value || ""] || value || "其他事项"
 }
 
@@ -48,24 +57,11 @@ function splitCollaborators(value: string | null | undefined) {
 }
 
 const departments = computed<LeaderDepartment[]>(() => {
-  const grouped = new Map<string, { total: number; count: number }>()
-  for (const task of tasks.value) {
-    const name = task.group_name || "未分组"
-    const existing = grouped.get(name) || { total: 0, count: 0 }
-    existing.total += Number(task.completion_rate || 0)
-    existing.count += 1
-    grouped.set(name, existing)
-  }
-  if (!grouped.size) {
-    for (const report of summary.value.reports) {
-      const name = report.group_name || "未分组"
-      const existing = grouped.get(name) || { total: 0, count: 0 }
-      existing.total += Number(report.completion_rate || 0)
-      existing.count += 1
-      grouped.set(name, existing)
-    }
-  }
-  return Array.from(grouped, ([name, value]) => ({ name, rate: value.count ? Math.round(value.total / value.count) : 0, taskCount: value.count }))
+  return groupStats.value.map((group) => ({
+    name: group.group_name,
+    rate: Math.round(group.completion_rate),
+    taskCount: group.task_count,
+  }))
     .sort((left, right) => right.rate - left.rate || right.taskCount - left.taskCount)
     .slice(0, 4)
 })
@@ -73,7 +69,7 @@ const departments = computed<LeaderDepartment[]>(() => {
 const outputDistribution = computed<DashboardDistribution[]>(() => {
   const colors = ["#168cff", "#00bcd7", "#ffca38", "#944aff", "#12b98d"]
   const grouped = new Map<string, number>()
-  for (const task of tasks.value) {
+  for (const task of currentTasks.value.filter((item) => Boolean(item.output_description?.trim()))) {
     const key = sectionLabel(task.section_code)
     grouped.set(key, (grouped.get(key) || 0) + 1)
   }
@@ -82,7 +78,7 @@ const outputDistribution = computed<DashboardDistribution[]>(() => {
     .slice(0, 5)
 })
 
-const results = computed<LeaderResult[]>(() => tasks.value.filter((task) => Boolean(task.output_description?.trim())).slice(0, 4).map((task) => ({
+const results = computed<LeaderResult[]>(() => currentTasks.value.filter((task) => Boolean(task.output_description?.trim())).slice(0, 4).map((task) => ({
   id: task.id,
   name: task.output_description || "",
   owner: task.employee_name,
@@ -90,7 +86,7 @@ const results = computed<LeaderResult[]>(() => tasks.value.filter((task) => Bool
   file: task.document_links || "—",
 })))
 
-const plans = computed<LeaderPlan[]>(() => [...tasks.value].sort((left, right) => String(left.planned_completion_date || "").localeCompare(String(right.planned_completion_date || ""))).slice(0, 4).map((task) => ({
+const plans = computed<LeaderPlan[]>(() => [...nextWeekTasks.value].sort((left, right) => String(left.planned_completion_date || "").localeCompare(String(right.planned_completion_date || ""))).slice(0, 4).map((task) => ({
   id: task.id,
   name: task.task_name_snapshot || "未命名任务",
   note: task.progress_text || task.work_content || "暂无说明",
@@ -100,40 +96,45 @@ const plans = computed<LeaderPlan[]>(() => [...tasks.value].sort((left, right) =
 
 const relations = computed<LeaderRelation[]>(() => {
   const grouped = new Map<string, number>()
-  for (const task of tasks.value) {
+  for (const task of currentTasks.value) {
     for (const name of splitCollaborators(task.collaborator_names)) grouped.set(name, (grouped.get(name) || 0) + 1)
   }
   return Array.from(grouped, ([name, count]) => ({ id: name, name, count })).sort((left, right) => right.count - left.count).slice(0, 6)
 })
 
 const planCoverage = computed(() => {
-  if (!tasks.value.length) return 0
-  return Math.round((tasks.value.filter((task) => Boolean(task.planned_completion_date)).length / tasks.value.length) * 100)
+  if (!currentTasks.value.length) return 0
+  return Math.round((currentTasks.value.filter((task) => Boolean(task.planned_completion_date)).length / currentTasks.value.length) * 100)
 })
 
 const metricCards = computed(() => [
   { label: "本周任务", value: summary.value.kpis.planned_tasks, hint: "当前周期任务总数", tone: "blue" as const, icon: markRaw(ListChecks) },
-  { label: "整体完成率", value: `${Math.round(summary.value.kpis.completion_rate)}%`, hint: "进展与质量综合", tone: "purple" as const, icon: markRaw(Target) },
-  { label: "计划覆盖率", value: `${planCoverage.value}%`, hint: "已设置计划完成时间", tone: "green" as const, icon: markRaw(ClipboardCheck) },
-  { label: "成果输出", value: results.value.length, hint: "本周已沉淀成果", tone: "amber" as const, icon: markRaw(FileOutput) },
+  { label: "成果输出", value: results.value.length, hint: "本周已沉淀成果", tone: "purple" as const, icon: markRaw(FileOutput) },
+  { label: "整体完成率", value: `${Math.round(summary.value.kpis.completion_rate)}%`, hint: "进展与质量综合", tone: "green" as const, icon: markRaw(Target) },
+  { label: "计划覆盖率", value: `${planCoverage.value}%`, hint: "已设置计划完成时间", tone: "amber" as const, icon: markRaw(ClipboardCheck) },
   { label: "协同人数", value: relations.value.length, hint: "参与跨团队协作", tone: "red" as const, icon: markRaw(Network) },
 ])
 
 onMounted(() => { void dashboardStore.load() })
 watch(() => authStore.activeRole?.role_code, () => { void dashboardStore.load() })
+
+function handlePeriodChange(periodStart: string) {
+  void dashboardStore.load(periodStart)
+}
 </script>
 
 <template>
   <div class="leader-home-page">
-    <LeaderHomeHeader :period="summary.period" :role-name="roleNameMap[authStore.activeRole?.role_code || ''] || authStore.activeRole?.role_name || '领导视角'" :user-name="authStore.user?.display_name || ''" />
+    <LeaderHomeHeader :period="summary.period" :role-name="roleNameMap[authStore.activeRole?.role_code || ''] || authStore.activeRole?.role_name || '领导视角'" :user-name="authStore.user?.display_name || ''" @update:start="handlePeriodChange" />
     <NoticeBridge :warning-message="dashboardStore.errorMessage" />
 
     <div v-if="dashboardStore.isLoading" class="leader-state">正在加载领导首页数据…</div>
     <div v-else-if="dashboardStore.errorMessage" class="leader-state leader-state--error"><AlertTriangle :size="18" />暂无领导首页数据</div>
     <template v-else>
       <LeaderMetricGrid :cards="metricCards" />
-      <LeaderAnalyticsGrid :trend="summary.trend" :departments="departments" :output-distribution="outputDistribution" :output-total="tasks.length" :completion-rate="summary.kpis.completion_rate" />
-      <LeaderWorkGrid :tasks="tasks" :results="results" />
+      <LeaderAnalyticsGrid :trend="summary.trend" :departments="departments" :output-distribution="outputDistribution" :output-total="results.length" :completion-rate="summary.kpis.completion_rate" />
+      <LeaderTaskStatsPanel :groups="groupStats" :members="memberStats" :period="summary.period" />
+      <LeaderWorkGrid :tasks="currentTasks" :results="results" />
       <div class="leader-bottom-grid">
         <LeaderPlansPanel :plans="plans" />
         <LeaderRelationsPanel :relations="relations" />

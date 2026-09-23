@@ -16,7 +16,7 @@ function renderChart() {
     color: ["#0878ff", "#00c3a5"],
     grid: { left: 37, right: 12, top: 26, bottom: 24 },
     tooltip: { trigger: "axis" },
-    legend: { top: 0, right: 0, icon: "circle", itemWidth: 8, itemHeight: 8, textStyle: { color: "#6480b3", fontSize: 10 } },
+    legend: { show: false },
     xAxis: { type: "category", boundaryGap: false, data: props.points.map((item) => item.label), axisLine: { lineStyle: { color: "#d8e8fa" } }, axisTick: { show: false }, axisLabel: { color: "#8096b5", fontSize: 10 } },
     yAxis: { type: "value", min: 0, max: 100, interval: 20, axisLabel: { color: "#8096b5", formatter: "{value}%", fontSize: 10 }, splitLine: { lineStyle: { color: "#e8f1fb", type: "dashed" } } },
     series: [

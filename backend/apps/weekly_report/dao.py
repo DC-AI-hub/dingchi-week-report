@@ -97,6 +97,33 @@ def list_reports(
     )
 
 
+def list_dashboard_members(employee_ids: list[int]) -> list[dict[str, Any]]:
+    """查询驾驶舱可见的全部在职成员，不依赖成员是否已经提交周报。"""
+    if not employee_ids:
+        return []
+    placeholders = ",".join(["%s"] * len(employee_ids))
+    return _fetch(
+        f"""
+        SELECT u.id AS employee_id, u.display_name AS employee_name,
+               u.group_id, COALESCE(g.group_name, '未分组') AS group_name,
+               COALESCE(
+                   GROUP_CONCAT(DISTINCT r.role_code ORDER BY r.sort_order SEPARATOR ','),
+                   ''
+               ) AS role_code,
+               COALESCE(
+                   GROUP_CONCAT(DISTINCT r.role_name ORDER BY r.sort_order SEPARATOR '、'),
+                   '团队成员'
+               ) AS role_name
+        FROM user_account u
+        LEFT JOIN organization_group g ON g.id = u.group_id
+        LEFT JOIN user_role ur ON ur.user_id = u.id AND ur.status = 'active'
+        LEFT JOIN role r ON r.id = ur.role_id AND r.status = 'active'
+        WHERE u.status = 'active' AND u.id IN ({placeholders})
+        GROUP BY u.id, u.display_name, u.group_id, g.group_name, u.employee_no
+        ORDER BY u.employee_no, u.id
+        """,
+        [*employee_ids],
+    )
 def list_reports_page(
     *,
     employee_ids: list[int],
@@ -169,13 +196,32 @@ def get_report_items(report_id: int) -> list[dict[str, Any]]:
                progress_percent, quality_percent, completion_rate, on_time_status,
                actual_completion_date, delay_reason, next_action,
                expected_completion_date, owner_id, owner_name_snapshot,
-               collaborator_names, document_links, item_status, sort_order,
+               collaborator_names, document_links, sort_order,
                created_at, updated_at
         FROM weekly_report_item
         WHERE report_id = %s
         ORDER BY sort_order, id
         """,
         [report_id],
+    )
+
+
+def get_report_item_progress_history(report_ids: list[int]) -> list[dict[str, Any]]:
+    """查询指定周报的任务进度快照，供驾驶舱生成真实每日趋势。"""
+
+    if not report_ids:
+        return []
+    placeholders = ",".join(["%s"] * len(report_ids))
+    return _fetch(
+        f"""
+        SELECT id, report_id, report_item_id, task_code_snapshot,
+               progress_percent, quality_percent, completion_rate,
+               on_time_status, record_date, recorded_by, created_at
+        FROM weekly_report_item_progress_history
+        WHERE report_id IN ({placeholders})
+        ORDER BY record_date, created_at, id
+        """,
+        [*report_ids],
     )
 
 

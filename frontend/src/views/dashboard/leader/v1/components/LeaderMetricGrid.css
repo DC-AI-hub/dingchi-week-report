@@ -1,22 +1,149 @@
-.leader-metric-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
-.leader-metric-card { position: relative; display: flex; min-height: 104px; align-items: center; gap: 14px; overflow: hidden; padding: 12px 16px; border: 1px solid rgba(99, 163, 232, 0.22); border-radius: 14px; background: linear-gradient(123deg, rgba(207, 234, 255, 0.9), rgba(255, 255, 255, 0.96) 48%, rgba(211, 236, 255, 0.9)); box-shadow: 0 6px 16px rgba(65, 132, 205, 0.07), inset 0 1px rgba(255, 255, 255, 0.85); }
-.leader-metric-card::after { position: absolute; inset: 0; background: linear-gradient(121deg, transparent 65%, rgba(255, 255, 255, 0.48) 65%, rgba(255, 255, 255, 0.48) 77%, transparent 77%); content: ""; pointer-events: none; }
-.leader-metric-card--purple { background: linear-gradient(123deg, rgba(229, 220, 255, 0.88), rgba(255, 255, 255, 0.96) 48%, rgba(226, 218, 255, 0.9)); }
-.leader-metric-card--green { background: linear-gradient(123deg, rgba(198, 247, 237, 0.88), rgba(255, 255, 255, 0.96) 48%, rgba(193, 241, 231, 0.9)); }
-.leader-metric-card--amber { background: linear-gradient(123deg, rgba(255, 245, 216, 0.9), rgba(255, 255, 255, 0.96) 48%, rgba(255, 236, 197, 0.9)); }
-.leader-metric-card--red { background: linear-gradient(123deg, rgba(255, 224, 229, 0.9), rgba(255, 255, 255, 0.96) 48%, rgba(255, 235, 238, 0.9)); }
-.leader-metric-icon { position: relative; z-index: 1; display: grid; width: 56px; height: 56px; flex: 0 0 56px; place-items: center; border-radius: 16px; color: #168cff; background: rgba(255, 255, 255, 0.58); box-shadow: 0 6px 12px rgba(44, 126, 239, 0.14); }
-.leader-metric-card--purple .leader-metric-icon { color: #7540ff; }
-.leader-metric-card--green .leader-metric-icon { color: #00a982; }
-.leader-metric-card--amber .leader-metric-icon { color: #dc941b; }
-.leader-metric-card--red .leader-metric-icon { color: #e8565d; }
-.leader-metric-copy { position: relative; z-index: 1; display: grid; min-width: 0; gap: 3px; }
-.leader-metric-label { overflow: hidden; color: #24467a; font-size: 14px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-.leader-metric-copy strong { color: #064da9; font-size: 30px; font-weight: 750; line-height: 1; }
-.leader-metric-card--purple .leader-metric-copy strong { color: #581bdb; }
-.leader-metric-card--green .leader-metric-copy strong { color: #087a63; }
-.leader-metric-card--amber .leader-metric-copy strong { color: #b96700; }
-.leader-metric-card--red .leader-metric-copy strong { color: #c33f4d; }
-.leader-metric-hint { color: #7d95b6; font-size: 10px; }
-@media (max-width: 1160px) { .leader-metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 680px) { .leader-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } .leader-metric-card { min-height: 93px; padding: 11px; gap: 9px; } .leader-metric-icon { width: 43px; height: 43px; flex-basis: 43px; border-radius: 13px; } .leader-metric-copy strong { font-size: 25px; } .leader-metric-label { font-size: 12px; } }
+.leader-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
+  min-width: 0;
+  aspect-ratio: 1600 / 105;
+  overflow: hidden;
+  border-radius: 8px;
+  background: url("@/assets/dashboard/leader-metrics/leader-metric-strip.png") center / 100% 100% no-repeat;
+}
+
+.leader-metric-card {
+  --metric-value-color: #0758d4;
+  position: relative;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.leader-metric-card--blue {
+  --metric-value-color: #064bc7;
+}
+
+.leader-metric-card--purple {
+  --metric-value-color: #401bd2;
+}
+
+.leader-metric-card--green {
+  --metric-value-color: #00685d;
+}
+
+.leader-metric-card--amber {
+  --metric-value-color: #124dd1;
+}
+
+.leader-metric-card--red {
+  --metric-value-color: #bd6800;
+}
+
+.leader-metric-content {
+  position: absolute;
+  inset: 0;
+  min-width: 0;
+}
+
+/* The icon and underline are already included in the shared background strip. */
+.leader-metric-icon,
+.leader-metric-track,
+.leader-metric-hint {
+  display: none;
+}
+
+.leader-metric-copy {
+  position: absolute;
+  top: 17%;
+  left: 34%;
+  display: grid;
+  width: 40%;
+  min-width: 0;
+  justify-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.leader-metric-label {
+  width: 100%;
+  overflow: hidden;
+  color: #101f52;
+  font-size: clamp(12px, .92vw, 17px);
+  font-weight: 750;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leader-metric-copy strong {
+  width: 100%;
+  overflow: hidden;
+  color: var(--metric-value-color);
+  font-size: clamp(27px, 2.05vw, 42px);
+  font-weight: 800;
+  letter-spacing: -.035em;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1160px) {
+  .leader-metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    aspect-ratio: auto;
+    overflow: visible;
+    background: transparent;
+  }
+
+  .leader-metric-card {
+    aspect-ratio: 320 / 105;
+    border-radius: 8px;
+    background-image: url("@/assets/dashboard/leader-metrics/leader-metric-strip.png");
+    background-repeat: no-repeat;
+    background-size: 500% 100%;
+  }
+
+  .leader-metric-card:nth-child(1) { background-position: 0 center; }
+  .leader-metric-card:nth-child(2) { background-position: 25% center; }
+  .leader-metric-card:nth-child(3) { background-position: 50% center; }
+  .leader-metric-card:nth-child(4) { background-position: 75% center; }
+  .leader-metric-card:nth-child(5) { background-position: 100% center; }
+
+  .leader-metric-label {
+    font-size: clamp(13px, 1.45vw, 17px);
+  }
+
+  .leader-metric-copy strong {
+    font-size: clamp(30px, 3.2vw, 42px);
+  }
+}
+
+@media (max-width: 680px) {
+  .leader-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .leader-metric-label {
+    font-size: clamp(12px, 3vw, 16px);
+  }
+
+  .leader-metric-copy strong {
+    font-size: clamp(25px, 7vw, 38px);
+  }
+}
+
+@media (max-width: 430px) {
+  .leader-metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .leader-metric-label {
+    font-size: 16px;
+  }
+
+  .leader-metric-copy strong {
+    font-size: 38px;
+  }
+}

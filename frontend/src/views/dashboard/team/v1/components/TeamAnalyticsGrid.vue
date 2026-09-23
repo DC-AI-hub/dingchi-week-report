@@ -1,29 +1,64 @@
 <script setup lang="ts">
-import { Activity, BarChart3, PieChart, UsersRound } from "lucide-vue-next"
+import { ArrowUpRight, BarChart3, CalendarCheck2, ClipboardCheck, ListChecks, PieChart, Target, UsersRound } from "lucide-vue-next"
+import { useRouter } from "vue-router"
 
 import type { DashboardDistribution, DashboardTrendPoint } from "@/features/dashboard/types"
 
 import TeamStatusChart from "./TeamStatusChart.vue"
 import TeamTrendChart from "./TeamTrendChart.vue"
-import type { TeamMemberSummary } from "../types"
+import type { TeamMemberSummary, TeamReportEntry } from "../types"
 
-defineProps<{
+const props = defineProps<{
   trend: DashboardTrendPoint[]
   statusDistribution: DashboardDistribution[]
   taskTotal: number
   members: TeamMemberSummary[]
+  myReport: TeamReportEntry | null
+  ownTaskCount: number
+  ownPlanCount: number
 }>()
+
+const router = useRouter()
+
+function openMyReport() {
+  if (!props.myReport?.id) return
+  void router.push({ name: "weekly-report-detail", params: { reportId: props.myReport.id } })
+}
 </script>
 
 <template>
   <section class="team-analytics-grid">
+    <article class="team-panel team-own-panel">
+      <div class="team-panel-heading">
+        <div class="team-panel-title">
+          <span class="team-panel-icon team-panel-icon--blue"><ClipboardCheck :size="16" stroke-width="2" /></span>
+          <div><strong>我的周报</strong></div>
+        </div>
+        <button v-if="myReport" class="own-report-link" type="button" @click="openMyReport">查看详情 <ArrowUpRight :size="13" /></button>
+      </div>
+      <div class="own-report-stats">
+        <button class="own-report-stat own-report-stat--blue" type="button" :disabled="!myReport" @click="openMyReport">
+          <span><Target :size="18" /></span><div><strong>{{ Math.round(myReport?.completionRate || 0) }}%</strong><small>个人完成率</small></div>
+        </button>
+        <button class="own-report-stat own-report-stat--purple" type="button" :disabled="!myReport" @click="openMyReport">
+          <span><ListChecks :size="18" /></span><div><strong>{{ ownTaskCount }}</strong><small>本周条目</small></div>
+        </button>
+        <button class="own-report-stat own-report-stat--green" type="button" :disabled="!myReport" @click="openMyReport">
+          <span><CalendarCheck2 :size="18" /></span><div><strong>{{ ownPlanCount }}</strong><small>下周计划</small></div>
+        </button>
+      </div>
+    </article>
+
     <article class="team-panel team-trend-panel">
       <div class="team-panel-heading">
         <div class="team-panel-title">
           <span class="team-panel-icon team-panel-icon--blue"><BarChart3 :size="16" stroke-width="2" /></span>
-          <div><span>团队趋势</span><strong>本周完成进展</strong></div>
+          <div><strong>本周完成进展</strong></div>
         </div>
-        <span class="team-panel-note"><Activity :size="14" />进展 / 完成率</span>
+        <div v-if="trend.length" class="team-trend-legend" aria-label="趋势图例">
+          <span class="team-legend-blue">进展</span>
+          <span class="team-legend-green">完成率</span>
+        </div>
       </div>
       <TeamTrendChart :points="trend" />
     </article>
@@ -32,27 +67,27 @@ defineProps<{
       <div class="team-panel-heading">
         <div class="team-panel-title">
           <span class="team-panel-icon team-panel-icon--purple"><UsersRound :size="16" stroke-width="2" /></span>
-          <div><span>成员进展</span><strong>已提交成员完成情况</strong></div>
+          <div><strong>成员完成排行</strong></div>
         </div>
       </div>
       <div v-if="members.length" class="member-progress-list">
         <div v-for="member in members.slice(0, 5)" :key="member.employeeId" class="member-progress-item">
           <div class="member-progress-name">
             <span class="member-avatar">{{ member.employeeName.slice(0, 1) }}</span>
-            <div><strong>{{ member.employeeName }}</strong><small>{{ member.roleName }}</small></div>
+            <div><strong>{{ member.employeeName }}</strong><small>{{ member.roleName }} · {{ member.taskCount }} 项任务，完成 {{ member.completedTaskCount }} 项</small></div>
             <b>{{ Math.round(member.completionRate) }}%</b>
           </div>
           <div class="member-progress-track"><i :style="{ width: `${Math.min(100, Math.max(0, member.completionRate))}%` }" /></div>
         </div>
       </div>
-      <div v-else class="team-panel-empty">暂无已提交的团队周报</div>
+      <div v-else class="team-panel-empty">暂无团队任务</div>
     </article>
 
     <article class="team-panel team-status-panel">
       <div class="team-panel-heading">
         <div class="team-panel-title">
           <span class="team-panel-icon team-panel-icon--green"><PieChart :size="16" stroke-width="2" /></span>
-          <div><span>任务状态</span><strong>状态分布</strong></div>
+          <div><strong>状态分布</strong></div>
         </div>
       </div>
       <div class="status-panel-body">

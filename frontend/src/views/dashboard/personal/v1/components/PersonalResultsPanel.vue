@@ -5,7 +5,10 @@ import { RouterLink } from "vue-router"
 
 import type { DashboardItem } from "@/features/dashboard/types"
 
-const props = defineProps<{ tasks: DashboardItem[] }>()
+const props = defineProps<{
+  tasks: DashboardItem[]
+  reportId: string | null
+}>()
 
 const resultItems = computed(() => {
   const completed = props.tasks.filter((task) => (task.progress_percent || 0) >= 100).length
@@ -32,7 +35,15 @@ const resultItems = computed(() => {
           <h2>本周工作成果</h2>
         </div>
       </div>
-      <RouterLink class="results-more" to="/weekly-reports" aria-label="查看全部工作成果"><ChevronRight :size="22" /></RouterLink>
+      <RouterLink
+        v-if="props.reportId"
+        class="results-more"
+        :to="{ name: 'weekly-report-detail', params: { reportId: props.reportId } }"
+        aria-label="查看全部工作成果"
+      >
+        <ChevronRight :size="22" />
+      </RouterLink>
+      <span v-else class="results-more results-more--disabled" aria-hidden="true"><ChevronRight :size="22" /></span>
     </div>
 
     <div class="result-list">

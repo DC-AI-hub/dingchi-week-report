@@ -115,7 +115,7 @@ function dimensionRowspan(index: number) {
 
 function displayValue(task: RecruitmentTaskDraft, column: RecruitmentTaskColumn) {
   if (column === "progress_percent" || column === "quality_percent" || column === "completion_rate") return `${Math.round(Number(task[column] ?? 0))}%`
-  if (column === "on_time_status") return ({ in_progress: "进行中", on_time: "按时完成", late: "延期完成", overdue: "逾期未完成", not_applicable: "不适用" } as Record<string, string>)[task[column]] || "—"
+  if (column === "on_time_status") return ({ pending: "待完成", in_progress: "进行中", on_time: "按时完成", late: "延期完成", overdue: "逾期未完成", completed: "已完成", not_applicable: "不适用" } as Record<string, string>)[task[column]] || "—"
   if (column === "planned_completion_date" || column === "actual_completion_date") return task[column] ? formatDateTime(String(task[column])) : "—"
   return task[column] || "—"
 }

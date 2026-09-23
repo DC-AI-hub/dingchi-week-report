@@ -1,4 +1,4 @@
-export type ReportStatus = "active" | "pending_activation" | "archived" | string
+export type ReportStatus = "not_started" | "in_progress" | "completed" | string
 
 export interface TemplateItem {
   item_type: "task" | "metric" | string
@@ -70,7 +70,6 @@ export interface ReportItem {
   owner_name_snapshot: string
   collaborator_names: string
   document_links: string
-  item_status: string
   on_time_status: string
   sort_order: number
 }
@@ -187,6 +186,7 @@ export interface ReportListFilters {
   period_end?: string
   month_key?: string
   group_id?: string
+  employee_id?: string
   employee_scope?: "self" | "team"
 }
 

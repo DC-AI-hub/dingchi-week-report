@@ -1,4 +1,4 @@
-.leader-output-chart-wrap { position: relative; width: min(155px, 100%); height: 155px; flex: 0 0 155px; }
+.leader-output-chart-wrap { position: relative; width: min(155px, 100%); height: 155px; justify-self: center; }
 .leader-output-chart { width: 100%; height: 100%; }
 .leader-output-center { position: absolute; inset: 0; display: grid; align-content: center; justify-items: center; pointer-events: none; }
 .leader-output-center strong { color: #102d5f; font-size: 27px; line-height: 1; }

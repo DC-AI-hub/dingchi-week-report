@@ -5,11 +5,11 @@ import { AlertTriangle, ClipboardCheck, Handshake, ListChecks, Target, UsersRoun
 import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import { useAuthStore } from "@/features/auth/store"
 import { useDashboardStore } from "@/features/dashboard/store"
+import type { DashboardDistribution, DashboardMemberStats, DashboardTeamTask } from "@/features/dashboard/types"
 
 import TeamAnalyticsGrid from "./components/TeamAnalyticsGrid.vue"
 import TeamHomeHeader from "./components/TeamHomeHeader.vue"
 import TeamMetricGrid from "./components/TeamMetricGrid.vue"
-import TeamPlansPanel from "./components/TeamPlansPanel.vue"
 import TeamReportsPanel from "./components/TeamReportsPanel.vue"
 import type { TeamMemberSummary, TeamPlanEntry, TeamReportEntry } from "./types"
 
@@ -43,51 +43,104 @@ const reports = computed<TeamReportEntry[]>(() => summary.value.reports.map((rep
   periodEnd: formatDate(report.period_end),
 })))
 
-const members = computed<TeamMemberSummary[]>(() => {
-  const map = new Map<string, TeamMemberSummary>()
-  for (const report of reports.value) {
-    const existing = map.get(report.employeeId)
-    if (existing) {
-      existing.completionRate = Math.max(existing.completionRate, report.completionRate)
-      existing.riskCount += report.riskLevel !== "none" ? 1 : 0
-      continue
-    }
-    map.set(report.employeeName, {
-      employeeId: report.employeeId,
-      employeeName: report.employeeName,
-      roleName: report.roleName,
-      groupName: report.groupName,
-      completionRate: report.completionRate,
-      taskCount: 0,
-      riskCount: report.riskLevel !== "none" ? 1 : 0,
-    })
-  }
-  return Array.from(map.values()).sort((left, right) => right.completionRate - left.completionRate)
+const teamTasks = computed<DashboardTeamTask[]>(() => summary.value.team_tasks || [])
+const nextWeekTasks = computed<DashboardTeamTask[]>(() => dashboardStore.nextWeek.team_tasks || [])
+const memberStats = computed<DashboardMemberStats[]>(() => summary.value.member_stats || [])
+
+const currentReports = computed(() => {
+  const currentStart = parseDate(summary.value.period.start)
+  if (!currentStart) return reports.value
+  return reports.value.filter((report) => {
+    const periodStart = parseDate(report.periodStart)
+    return periodStart?.getTime() === currentStart.getTime()
+  })
 })
+
+const currentTasks = computed(() => {
+  const currentStart = parseDate(summary.value.period.start)
+  if (!currentStart) return teamTasks.value
+  return teamTasks.value.filter((task) => {
+    const periodStart = parseDate(task.report_period_start)
+    return periodStart?.getTime() === currentStart.getTime()
+  })
+})
+
+const members = computed<TeamMemberSummary[]>(() => memberStats.value
+  .map((member) => ({
+    employeeId: member.employee_id || `name:${member.employee_name}`,
+    employeeName: member.employee_name || "未命名成员",
+    roleName: member.role_name || member.role_code || "团队成员",
+    groupName: member.group_name || "未分组",
+    completionRate: member.completion_rate,
+    taskCount: member.task_count,
+    completedTaskCount: member.completed_task_count,
+    outputCount: member.output_task_count,
+    riskCount: member.risk_task_count,
+  })))
 
 const myReport = computed(() => {
   const userId = authStore.user?.id
   if (!userId) return null
-  const report = summary.value.reports.find((item) => item.employee_id === userId)
+  const report = currentReports.value.find((item) => item.employeeId === userId)
+    || reports.value.find((item) => item.employeeId === userId)
   return report ? reports.value.find((item) => item.id === report.id) || null : null
 })
 
-const plans = computed<TeamPlanEntry[]>(() => reports.value.slice(0, 5).map((report) => ({
-  id: `plan-${report.id}`,
-  title: report.summary || `${report.employeeName}本周重点行动`,
-  owner: report.employeeName,
-  detail: report.groupName || report.roleName,
-  status: report.status.includes("完成") ? "已完成" : "进行中",
-  start: report.periodStart,
-  end: report.periodEnd,
-})))
+const plans = computed<TeamPlanEntry[]>(() => {
+  return [...nextWeekTasks.value]
+    .sort((left, right) => String(left.planned_completion_date || "").localeCompare(String(right.planned_completion_date || "")))
+    .slice(0, 8)
+    .map((task) => ({
+      id: `plan-${task.id}`,
+      title: String(task.next_action || "").trim() || task.task_name_snapshot || "未命名任务",
+      owner: task.employee_name || "未命名成员",
+      detail: `${task.employee_name || "未命名成员"} · ${task.group_name || task.section_code || "未分组"}`,
+      status: taskStatusText(task),
+      plannedDate: formatDate(task.planned_completion_date || ""),
+      completionRate: taskCompletionRate(task),
+    }))
+})
+
+const currentReportTotal = computed(() => memberStats.value.reduce((total, member) => total + member.report_count, 0))
+const currentTaskTotal = computed(() => memberStats.value.reduce((total, member) => total + member.task_count, 0))
+const currentCompletedTaskTotal = computed(() => memberStats.value.reduce((total, member) => total + member.completed_task_count, 0))
+const currentRiskTaskTotal = computed(() => memberStats.value.reduce((total, member) => total + member.risk_task_count, 0))
+const currentCollaborationTotal = computed(() => currentTasks.value.filter((task) => String(task.collaborator_names || "").trim()).length)
+const ownTaskCount = computed(() => {
+  const userId = authStore.user?.id
+  return userId ? currentTasks.value.filter((task) => task.employee_id === userId).length : 0
+})
+const ownPlanCount = computed(() => {
+  const userId = authStore.user?.id
+  return userId ? nextWeekTasks.value.filter((task) => task.employee_id === userId).length : 0
+})
+const currentCompletionRate = computed(() => {
+  if (!currentTaskTotal.value) return 0
+  const weightedTotal = memberStats.value.reduce(
+    (total, member) => total + member.completion_rate * member.task_count,
+    0,
+  )
+  return weightedTotal / currentTaskTotal.value
+})
+
+const currentStatusDistribution = computed<DashboardDistribution[]>(() => {
+  if (!currentTaskTotal.value) return []
+  const risks = currentRiskTaskTotal.value
+  const completed = currentCompletedTaskTotal.value
+  const inProgress = Math.max(0, currentTaskTotal.value - completed - risks)
+  return [
+    { name: "进行中", value: inProgress, color: "#2f80ed" },
+    { name: "已完成", value: completed, color: "#12b886" },
+    { name: "延期/风险", value: risks, color: "#f05d5e" },
+  ].filter((item) => item.value > 0)
+})
 
 const metricCards = computed(() => [
-  { label: "团队成员", value: members.value.length, hint: "已提交本周周报", tone: "blue" as const, icon: markRaw(UsersRound) },
-  { label: "周报提交", value: reports.value.length, hint: "当前周期已提交", tone: "purple" as const, icon: markRaw(ClipboardCheck) },
-  { label: "团队完成率", value: `${Math.round(summary.value.kpis.completion_rate)}%`, hint: "进展与质量综合", tone: "green" as const, icon: markRaw(Target) },
-  { label: "团队任务", value: summary.value.kpis.planned_tasks, hint: "当前周期任务总数", tone: "orange" as const, icon: markRaw(ListChecks) },
-  { label: "风险 / 协同", value: summary.value.kpis.risk_items, hint: "需要团队持续关注", tone: "red" as const, icon: markRaw(Handshake) },
+  { label: "团队成员", value: members.value.length, tone: "blue" as const, icon: markRaw(UsersRound) },
+  { label: "周报提交", value: `${currentReportTotal.value}/${members.value.length}`, tone: "blue" as const, icon: markRaw(ClipboardCheck) },
+  { label: "团队完成率", value: `${Math.round(currentCompletionRate.value)}%`, tone: "purple" as const, icon: markRaw(Target) },
+  { label: "本周任务", value: currentTaskTotal.value, tone: "green" as const, icon: markRaw(ListChecks) },
+  { label: "协同事项", value: currentCollaborationTotal.value, tone: "orange" as const, icon: markRaw(Handshake) },
 ])
 
 onMounted(() => {
@@ -98,19 +151,57 @@ watch(() => authStore.activeRole?.role_code, () => {
   void dashboardStore.load()
 })
 
+function handlePeriodChange(periodStart: string) {
+  void dashboardStore.load(periodStart)
+}
+
 function formatDate(value: string) {
   if (!value) return ""
   return value.slice(0, 10).replaceAll("-", ".")
+}
+
+function parseDate(value: string | null | undefined) {
+  if (!value) return null
+  const normalized = value.slice(0, 10).replaceAll(".", "-")
+  const parsed = new Date(`${normalized}T00:00:00`)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+function taskCompletionRate(task: DashboardTeamTask) {
+  const value = task.completion_rate ?? task.progress_percent ?? 0
+  const number = Number(value)
+  return Number.isFinite(number) ? Math.min(100, Math.max(0, number)) : 0
+}
+
+function isTaskCompleted(task: DashboardTeamTask) {
+  const value = task.progress_percent ?? task.completion_rate ?? 0
+  const number = Number(value)
+  return Number.isFinite(number) && number >= 100
+}
+
+function isTaskRisk(task: DashboardTeamTask) {
+  const status = String(task.on_time_status || "").toLowerCase()
+  return ["overdue", "late"].includes(status) || Boolean(String(task.delay_reason || "").trim())
+}
+
+function taskRiskText(task: DashboardTeamTask) {
+  const status = String(task.on_time_status || "").toLowerCase()
+  const reason = String(task.delay_reason || "").trim()
+  if (status === "overdue") return reason ? `已逾期：${reason}` : "已逾期"
+  if (status === "late") return reason ? `已延期：${reason}` : "已延期"
+  if (reason) return `风险：${reason}`
+  return ""
+}
+
+function taskStatusText(task: DashboardTeamTask) {
+  if (isTaskRisk(task)) return taskRiskText(task)
+  return isTaskCompleted(task) ? "已完成" : "进行中"
 }
 </script>
 
 <template>
   <div class="team-home-page">
-    <TeamHomeHeader
-      :period="summary.period"
-      :role-name="authStore.activeRole?.role_name || '团队视角'"
-      :user-name="authStore.user?.display_name || ''"
-    />
+    <TeamHomeHeader :period="summary.period" @update:start="handlePeriodChange" />
     <NoticeBridge :warning-message="dashboardStore.errorMessage" />
 
     <div v-if="dashboardStore.isLoading" class="team-state">正在加载团队数据…</div>
@@ -121,12 +212,21 @@ function formatDate(value: string) {
       <TeamMetricGrid :cards="metricCards" />
       <TeamAnalyticsGrid
         :trend="summary.trend"
-        :status-distribution="summary.status_distribution"
-        :task-total="summary.kpis.planned_tasks"
+        :status-distribution="currentStatusDistribution"
+        :task-total="currentTaskTotal"
         :members="members"
+        :my-report="myReport"
+        :own-task-count="ownTaskCount"
+        :own-plan-count="ownPlanCount"
       />
-      <TeamReportsPanel :reports="reports" :my-report="myReport" />
-      <TeamPlansPanel :plans="plans" />
+      <TeamReportsPanel
+        :reports="currentReports"
+        :members="members"
+        :member-stats="memberStats"
+        :tasks="currentTasks"
+        :plans="plans"
+        :period="summary.period"
+      />
     </template>
   </div>
 </template>

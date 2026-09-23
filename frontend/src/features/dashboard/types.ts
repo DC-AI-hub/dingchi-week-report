@@ -47,6 +47,8 @@ export interface DashboardItem {
   on_time_status: string
   planned_completion_date: string | null
   progress_text: string
+  delay_reason?: string
+  next_action?: string
   owner_name_snapshot?: string
   collaborator_names?: string
   document_links?: string
@@ -56,10 +58,49 @@ export interface DashboardTeamTask extends DashboardItem {
   employee_id: string
   employee_name: string
   role_code: string
+  role_name?: string
   group_name: string
   report_status: string
   report_period_start: string | null
   report_period_end: string | null
+}
+
+export interface DashboardMemberTaskPreview {
+  id: string
+  task_name: string
+  customer_name: string
+  progress_percent: number
+  completion_rate: number
+  status: string
+  planned_completion_date: string
+}
+
+export interface DashboardMemberStats {
+  employee_id: string
+  employee_name: string
+  role_code: string
+  role_name: string
+  group_name: string
+  report_count: number
+  task_count: number
+  completed_task_count: number
+  in_progress_task_count: number
+  risk_task_count: number
+  output_task_count: number
+  completion_rate: number
+  tasks: DashboardMemberTaskPreview[]
+}
+
+export interface DashboardGroupStats {
+  group_id: string | null
+  group_name: string
+  member_count: number
+  task_count: number
+  completed_task_count: number
+  in_progress_task_count: number
+  risk_task_count: number
+  output_task_count: number
+  completion_rate: number
 }
 
 export interface DashboardSummary {
@@ -69,6 +110,15 @@ export interface DashboardSummary {
   trend: DashboardTrendPoint[]
   status_distribution: DashboardDistribution[]
   my_tasks: DashboardItem[]
+  my_plans: DashboardItem[]
   reports: DashboardReport[]
+  team_tasks: DashboardTeamTask[]
+  member_stats: DashboardMemberStats[]
+  group_stats: DashboardGroupStats[]
+}
+
+export interface DashboardNextWeek {
+  period: { start: string; end: string }
+  my_plans: DashboardItem[]
   team_tasks: DashboardTeamTask[]
 }

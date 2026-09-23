@@ -126,6 +126,10 @@ function statusClass(value: string | null | undefined): string {
   return value || "unknown"
 }
 
+function taskStatus(item: ReportItem): string {
+  return item.on_time_status || "unknown"
+}
+
 function openTask(item: ReportItem) {
   detailItem.value = item
   detailOpen.value = true
@@ -152,26 +156,26 @@ defineExpose({ openColumns })
       <table class="report-task-table__grid">
         <thead>
           <tr>
-            <th class="serial-col">序号</th>
-            <th v-if="primaryField" class="customer-col">{{ primaryField.label }}</th>
+            <th class="fixed-col serial-col">序号</th>
+            <th v-if="primaryField" class="fixed-col customer-col">{{ primaryField.label }}</th>
             <th
-              class="task-col"
+              class="fixed-col task-col"
               :class="{ 'task-col--without-primary': !primaryField }"
             >工作任务</th>
             <th v-for="field in selectedFields" :key="field.field_code" class="dynamic-col">
               {{ field.label }}
             </th>
-            <th class="status-col">状态</th>
-            <th class="updated-col">更新时间</th>
+            <th class="fixed-col status-col">状态</th>
+            <th class="fixed-col updated-col">更新时间</th>
           </tr>
         </thead>
         <tbody>
           <template v-for="(item, index) in pagedItems" :key="item.id || `${item.task_code}-${index}`">
             <tr>
-              <td class="serial-col">{{ (page - 1) * pageSize + index + 1 }}</td>
+              <td class="fixed-col serial-col">{{ (page - 1) * pageSize + index + 1 }}</td>
               <td
                 v-if="primaryField && customerRowspan(index) > 0"
-                class="customer-col customer-cell"
+                class="fixed-col customer-col customer-cell"
                 :rowspan="customerRowspan(index)"
               >
                 <span class="cell-text" :title="primaryValue(item)">
@@ -179,7 +183,7 @@ defineExpose({ openColumns })
                 </span>
               </td>
               <td
-                class="task-col task-cell"
+                class="fixed-col task-col task-cell"
                 :class="{ 'task-col--without-primary': !primaryField }"
               >
                 <button
@@ -199,15 +203,15 @@ defineExpose({ openColumns })
                   {{ formatReportTaskField(item, field.field_code) }}
                 </span>
               </td>
-              <td class="status-col">
+              <td class="fixed-col status-col">
                 <span
                   class="status-pill"
-                  :class="`status-pill--${statusClass(item.on_time_status)}`"
+                  :class="`status-pill--${statusClass(taskStatus(item))}`"
                 >
-                  {{ reportTaskStatusLabel(item.on_time_status) }}
+                  {{ reportTaskStatusLabel(taskStatus(item)) }}
                 </span>
               </td>
-              <td class="updated-col date-cell">
+              <td class="fixed-col updated-col date-cell">
                 {{ reportTaskUpdatedAt(item) }}
               </td>
             </tr>

@@ -67,6 +67,8 @@ export function allReportTaskFields(fields?: ReportTemplateField[] | null): Repo
 
 export function reportTaskStatusLabel(value: string | null | undefined): string {
   return ({
+    pending: "待完成",
+    completed: "已完成",
     in_progress: "进行中",
     on_time: "按时完成",
     late: "延期完成",
@@ -87,7 +89,9 @@ export function formatReportTaskField(item: ReportItem, fieldCode: string): stri
     return dimensionLabels[item.section_code] || item.section_name_snapshot || item.section_code || "—"
   }
   if (fieldCode === "task_name") return item.task_name_snapshot || "—"
-  if (fieldCode === "on_time_status") return reportTaskStatusLabel(item.on_time_status)
+  if (fieldCode === "on_time_status") {
+    return reportTaskStatusLabel(item.on_time_status)
+  }
   if (fieldCode === "progress_percent" || fieldCode === "quality_percent" || fieldCode === "completion_rate") {
     const value = item[fieldCode as keyof ReportItem]
     return `${Math.round(Number(value ?? 0))}%`

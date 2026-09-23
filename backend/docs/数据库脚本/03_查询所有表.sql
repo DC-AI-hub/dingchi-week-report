@@ -52,6 +52,9 @@ SELECT * FROM `monthly_plan`;
 -- 周报任务明细表：保存周报中的客户任务、进度、负责人和文档链接。
 SELECT * FROM `weekly_report_item`;
 
+-- 周报任务进度历史快照表
+SELECT * FROM `weekly_report_item_progress_history`;
+
 -- 周报指标明细表：保存周报任务或周报总体指标数据。
 SELECT * FROM `weekly_report_metric`;
 

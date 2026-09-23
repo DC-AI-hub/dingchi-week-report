@@ -1,79 +1,83 @@
 <script setup lang="ts">
-import { ArrowUpRight, ClipboardCheck, CircleCheck, Clock3 } from "lucide-vue-next"
+import { computed } from "vue"
+import { useRouter } from "vue-router"
+import { ArrowRight, Check, ClipboardList, Target, UserRound } from "lucide-vue-next"
 
-import type { TeamReportEntry } from "../types"
+import type { DashboardMemberStats, DashboardTeamTask } from "@/features/dashboard/types"
+import type { TeamMemberSummary, TeamPlanEntry, TeamReportEntry } from "../types"
 
-defineProps<{
+const props = defineProps<{
   reports: TeamReportEntry[]
-  myReport: TeamReportEntry | null
+  members: TeamMemberSummary[]
+  memberStats: DashboardMemberStats[]
+  tasks: DashboardTeamTask[]
+  plans: TeamPlanEntry[]
+  period: { start: string; end: string }
 }>()
 
-function statusText(value: string) {
-  if (value.includes("待激活") || value === "pending") return "待激活"
-  if (value.includes("激活") || value === "active") return "已提交"
-  if (value.includes("归档") || value === "archived") return "已归档"
-  if (value.includes("完成")) return "已完成"
-  if (value.includes("延期") || value.includes("风险")) return "延期 / 风险"
-  return "进行中"
+const router = useRouter()
+const submittedIds = computed(() => new Set(props.reports.map((report) => report.employeeId)))
+const submittedCount = computed(() => props.members.filter((member) => submittedIds.value.has(member.employeeId)).length)
+const taskMap = computed(() => new Map(props.tasks.map((task) => [task.id, task])))
+const focusTasks = computed(() => props.memberStats.flatMap((member) => member.tasks.map((task) => ({ member, task, detail: taskMap.value.get(task.id) }))).slice(0, 5))
+
+function openMemberReports(employeeId: string) {
+  if (!employeeId) return
+  void router.push({ name: "weekly-reports", query: { employee_id: employeeId, period_start: props.period.start, period_end: props.period.end } })
 }
 
-function statusClass(value: string) {
-  const text = statusText(value)
-  return text === "已完成" ? "done" : text === "延期 / 风险" ? "risk" : "progress"
+function openAllReports() {
+  void router.push({ name: "weekly-reports", query: { period_start: props.period.start, period_end: props.period.end } })
 }
 </script>
 
 <template>
-  <section class="team-report-grid">
-    <article class="team-panel team-own-report-panel">
-      <div class="team-panel-heading">
-        <div class="team-panel-title">
-          <span class="team-panel-icon team-panel-icon--blue"><ClipboardCheck :size="16" stroke-width="2" /></span>
-          <div><span>我的周报</span><strong>本周提交情况</strong></div>
+  <section class="team-execution-grid">
+    <div class="team-execution-column team-execution-column--left">
+      <article class="team-panel team-submission-panel">
+        <div class="team-panel-heading">
+          <div class="team-panel-title"><span class="team-panel-icon team-panel-icon--blue"><ClipboardList :size="18" /></span><strong>周报提交情况（{{ submittedCount }}/{{ members.length }}）</strong></div>
+          <span class="submission-summary" :class="{ 'is-complete': members.length > 0 && submittedCount === members.length }"><Check :size="13" />{{ members.length > 0 && submittedCount === members.length ? "本周已全部提交" : `尚有 ${Math.max(0, members.length - submittedCount)} 人未提交` }}</span>
         </div>
-        <span v-if="myReport" class="report-status" :class="`report-status--${statusClass(myReport.status)}`">{{ statusText(myReport.status) }}</span>
-      </div>
-      <div v-if="myReport" class="own-report-body">
-        <div class="own-report-rate"><strong>{{ Math.round(myReport.completionRate) }}%</strong><span>个人完成率</span></div>
-        <div class="own-report-copy"><strong>{{ myReport.summary || "本周暂无总结" }}</strong><span>{{ myReport.roleName }} · {{ myReport.groupName || "未分组" }}</span></div>
-        <ArrowUpRight :size="18" class="report-arrow" aria-hidden="true" />
-      </div>
-      <div v-else class="team-panel-empty own-report-empty"><Clock3 :size="18" />本周尚未提交周报</div>
-    </article>
+        <div v-if="members.length" class="submission-member-list">
+          <button v-for="(member, index) in members" :key="member.employeeId" class="submission-member" type="button" @click="openMemberReports(member.employeeId)">
+            <span class="submission-avatar" :class="{ 'is-purple': index === 3 }"><UserRound :size="25" /><i v-if="submittedIds.has(member.employeeId)">✓</i></span>
+            <strong>{{ member.employeeName }}</strong><small :class="{ 'is-pending': !submittedIds.has(member.employeeId) }">{{ submittedIds.has(member.employeeId) ? "已提交" : "未提交" }}</small>
+          </button>
+        </div>
+        <div v-else class="team-panel-empty">暂无团队成员</div>
+      </article>
 
-    <article class="team-panel team-submission-panel">
-      <div class="team-panel-heading">
-        <div class="team-panel-title">
-          <span class="team-panel-icon team-panel-icon--green"><CircleCheck :size="16" stroke-width="2" /></span>
-          <div><span>团队周报</span><strong>成员提交情况</strong></div>
-        </div>
-        <span class="team-panel-note">已提交 {{ reports.length }} 人</span>
-      </div>
-      <div v-if="reports.length" class="submission-list">
-        <div v-for="report in reports.slice(0, 6)" :key="report.id" class="submission-item">
-          <span class="submission-avatar">{{ report.employeeName.slice(0, 1) }}</span>
-          <div><strong>{{ report.employeeName }}</strong><small>{{ report.roleName }} · {{ report.groupName || "未分组" }}</small></div>
-          <span class="report-status" :class="`report-status--${statusClass(report.status)}`">{{ statusText(report.status) }}</span>
-        </div>
-      </div>
-      <div v-else class="team-panel-empty">暂无团队周报</div>
-    </article>
+    </div>
 
-    <article class="team-panel team-focus-panel">
-      <div class="team-panel-heading">
-        <div class="team-panel-title">
-          <span class="team-panel-icon team-panel-icon--orange"><ArrowUpRight :size="16" stroke-width="2" /></span>
-          <div><span>重点行动</span><strong>团队成果与风险</strong></div>
+    <div class="team-execution-column team-execution-column--right">
+      <article class="team-panel team-focus-panel">
+        <div class="team-panel-heading"><div class="team-panel-title"><span class="team-panel-icon team-panel-icon--blue"><UserRound :size="18" /></span><strong>团队重点任务与成果</strong></div><button class="team-more" type="button" @click="openAllReports">查看全部 <ArrowRight :size="14" /></button></div>
+        <div class="team-table team-focus-table">
+          <div class="team-table-head"><span>成员</span><span>重点任务</span><span>输出成果</span><span>完成进度</span><span>状态</span></div>
+          <button v-for="entry in focusTasks" :key="`${entry.member.employee_id}-${entry.task.id}`" class="team-table-row" type="button" @click="openMemberReports(entry.member.employee_id)">
+            <span>{{ entry.member.employee_name }}</span><span :title="entry.task.task_name">{{ entry.task.task_name }}</span><span :title="entry.detail?.output_description || '—'">{{ entry.detail?.output_description || "—" }}</span>
+            <span class="focus-progress"><i><b :style="{ width: `${Math.min(100, Math.max(0, entry.task.completion_rate))}%` }" /></i><strong>{{ Math.round(entry.task.completion_rate) }}%</strong></span><span class="team-status" :class="entry.task.completion_rate >= 100 ? 'is-done' : 'is-progress'">{{ entry.task.completion_rate >= 100 ? "已完成" : "进行中" }}</span>
+          </button>
+          <div v-if="!focusTasks.length" class="team-panel-empty">暂无本周重点任务</div>
         </div>
-      </div>
-      <div v-if="reports.length" class="focus-list">
-        <div v-for="report in reports.slice(0, 4)" :key="`focus-${report.id}`" class="focus-item">
-          <div class="focus-item-main"><strong>{{ report.employeeName }}</strong><span>{{ report.summary || "暂无周报摘要" }}</span></div>
-          <b :class="`focus-rate focus-rate--${statusClass(report.status)}`">{{ Math.round(report.completionRate) }}%</b>
+      </article>
+
+      <article class="team-panel team-plan-panel">
+        <div class="team-panel-heading"><div class="team-panel-title"><span class="team-panel-icon team-panel-icon--blue"><Target :size="18" /></span><strong>团队下周计划</strong></div><span class="team-plan-note">明确目标 · 持续突破</span></div>
+        <div v-if="plans.length" class="team-plan-timeline">
+          <button v-for="(plan, index) in plans" :key="plan.id" class="team-plan-step" type="button" @click="openAllReports">
+            <span class="team-plan-node" :class="`team-plan-node--${index % 5}`">{{ String(index + 1).padStart(2, "0") }}</span>
+            <span class="team-plan-copy">
+              <small>{{ plan.plannedDate || "未设定" }}</small>
+              <strong :title="plan.title">{{ plan.title }}</strong>
+              <span :title="plan.detail">{{ plan.detail }}</span>
+            </span>
+          </button>
         </div>
-      </div>
-      <div v-else class="team-panel-empty">暂无重点行动</div>
-    </article>
+        <div v-else class="team-panel-empty">暂无下周计划</div>
+      </article>
+    </div>
   </section>
 </template>
 

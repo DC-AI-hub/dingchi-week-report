@@ -25,7 +25,7 @@ const errorMessage = ref("")
 const canEdit = computed(() => Boolean(
   detail.value
   && detail.value.report.employee_id === authStore.user?.id
-  && detail.value.report.status === "active",
+  && detail.value.report.status !== "completed",
 ))
 
 async function load() {
@@ -60,7 +60,9 @@ onMounted(() => void load())
         meta-layout="vertical"
       >
         <template #actions>
-          <div class="report-header-actions report-header-actions--vertical">
+          <div :class="canEdit
+            ? 'report-header-actions report-header-actions--vertical'
+            : 'report-header-actions report-header-actions--status-only'">
             <div class="detail-status">
               <ReportStatusTag :status="detail.report.status" />
               <time class="detail-updated-at" :datetime="detail.report.updated_at">

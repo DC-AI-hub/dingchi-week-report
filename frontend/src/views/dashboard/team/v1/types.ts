@@ -5,6 +5,8 @@ export interface TeamMemberSummary {
   groupName: string
   completionRate: number
   taskCount: number
+  completedTaskCount: number
+  outputCount: number
   riskCount: number
 }
 
@@ -28,6 +30,15 @@ export interface TeamPlanEntry {
   owner: string
   detail: string
   status: string
-  start: string
-  end: string
+  plannedDate: string
+  completionRate: number
+}
+
+export interface TeamOutcomeEntry {
+  id: string
+  owner: string
+  taskName: string
+  output: string
+  risk: string
+  completionRate: number
 }

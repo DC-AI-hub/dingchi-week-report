@@ -1,17 +1,13 @@
 <script setup lang="ts">
-import { CalendarRange, Crown, Sparkles } from "lucide-vue-next"
-
-import heroDataColumns from "@/assets/dashboard/hero-data-columns.png"
+import personalProgressMotto from "@/assets/dashboard/personal-progress-motto.png"
+import WeekPeriodPicker from "@/components/form/WeekPeriodPicker.vue"
 
 defineProps<{
   period: { start: string; end: string }
   roleName: string
   userName: string
 }>()
-
-function formatPeriod(value: string) {
-  return value ? value.replaceAll("-", ".") : "—"
-}
+const emit = defineEmits<{ "update:start": [value: string] }>()
 </script>
 
 <template>
@@ -20,30 +16,17 @@ function formatPeriod(value: string) {
       <div class="leader-title-line">
         <span class="leader-title-mark" aria-hidden="true" />
         <div>
-          <p class="leader-eyebrow">LEADERSHIP OPERATING PULSE</p>
           <h1>智能周报 · 领导首页</h1>
           <p class="leader-subtitle">总览经营执行 · 聚焦输出成果 · 统筹下周重点</p>
         </div>
       </div>
-      <div class="leader-motto">
-        <Sparkles :size="16" stroke-width="1.8" aria-hidden="true" />
-        <span>让每一周都有新进展！</span>
-      </div>
     </div>
 
-    <img class="leader-header-art" :src="heroDataColumns" alt="" aria-hidden="true" />
+    <img class="leader-header-art" :src="personalProgressMotto" alt="持续进步，遇见更好的自己！" />
 
     <div class="leader-header-period">
-      <div class="leader-week-button">
-        <CalendarRange :size="15" stroke-width="1.8" aria-hidden="true" />
-        <span>本周</span>
-        <strong>{{ formatPeriod(period.start) }} - {{ formatPeriod(period.end) }}</strong>
-      </div>
-      <p>把握进展 · 凝聚合力 · 共创更大价值</p>
-      <div class="leader-period-owner">
-        <Crown :size="13" stroke-width="1.8" aria-hidden="true" />
-        <span>{{ userName || "领导视角" }} · {{ roleName }}</span>
-      </div>
+      <WeekPeriodPicker class="leader-week-button period-main" :start="period.start" :end="period.end" @update:start="emit('update:start', $event)" />
+      <div class="leader-period-owner">聚力前行 · 把计划变成成果</div>
     </div>
   </header>
 </template>

@@ -30,7 +30,7 @@ export function getReportTemplate(templateCode: string): Promise<ReportTemplate>
  * 方法/路径：GET /v1/weekly-reports/；认证：Bearer；幂等：是。
  * 请求参数：page/page_size 为正整数（默认 1/10）；period_start、period_end 为
  * YYYY-MM-DD 周期范围上下限，month_key 为 YYYY-MM 所属月度；team 角色可传 employee_scope=self/team；团队和全员角色可传
- * group_id 字符串筛选分组。响应 data.items 为周报数组，并返回 page、page_size、total、
+ * group_id 字符串筛选分组；employee_id 字符串筛选指定人员（服务端仍按当前角色可见范围校验）。响应 data.items 为周报数组，并返回 page、page_size、total、
  * total_pages；ID 为字符串，失败 400/401/403/404，统一客户端携带 trace_id。
  */
 export function listReports(filters: ReportListFilters = {}): Promise<ReportListResponse> {
@@ -81,7 +81,7 @@ export function createReport(payload: ReportPayload): Promise<WeeklyReportDetail
 /**
  * 更新本人当前周报。
  * 方法/路径：PATCH /v1/weekly-reports/{id}/；认证：Bearer；幂等：否。
- * 请求体字段同创建，周报周期不可修改且仅当前周期可编辑；响应 data 为更新后的详情；
+ * 请求体字段同创建，周报周期不可修改且仅本人未完成周报可编辑；响应 data 为更新后的详情；
  * 失败 400/401/403/404，统一客户端携带 trace_id。
  */
 export function updateReport(reportId: string, payload: ReportPayload): Promise<WeeklyReportDetail> {
@@ -122,8 +122,8 @@ export function getDailyTasks(reportId: string): Promise<DailyWorkTaskListRespon
 /**
  * 新增周报中的每日工作任务。
  * 方法/路径：POST /v1/weekly-reports/{id}/daily-tasks/；认证：Bearer；幂等：否。
- * 请求体：work_date（YYYY-MM-DD）和 work_content；日期必须在当前周报周期内且每天只能一条；
- * 仅本人当前周期周报可新增，成功返回日报记录，失败 400/401/403/404/409。
+ * 请求体：work_date（YYYY-MM-DD）和 work_content；日期必须在周报周期内且每天只能一条；
+ * 仅本人进行中状态周报可新增，成功返回日报记录，失败 400/401/403/404/409。
  */
 export function createDailyTask(
   reportId: string,
@@ -139,7 +139,7 @@ export function createDailyTask(
 /**
  * 修改周报中的每日工作任务。
  * 方法/路径：PATCH /v1/weekly-reports/{id}/daily-tasks/{daily_task_id}/；认证：Bearer；幂等：否。
- * 请求体字段同新增；仅本人当前周期周报可修改，成功返回日报记录，失败 400/401/403/404/409。
+ * 请求体字段同新增；仅本人进行中状态周报可修改，成功返回日报记录，失败 400/401/403/404/409。
  */
 export function updateDailyTask(
   reportId: string,
@@ -156,7 +156,7 @@ export function updateDailyTask(
 /**
  * 删除周报中的每日工作任务。
  * 方法/路径：DELETE /v1/weekly-reports/{id}/daily-tasks/{daily_task_id}/；认证：Bearer；幂等：否。
- * 无请求体；仅本人当前周期周报可删除，成功返回 {id, deleted:true}，失败 401/403/404。
+ * 无请求体；仅本人进行中状态周报可删除，成功返回 {id, deleted:true}，失败 401/403/404。
  */
 export function deleteDailyTask(
   reportId: string,
@@ -171,13 +171,27 @@ export function deleteDailyTask(
 /**
  * 删除本人当前周报。
  * 方法/路径：DELETE /v1/weekly-reports/{id}/；认证：Bearer；幂等：否。
- * 无请求体；仅当前周期且本人可删除，响应 data 为 { id: string, deleted: true }；
+ * 无请求体；仅本人且未完成的周报可删除，响应 data 为 { id: string, deleted: true }；
  * 失败 400/401/403/404，统一客户端携带 trace_id。
  */
 export function deleteReport(reportId: string): Promise<{ id: string; deleted: true }> {
   return request<{ id: string; deleted: true }>({
     method: "DELETE",
     url: "/v1/weekly-reports/" + reportId + "/",
+  })
+}
+
+/**
+ * 手动提交本人当前角色的周报。
+ * 方法/路径：POST /v1/weekly-reports/{id}/submit/；认证：Bearer；幂等：否。
+ * 仅进行中状态的本人周报可以提交，提交后周报及其任务、日报、附件只读。
+ */
+export function submitReport(
+  reportId: string,
+): Promise<{ id: string; status: "completed"; submitted: true }> {
+  return request<{ id: string; status: "completed"; submitted: true }>({
+    method: "POST",
+    url: "/v1/weekly-reports/" + reportId + "/submit/",
   })
 }
 

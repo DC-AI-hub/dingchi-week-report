@@ -63,7 +63,20 @@
   border-right: 0;
 }
 
+/* 与填写页保持一致：核心识别列和结果列固定，只有动态字段区域横向滚动。 */
+.report-task-table__grid .fixed-col {
+  position: sticky;
+  z-index: 2;
+  background: #fff;
+}
+
+.report-task-table__grid thead .fixed-col {
+  z-index: 4;
+  background: #eef5ff;
+}
+
 .serial-col {
+  left: 0;
   width: 56px;
   min-width: 56px;
   max-width: 56px;
@@ -74,15 +87,22 @@
 }
 
 .customer-col {
+  left: 56px;
   width: 150px;
   min-width: 150px;
   max-width: 150px;
 }
 
 .task-col {
+  left: 206px;
   width: 220px;
   min-width: 220px;
   max-width: 220px;
+  box-shadow: 2px 0 0 #c4d8ee;
+}
+
+.task-col--without-primary {
+  left: 56px;
 }
 
 .dynamic-col {
@@ -91,11 +111,22 @@
   max-width: 180px;
 }
 
+/* 长字段标题（例如月度工作完成率的计算说明）需要在列内完整换行，
+   避免被右侧固定列覆盖或截断。 */
+.report-task-table__grid th.dynamic-col {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  line-height: 1.35;
+}
+
 .status-col {
+  right: 174px;
   width: 112px;
   min-width: 112px;
   max-width: 112px;
   white-space: nowrap;
+  box-shadow: -2px 0 0 #c4d8ee;
 }
 
 .report-task-table__grid th.status-col {
@@ -103,6 +134,7 @@
 }
 
 .updated-col {
+  right: 0;
   width: 174px;
   min-width: 174px;
   max-width: 174px;
@@ -165,7 +197,17 @@
   background: #e1efff;
 }
 
+.status-pill--pending {
+  color: #216aca;
+  background: #e1efff;
+}
+
 .status-pill--on_time {
+  color: #07855c;
+  background: #dff8ee;
+}
+
+.status-pill--completed {
   color: #07855c;
   background: #dff8ee;
 }

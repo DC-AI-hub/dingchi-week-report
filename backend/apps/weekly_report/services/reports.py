@@ -30,6 +30,7 @@ from ..models import (
     WeeklyReport,
     WeeklyReportDailyTask,
     WeeklyReportItem,
+    WeeklyReportItemProgressHistory,
     WeeklyReportMetric,
 )
 from ..templates import ROLE_TEMPLATES, get_default_task_fields, get_default_template
@@ -65,9 +66,9 @@ class ReportPermissionError(ReportError):
     code = "FORBIDDEN"
 
 
-REPORT_STATUS_ACTIVE = "active"
-REPORT_STATUS_PENDING = "pending_activation"
-REPORT_STATUS_ARCHIVED = "archived"
+REPORT_STATUS_NOT_STARTED = "not_started"
+REPORT_STATUS_IN_PROGRESS = "in_progress"
+REPORT_STATUS_COMPLETED = "completed"
 
 
 def get_template_by_code(
@@ -182,6 +183,7 @@ def list_visible_reports(
     period_end: Any = None,
     month_key: Any = None,
     group_id: Any = None,
+    employee_id: Any = None,
     employee_scope: str | None = None,
 ) -> dict[str, Any]:
     """按当前角色作用域分页查询周报。
@@ -201,6 +203,9 @@ def list_visible_reports(
     if scope == "self" and group_id not in (None, ""):
         raise ReportError("个人周报不支持按分组筛选。")
     parsed_group_id = _optional_int(group_id)
+    parsed_employee_id = _optional_int(employee_id)
+    if parsed_employee_id is not None:
+        employee_ids = [parsed_employee_id] if parsed_employee_id in employee_ids else []
     parsed_period_start = _parse_optional_date(period_start)
     parsed_period_end = _parse_optional_date(period_end)
     parsed_month_key = _parse_month_key(month_key)
@@ -238,7 +243,7 @@ def create_or_update_report(
         raise ReportError("周报周期必须从周一开始。")
     if period_end != period_start + timedelta(days=6):
         raise ReportError("周报周期结束日期必须是开始日期后的周日。")
-    if period_start < current_start:
+    if report_id is None and period_start < current_start:
         raise ReportError("只能新增当前周报周期或未来周报周期。")
     report = _load_editable_report(
         user=user,
@@ -254,7 +259,9 @@ def create_or_update_report(
         if report is not None
         else resolve_role_template(role_code)
     )
-    period_status = _period_status(period_start, period_end)
+    # 新建周报只根据是否为未来周期确定初始状态。周报不会因为周期结束
+    # 自动提交，周期结束后的成果补录仍需要保持可编辑，直到用户手动提交。
+    period_status = _initial_report_status(period_start)
     with transaction.atomic():
         existing_attachments: list[Attachment] = []
         if report is not None:
@@ -289,7 +296,8 @@ def create_or_update_report(
             report.as_of_date = as_of_date
             report.month_key = period_start.strftime("%Y-%m")
             report.group_id = user.group_id
-            report.status = period_status
+            # 保留已经持久化的状态。未来周报进入当前周期时只允许从
+            # 未来周报进入当前周期时由展示层计算为进行中，不再根据周期结束日期自动变更状态。
         report.summary = str(payload.get("summary") or "").strip()
         report.risk_level = str(payload.get("risk_level") or "none").strip()
         report.risk_blocked = bool(payload.get("risk_blocked", False))
@@ -305,9 +313,15 @@ def create_or_update_report(
                 month_key=report.month_key,
                 value=payload["monthly_plan"],
             )
+        previous_item_progress = _get_item_progress_state(int(report.id))
         WeeklyReportItem.objects.filter(report_id=report.id).delete()
         WeeklyReportMetric.objects.filter(report_id=report.id).delete()
         item_id_map = _save_items(report, payload.get("items"), template["tasks"], user.id)
+        _record_item_progress_history(
+            report=report,
+            previous_state=previous_item_progress,
+            recorded_by=int(user.id),
+        )
         _save_metrics(report, payload.get("metrics"), template["metrics"], item_id_map)
         _sync_attachments(
             value=payload.get("attachments"),
@@ -319,7 +333,7 @@ def create_or_update_report(
 
 
 def delete_report(*, user: UserAccount, role_code: str, report_id: int) -> dict[str, Any]:
-    """删除本人当前周期周报及其逻辑关联明细。未来和历史周报只读。"""
+    """删除本人尚未提交的周报及其逻辑关联明细。"""
     report = WeeklyReport.objects.filter(id=report_id).first()
     if _role_scope(role_code) == "all":
         raise ReportPermissionError("全员数据角色仅支持查看周报。")
@@ -327,9 +341,10 @@ def delete_report(*, user: UserAccount, role_code: str, report_id: int) -> dict[
         raise ReportNotFoundError("周报不存在。")
     if int(report.employee_id) != int(user.id) or report.role_code != role_code:
         raise ReportPermissionError("只能删除当前角色下自己的周报。")
-    if _period_status(report.period_start, report.period_end) != REPORT_STATUS_ACTIVE:
-        raise ReportError("仅当前周报周期可以删除。")
+    if _effective_report_status(report.status, report.period_start) == REPORT_STATUS_COMPLETED:
+        raise ReportError("已完成的周报不支持删除。")
     with transaction.atomic():
+        WeeklyReportItemProgressHistory.objects.filter(report_id=report.id).delete()
         WeeklyReportItem.objects.filter(report_id=report.id).delete()
         WeeklyReportMetric.objects.filter(report_id=report.id).delete()
         for attachment in Attachment.objects.filter(
@@ -367,6 +382,24 @@ def get_report_detail(*, user: UserAccount, role_code: str, report_id: int) -> d
     }
 
 
+def submit_report(*, user: UserAccount, role_code: str, report_id: int) -> dict[str, Any]:
+    """提交本人当前角色的周报，提交后周报及其明细只读。"""
+    if _role_scope(role_code) == "all":
+        raise ReportPermissionError("全员数据角色仅支持查看周报。")
+    with transaction.atomic():
+        report = WeeklyReport.objects.select_for_update().filter(id=report_id).first()
+        if report is None:
+            raise ReportNotFoundError("周报不存在。")
+        if int(report.employee_id) != int(user.id) or report.role_code != role_code:
+            raise ReportPermissionError("只能提交当前角色下自己的周报。")
+        effective_status = _effective_report_status(report.status, report.period_start)
+        if effective_status != REPORT_STATUS_IN_PROGRESS:
+            raise ReportError("仅进行中的周报可以提交。")
+        report.status = REPORT_STATUS_COMPLETED
+        report.save(update_fields=["status", "updated_at"])
+    return {"id": str(report.id), "status": REPORT_STATUS_COMPLETED, "submitted": True}
+
+
 def upload_report_attachment(
     *,
     user: UserAccount,
@@ -377,7 +410,7 @@ def upload_report_attachment(
     description: Any = "",
     attachment_type: Any = "weekly_report",
 ) -> dict[str, Any]:
-    """上传本人当前或未来周报的附件，并写入系统通用附件表。"""
+    """上传本人未完成周报的附件，并写入系统通用附件表。"""
     if uploaded_file is None:
         raise ReportError("请选择附件。")
     report = WeeklyReport.objects.filter(id=report_id).first()
@@ -385,8 +418,8 @@ def upload_report_attachment(
         raise ReportNotFoundError("周报不存在。")
     if int(report.employee_id) != int(user.id) or report.role_code != role_code:
         raise ReportPermissionError("只能上传当前角色下自己的周报附件。")
-    if _period_status(report.period_start, report.period_end) == REPORT_STATUS_ARCHIVED:
-        raise ReportPermissionError("历史周报不能上传附件。")
+    if _effective_report_status(report.status, report.period_start) == REPORT_STATUS_COMPLETED:
+        raise ReportPermissionError("已完成的周报不支持上传附件。")
 
     max_size = int(settings.ATTACHMENT_MAX_SIZE_BYTES)
     if uploaded_file.size is not None and uploaded_file.size > max_size:
@@ -496,21 +529,33 @@ def save_monthly_plan(
     }
 
 
-def dashboard_summary(*, user: UserAccount, role_code: str) -> dict[str, Any]:
+def dashboard_summary(
+    *,
+    user: UserAccount,
+    role_code: str,
+    period_start: Any = None,
+) -> dict[str, Any]:
+    selected_start = _parse_optional_date(period_start)
+    if selected_start is not None and selected_start.weekday() != 0:
+        raise ReportError("周报周期只能选择周一。")
+
     employee_ids = visible_employee_ids(user, role_code)
-    rows = dao.list_reports(employee_ids=employee_ids)
-    current_start = timezone.localdate() - timedelta(days=timezone.localdate().weekday())
+    current_start = selected_start or _current_period_start()
+    current_end = current_start + timedelta(days=6)
+    rows = dao.list_reports(
+        employee_ids=employee_ids,
+        period_start=current_start,
+        period_end=current_end,
+    )
     current_rows = [
-        _with_period_status(row)
+        _with_report_status(row)
         for row in rows
-        if (_as_date(row.get("period_start")) or current_start) >= current_start
+        if (_as_date(row.get("period_start")) or current_start) == current_start
     ]
-    items = []
     team_items: list[dict[str, Any]] = []
     for row in current_rows:
         report_id = int(row["id"])
         report_items = dao.get_report_items(report_id)
-        items.extend(report_items)
         for item in report_items:
             team_items.append(
                 {
@@ -518,30 +563,55 @@ def dashboard_summary(*, user: UserAccount, role_code: str) -> dict[str, Any]:
                     "employee_id": row.get("employee_id"),
                     "employee_name": row.get("employee_name") or "",
                     "role_code": row.get("role_code") or "",
+                    "role_name": row.get("role_name") or row.get("role_code") or "",
+                    "group_id": row.get("group_id"),
                     "group_name": row.get("group_name") or "",
                     "report_status": row.get("status") or "",
                     "report_period_start": row.get("period_start"),
                     "report_period_end": row.get("period_end"),
                 }
             )
+    week_rows = [
+        row
+        for row in current_rows
+        if (_as_date(row.get("period_start")) or current_start) == current_start
+    ]
+    week_items = [
+        item
+        for item in team_items
+        if (_as_date(item.get("report_period_start")) or current_start) == current_start
+    ]
+    visible_members = dao.list_dashboard_members(employee_ids)
+    member_stats, group_stats = _build_dashboard_task_stats(
+        week_rows,
+        week_items,
+        visible_members,
+    )
     progress_values = [
         Decimal(str(item["completion_rate"]))
-        for item in items
+        for item in week_items
         if item["completion_rate"] is not None
     ]
     completion = (
         round(sum(progress_values) / len(progress_values), 1) if progress_values else Decimal("0")
     )
-    status_counts = {"in_progress": 0, "overdue": 0, "on_time": 0, "late": 0}
-    for item in items:
+    status_counts = {"in_progress": 0, "overdue": 0, "on_time": 0, "late": 0, "completed": 0}
+    for item in week_items:
         status_key = str(item.get("on_time_status") or "in_progress")
+        # 仅读取唯一状态字段；待完成任务在首页状态分布中归入进行中。
+        if status_key == "pending":
+            status_key = "in_progress"
         status_counts[status_key] = status_counts.get(status_key, 0) + 1
-    risk_count = sum(1 for item in items if item.get("on_time_status") in {"overdue", "late"})
+    risk_count = sum(1 for item in week_items if item.get("on_time_status") in {"overdue", "late"})
     own_rows = [row for row in current_rows if int(row["employee_id"]) == int(user.id)]
-    own_items = []
+    own_week_items = []
     for row in own_rows:
-        own_items.extend(dao.get_report_items(int(row["id"])))
-    trend = _build_trend(items, current_start)
+        row_items = dao.get_report_items(int(row["id"]))
+        own_week_items.extend(row_items)
+    progress_history = dao.get_report_item_progress_history(
+        [int(row["id"]) for row in week_rows]
+    )
+    trend = _build_trend(week_items, progress_history, current_start)
     return {
         "scope": _role_scope(role_code),
         "period": {
@@ -549,28 +619,268 @@ def dashboard_summary(*, user: UserAccount, role_code: str) -> dict[str, Any]:
             "end": (current_start + timedelta(days=6)).isoformat(),
         },
         "kpis": {
-            "planned_tasks": len(items),
+            "planned_tasks": len(week_items),
             "completion_rate": float(completion),
             "completed_tasks": sum(
-                1 for item in items if Decimal(str(item.get("progress_percent") or 0)) >= 100
+                1
+                for item in week_items
+                if item.get("on_time_status") in {"completed", "on_time"}
+                or Decimal(str(item.get("progress_percent") or 0)) >= 100
             ),
             "risk_items": risk_count,
         },
         "trend": trend,
         "status_distribution": [
             {"name": "进行中", "value": status_counts.get("in_progress", 0), "color": "#2f80ed"},
-            {"name": "已完成", "value": status_counts.get("on_time", 0), "color": "#12b886"},
+            {
+                "name": "已完成",
+                "value": status_counts.get("on_time", 0) + status_counts.get("completed", 0),
+                "color": "#12b886",
+            },
             {
                 "name": "延期/风险",
                 "value": status_counts.get("overdue", 0) + status_counts.get("late", 0),
                 "color": "#f05d5e",
             },
         ],
-        "my_tasks": [_serialize_row(item) for item in own_items[:8]],
+        "my_tasks": [_serialize_row(item) for item in own_week_items[:8]],
+        # 下周计划由独立接口返回，避免当前周期查询越过空周读取更远周期。
+        "my_plans": [],
         "reports": [_serialize_row(row) for row in current_rows[:12]],
         # 领导首页需要按部门和责任人展示当前可见任务；任务仍来自周报明细，避免前端生成演示数据。
         "team_tasks": [_serialize_row(item) for item in team_items[:200]],
+        # 管理视角使用后端真实聚合结果，避免前端只根据截断后的任务明细计算出错误的总数。
+        "member_stats": member_stats,
+        "group_stats": group_stats,
     }
+
+
+def dashboard_next_week(
+    *,
+    user: UserAccount,
+    role_code: str,
+    period_start: Any = None,
+) -> dict[str, Any]:
+    """返回所选周期紧邻的下一周数据，不向后跳过没有数据的周期。"""
+    selected_start = _parse_optional_date(period_start)
+    if selected_start is not None and selected_start.weekday() != 0:
+        raise ReportError("周报周期只能选择周一。")
+
+    current_start = selected_start or _current_period_start()
+    next_start = current_start + timedelta(days=7)
+    next_end = next_start + timedelta(days=6)
+    employee_ids = visible_employee_ids(user, role_code)
+    rows = [
+        _with_report_status(row)
+        for row in dao.list_reports(
+            employee_ids=employee_ids,
+            period_start=next_start,
+            period_end=next_end,
+        )
+        if (_as_date(row.get("period_start")) or next_start) == next_start
+    ]
+    team_items: list[dict[str, Any]] = []
+    own_items: list[dict[str, Any]] = []
+    for row in rows:
+        for item in dao.get_report_items(int(row["id"])):
+            enriched = {
+                **item,
+                "employee_id": row.get("employee_id"),
+                "employee_name": row.get("employee_name") or "",
+                "role_code": row.get("role_code") or "",
+                "role_name": row.get("role_name") or row.get("role_code") or "",
+                "group_id": row.get("group_id"),
+                "group_name": row.get("group_name") or "",
+                "report_status": row.get("status") or "",
+                "report_period_start": row.get("period_start"),
+                "report_period_end": row.get("period_end"),
+            }
+            team_items.append(enriched)
+            if int(row["employee_id"]) == int(user.id):
+                own_items.append(item)
+
+    return {
+        "period": {"start": next_start.isoformat(), "end": next_end.isoformat()},
+        "my_plans": [_serialize_row(item) for item in own_items[:8]],
+        "team_tasks": [_serialize_row(item) for item in team_items[:200]],
+    }
+
+
+def _build_dashboard_task_stats(
+    report_rows: Sequence[Mapping[str, Any]],
+    task_rows: Sequence[Mapping[str, Any]],
+    visible_members: Sequence[Mapping[str, Any]] = (),
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Build current-week member and group task statistics for dashboards.
+
+    Counts are calculated from every task row in the current period.  The
+    ``tasks`` list on each member is only a readable preview for the homepage;
+    the count/rate fields never depend on that preview limit.
+    """
+
+    members: dict[str, dict[str, Any]] = {}
+    groups: dict[str, dict[str, Any]] = {}
+
+    def ensure_member(row: Mapping[str, Any]) -> dict[str, Any]:
+        employee_id = str(row.get("employee_id") or "")
+        key = employee_id or f"name:{row.get('employee_name') or 'unknown'}"
+        member = members.get(key)
+        if member is None:
+            member = {
+                "employee_id": employee_id,
+                "employee_name": str(row.get("employee_name") or "未命名成员"),
+                "role_code": str(row.get("role_code") or ""),
+                "role_name": str(row.get("role_name") or row.get("role_code") or "团队成员"),
+                "group_name": str(row.get("group_name") or "未分组"),
+                "report_count": 0,
+                "task_count": 0,
+                "completed_task_count": 0,
+                "in_progress_task_count": 0,
+                "risk_task_count": 0,
+                "output_task_count": 0,
+                "completion_total": Decimal("0"),
+                "rated_task_count": 0,
+                "tasks": [],
+            }
+            members[key] = member
+        return member
+
+    def ensure_group(group_id: Any, group_name: str) -> dict[str, Any]:
+        normalized_name = group_name or "未分组"
+        normalized_id = str(group_id) if group_id not in (None, "", 0, "0") else None
+        key = normalized_id or f"name:{normalized_name}"
+        group = groups.get(key)
+        if group is None:
+            group = {
+                "group_id": normalized_id,
+                "group_name": normalized_name,
+                "member_ids": set(),
+                "task_count": 0,
+                "completed_task_count": 0,
+                "in_progress_task_count": 0,
+                "risk_task_count": 0,
+                "output_task_count": 0,
+                "completion_total": Decimal("0"),
+                "rated_task_count": 0,
+            }
+            groups[key] = group
+        return group
+
+    for row in visible_members:
+        member = ensure_member(row)
+        group = ensure_group(row.get("group_id"), str(row.get("group_name") or "未分组"))
+        group["member_ids"].add(member["employee_id"] or member["employee_name"])
+
+    for row in report_rows:
+        member = ensure_member(row)
+        member["report_count"] += 1
+        group = ensure_group(row.get("group_id"), str(row.get("group_name") or "未分组"))
+        group["member_ids"].add(member["employee_id"] or member["employee_name"])
+
+    for task in task_rows:
+        member = ensure_member(task)
+        group = ensure_group(
+            task.get("group_id"),
+            str(task.get("group_name") or member["group_name"] or "未分组"),
+        )
+        member_id = member["employee_id"] or member["employee_name"]
+        group["member_ids"].add(member_id)
+
+        progress = task.get("progress_percent")
+        completion = task.get("completion_rate")
+        try:
+            completion_value = Decimal(str(completion if completion is not None else progress or 0))
+        except (InvalidOperation, ValueError):
+            completion_value = Decimal("0")
+        completion_value = max(Decimal("0"), min(Decimal("100"), completion_value))
+        progress_value = progress
+        try:
+            progress_number = Decimal(
+                str(progress_value if progress_value is not None else completion or 0)
+            )
+        except (InvalidOperation, ValueError):
+            progress_number = Decimal("0")
+        is_risk = str(task.get("on_time_status") or "").lower() in {"overdue", "late"} or bool(
+            str(task.get("delay_reason") or "").strip()
+        )
+        is_completed = (
+            str(task.get("on_time_status") or "").lower() in {"completed", "on_time"}
+            or progress_number >= Decimal("100")
+        )
+        if is_risk:
+            status = "延期/风险"
+        elif is_completed:
+            status = "已完成"
+        else:
+            status = "进行中"
+
+        member["task_count"] += 1
+        group["task_count"] += 1
+        member["completion_total"] += completion_value
+        group["completion_total"] += completion_value
+        member["rated_task_count"] += 1
+        group["rated_task_count"] += 1
+        if is_risk:
+            member["risk_task_count"] += 1
+            group["risk_task_count"] += 1
+        elif is_completed:
+            member["completed_task_count"] += 1
+            group["completed_task_count"] += 1
+        else:
+            member["in_progress_task_count"] += 1
+            group["in_progress_task_count"] += 1
+        if str(task.get("output_description") or "").strip():
+            member["output_task_count"] += 1
+            group["output_task_count"] += 1
+
+        if len(member["tasks"]) < 8:
+            planned = task.get("planned_completion_date")
+            member["tasks"].append(
+                {
+                    "id": str(task.get("id") or ""),
+                    "task_name": str(task.get("task_name_snapshot") or "未命名任务"),
+                    "customer_name": str(task.get("customer_name_snapshot") or ""),
+                    "progress_percent": float(progress_number),
+                    "completion_rate": float(completion_value),
+                    "status": status,
+                    "planned_completion_date": (
+                        planned.isoformat()
+                        if isinstance(planned, (date, datetime))
+                        else str(planned or "")
+                    ),
+                }
+            )
+
+    member_result: list[dict[str, Any]] = []
+    for member in members.values():
+        rated = int(member.pop("rated_task_count"))
+        total = member.pop("completion_total")
+        member["completion_rate"] = round(float(total / rated), 1) if rated else 0
+        member_result.append(member)
+    member_result.sort(
+        key=lambda value: (
+            -int(value["task_count"]),
+            -float(value["completion_rate"]),
+            value["employee_name"],
+        )
+    )
+
+    group_result: list[dict[str, Any]] = []
+    for group in groups.values():
+        rated = int(group.pop("rated_task_count"))
+        total = group.pop("completion_total")
+        member_ids = group.pop("member_ids")
+        group["member_count"] = len(member_ids)
+        group["completion_rate"] = round(float(total / rated), 1) if rated else 0
+        group_result.append(group)
+    group_result.sort(
+        key=lambda value: (
+            -int(value["task_count"]),
+            -float(value["completion_rate"]),
+            value["group_name"],
+        )
+    )
+    return member_result, group_result
 
 
 def _save_monthly_plan(
@@ -656,7 +966,15 @@ def _save_items(
         requested_on_time = str(raw.get("on_time_status") or "").strip()
         on_time = (
             requested_on_time
-            if requested_on_time in {"in_progress", "on_time", "late", "overdue", "not_applicable"}
+            if requested_on_time in {
+                "pending",
+                "in_progress",
+                "on_time",
+                "late",
+                "overdue",
+                "not_applicable",
+                "completed",
+            }
             else calculated_on_time
         )
         delay_reason = str(raw.get("delay_reason") or "").strip()
@@ -693,11 +1011,67 @@ def _save_items(
             owner_name_snapshot=str(raw.get("owner_name_snapshot") or "").strip(),
             collaborator_names=str(raw.get("collaborator_names") or "").strip(),
             document_links=str(raw.get("document_links") or "").strip(),
-            item_status="completed" if progress is not None and progress >= 100 else "pending",
             sort_order=int(raw.get("sort_order") or index),
         )
         item_id_map[task_code] = int(item.id)
     return item_id_map
+
+
+def _get_item_progress_state(report_id: int) -> dict[str, tuple[Any, ...]]:
+    """读取覆盖保存前的进度状态，用稳定的任务编码识别同一逻辑任务。"""
+
+    return {
+        str(row["task_code"]): (
+            row["progress_percent"],
+            row["quality_percent"],
+            row["completion_rate"],
+            str(row["on_time_status"] or "in_progress"),
+        )
+        for row in WeeklyReportItem.objects.filter(report_id=report_id).values(
+            "task_code",
+            "progress_percent",
+            "quality_percent",
+            "completion_rate",
+            "on_time_status",
+        )
+    }
+
+
+def _record_item_progress_history(
+    *,
+    report: WeeklyReport,
+    previous_state: Mapping[str, tuple[Any, ...]],
+    recorded_by: int,
+) -> None:
+    """仅在进度相关字段发生变化时保存历史快照，保留同日多次修改记录。"""
+
+    today = timezone.localdate()
+    record_date = min(max(today, report.period_start), report.period_end)
+    rows: list[WeeklyReportItemProgressHistory] = []
+    for item in WeeklyReportItem.objects.filter(report_id=report.id):
+        current_state = (
+            item.progress_percent,
+            item.quality_percent,
+            item.completion_rate,
+            str(item.on_time_status or "in_progress"),
+        )
+        if previous_state.get(item.task_code) == current_state:
+            continue
+        rows.append(
+            WeeklyReportItemProgressHistory(
+                report_id=report.id,
+                report_item_id=item.id,
+                task_code_snapshot=item.task_code,
+                progress_percent=item.progress_percent,
+                quality_percent=item.quality_percent,
+                completion_rate=item.completion_rate,
+                on_time_status=item.on_time_status,
+                record_date=record_date,
+                recorded_by=recorded_by,
+            )
+        )
+    if rows:
+        WeeklyReportItemProgressHistory.objects.bulk_create(rows)
 
 
 def _save_metrics(
@@ -797,8 +1171,12 @@ def _save_daily_tasks(report: WeeklyReport, value: Any) -> None:
         return
     if not isinstance(value, list):
         raise ReportError("日报列表格式无效。")
-    if value and _period_status(report.period_start, report.period_end) != REPORT_STATUS_ACTIVE:
-        raise ReportError("仅当前周报周期可以填写日报。")
+    if (
+        value
+        and _effective_report_status(report.status, report.period_start)
+        != REPORT_STATUS_IN_PROGRESS
+    ):
+        raise ReportError("仅进行中的周报可以填写日报。")
 
     existing = {
         int(row.id): row
@@ -870,8 +1248,8 @@ def _load_editable_report(
             raise ReportNotFoundError("周报不存在。")
         if int(report.employee_id) != int(user.id) or report.role_code != role_code:
             raise ReportPermissionError("只能编辑当前角色下自己的周报。")
-        if _period_status(report.period_start, report.period_end) != REPORT_STATUS_ACTIVE:
-            raise ReportError("仅当前周报周期可以编辑。")
+        if _effective_report_status(report.status, report.period_start) == REPORT_STATUS_COMPLETED:
+            raise ReportError("已完成的周报不支持编辑。")
         return report
     if WeeklyReport.objects.filter(
         employee_id=user.id,
@@ -890,7 +1268,7 @@ def _get_accessible_report(*, user: UserAccount, role_code: str, report_id: int)
         raise ReportPermissionError("无权查看当前角色之外的周报。")
     if int(header["employee_id"]) not in visible_employee_ids(user, role_code):
         raise ReportPermissionError("无权查看该周报。")
-    return _with_period_status(header)
+    return _with_report_status(header)
 
 
 def _serialize_template_item(row: ReportTemplateItem) -> dict[str, Any]:
@@ -934,16 +1312,15 @@ def _serialize_row(row: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _serialize_report_row(row: Mapping[str, Any]) -> dict[str, Any]:
-    """序列化周报并按周期动态计算三种业务状态。"""
-    return _serialize_row(_with_period_status(row))
+    """序列化周报并保留持久化状态，不按周期结束日期自动提交。"""
+    return _serialize_row(_with_report_status(row))
 
 
-def _with_period_status(row: Mapping[str, Any]) -> dict[str, Any]:
+def _with_report_status(row: Mapping[str, Any]) -> dict[str, Any]:
     result = dict(row)
-    period_start = _as_date(result.get("period_start"))
-    period_end = _as_date(result.get("period_end"))
-    if period_start is not None and period_end is not None:
-        result["status"] = _period_status(period_start, period_end)
+    result["status"] = _effective_report_status(
+        result.get("status"), _as_date(result.get("period_start"))
+    )
     return result
 
 
@@ -952,13 +1329,25 @@ def _current_period_start(value: date | None = None) -> date:
     return current - timedelta(days=current.weekday())
 
 
-def _period_status(period_start: date, period_end: date) -> str:
+def _initial_report_status(period_start: date) -> str:
     current_start = _current_period_start()
     if period_start > current_start:
-        return REPORT_STATUS_PENDING
-    if period_end < current_start:
-        return REPORT_STATUS_ARCHIVED
-    return REPORT_STATUS_ACTIVE
+        return REPORT_STATUS_NOT_STARTED
+    return REPORT_STATUS_IN_PROGRESS
+
+
+def _effective_report_status(status: Any, period_start: date | None) -> str:
+    """返回展示/校验状态；未来周报待开始，当前及历史未提交周报进行中。"""
+    normalized = str(status or "").strip()
+    if normalized == REPORT_STATUS_COMPLETED:
+        return REPORT_STATUS_COMPLETED
+    if normalized == REPORT_STATUS_IN_PROGRESS:
+        return REPORT_STATUS_IN_PROGRESS
+    if normalized == REPORT_STATUS_NOT_STARTED:
+        if period_start is not None and period_start > _current_period_start():
+            return REPORT_STATUS_NOT_STARTED
+        return REPORT_STATUS_IN_PROGRESS
+    return _initial_report_status(period_start or _current_period_start())
 
 
 def _as_date(value: Any) -> date | None:
@@ -1104,22 +1493,66 @@ def _decimal_or_none(value: Any, value_type: str) -> Decimal | None:
         raise ReportError("指标数值格式无效。") from exc
 
 
-def _build_trend(items: Sequence[Mapping[str, Any]], start: date) -> list[dict[str, Any]]:
-    """按任务在数据库中的实际更新时间聚合本周每日进展，不生成模拟增量。"""
+def _build_trend(
+    items: Sequence[Mapping[str, Any]],
+    history_rows: Sequence[Mapping[str, Any]],
+    start: date,
+) -> list[dict[str, Any]]:
+    """按每日最后一条真实快照统计趋势，未更新日期沿用最近一次保存值。"""
+
+    histories: dict[tuple[str, str], list[Mapping[str, Any]]] = {}
+    for row in history_rows:
+        key = (str(row.get("report_id") or ""), str(row.get("task_code_snapshot") or ""))
+        histories.setdefault(key, []).append(row)
+    for rows in histories.values():
+        rows.sort(
+            key=lambda row: (
+                _as_date(row.get("record_date")) or start,
+                str(row.get("created_at") or ""),
+                int(row.get("id") or 0),
+            )
+        )
+
     current: list[dict[str, Any]] = []
     for index in range(7):
         day = start + timedelta(days=index)
-        day_items = [item for item in items if _as_date(item.get("updated_at")) == day]
-        progress_values = [
-            Decimal(str(item["progress_percent"]))
-            for item in day_items
-            if item.get("progress_percent") is not None
-        ]
-        completion_values = [
-            Decimal(str(item["completion_rate"]))
-            for item in day_items
-            if item.get("completion_rate") is not None
-        ]
+        day_values: list[tuple[Decimal | None, Decimal | None]] = []
+        for item in items:
+            key = (str(item.get("report_id") or ""), str(item.get("task_code") or ""))
+            task_history = histories.get(key, [])
+            latest = next(
+                (
+                    row
+                    for row in reversed(task_history)
+                    if (_as_date(row.get("record_date")) or start) <= day
+                ),
+                None,
+            )
+            if latest is not None:
+                day_values.append(
+                    (
+                        _decimal_snapshot(latest.get("progress_percent")),
+                        _decimal_snapshot(latest.get("completion_rate")),
+                    )
+                )
+                continue
+            if task_history:
+                continue
+            created_date = (
+                _as_date(item.get("created_at"))
+                or _as_date(item.get("updated_at"))
+                or start
+            )
+            if created_date <= day:
+                day_values.append(
+                    (
+                        _decimal_snapshot(item.get("progress_percent")),
+                        _decimal_snapshot(item.get("completion_rate")),
+                    )
+                )
+
+        progress_values = [value[0] for value in day_values if value[0] is not None]
+        completion_values = [value[1] for value in day_values if value[1] is not None]
         progress = sum(progress_values) / len(progress_values) if progress_values else Decimal("0")
         completion = (
             sum(completion_values) / len(completion_values)
@@ -1135,3 +1568,12 @@ def _build_trend(items: Sequence[Mapping[str, Any]], start: date) -> list[dict[s
             }
         )
     return current
+
+
+def _decimal_snapshot(value: Any) -> Decimal | None:
+    if value in (None, ""):
+        return None
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return None

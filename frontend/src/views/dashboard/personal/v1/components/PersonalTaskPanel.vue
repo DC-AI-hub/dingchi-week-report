@@ -1,17 +1,31 @@
 <script setup lang="ts">
+import { computed } from "vue"
 import { ListTodo, ArrowUpRight } from "lucide-vue-next"
 import { RouterLink } from "vue-router"
 
 import type { DashboardItem } from "@/features/dashboard/types"
 
-defineProps<{ tasks: DashboardItem[] }>()
+const props = defineProps<{
+  tasks: DashboardItem[]
+  reportId: string | null
+}>()
+
+const sortedTasks = computed(() => {
+  return [...props.tasks].sort((left, right) => {
+    const leftDate = left.planned_completion_date?.slice(0, 10) || "9999-12-31"
+    const rightDate = right.planned_completion_date?.slice(0, 10) || "9999-12-31"
+    return leftDate.localeCompare(rightDate)
+  })
+})
 
 function percent(value: number | null) {
   return value === null ? "—" : `${Math.round(value)}%`
 }
 
 function statusLabel(status: string) {
-  return status === "overdue" || status === "late" ? "延期" : status === "on_time" ? "已完成" : "进行中"
+  if (status === "pending") return "待完成"
+  if (status === "overdue" || status === "late") return "延期"
+  return status === "on_time" || status === "completed" ? "已完成" : "进行中"
 }
 </script>
 
@@ -23,8 +37,19 @@ function statusLabel(status: string) {
         <div>
           <h2>我的本周条目</h2>
         </div>
+        <span class="task-heading-divider" aria-hidden="true"></span>
+        <p class="task-heading-copy">聚焦执行，记录成果，让每一份努力都有迹可循</p>
       </div>
-      <RouterLink class="panel-link" to="/weekly-reports">查看全部 <ArrowUpRight :size="14" aria-hidden="true" /></RouterLink>
+      <RouterLink
+        v-if="props.reportId"
+        class="panel-link"
+        :to="{ name: 'weekly-report-detail', params: { reportId: props.reportId } }"
+      >
+        查看全部 <ArrowUpRight :size="14" aria-hidden="true" />
+      </RouterLink>
+      <span v-else class="panel-link panel-link--disabled" aria-disabled="true">
+        查看全部 <ArrowUpRight :size="14" aria-hidden="true" />
+      </span>
     </div>
 
     <div v-if="!tasks.length" class="content-empty">暂无任务数据</div>
@@ -32,7 +57,7 @@ function statusLabel(status: string) {
       <div class="personal-task-table-head" aria-hidden="true">
         <span>客户</span><span>工作任务</span><span>进展</span><span>进度</span><span>完成率</span><span>状态</span>
       </div>
-      <div v-for="task in tasks.slice(0, 5)" :key="task.id" class="personal-task-row">
+      <div v-for="task in sortedTasks" :key="task.id" class="personal-task-row">
         <span class="task-customer" :title="task.customer_name_snapshot || '内部事项'">{{ task.customer_name_snapshot || "内部事项" }}</span>
         <div class="task-name" :title="task.task_name_snapshot">
           <strong>{{ task.task_name_snapshot }}</strong>

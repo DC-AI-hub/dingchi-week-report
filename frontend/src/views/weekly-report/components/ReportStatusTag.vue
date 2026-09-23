@@ -4,9 +4,9 @@ import type { ReportStatus } from "@/features/weekly-report/types"
 defineProps<{ status: ReportStatus }>()
 
 const labels: Record<string, string> = {
-  active: "激活状态",
-  pending_activation: "待激活状态",
-  archived: "归档状态",
+  not_started: "待开始",
+  in_progress: "进行中",
+  completed: "已完成",
 }
 </script>
 

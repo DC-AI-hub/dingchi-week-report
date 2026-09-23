@@ -16,6 +16,7 @@ const props = withDefaults(
     isLoading?: boolean
     emptyMessage?: string
     canEdit?: (report: WeeklyReport) => boolean
+    canSubmit?: (report: WeeklyReport) => boolean
     canDelete?: (report: WeeklyReport) => boolean
     canFillDaily?: (report: WeeklyReport) => boolean
   }>(),
@@ -23,12 +24,14 @@ const props = withDefaults(
     isLoading: false,
     emptyMessage: "暂无周报",
     canEdit: undefined,
+    canSubmit: undefined,
     canDelete: undefined,
     canFillDaily: undefined,
   },
 )
 
 const emit = defineEmits<{
+  submit: [report: WeeklyReport]
   delete: [report: WeeklyReport]
   dailyTask: [report: WeeklyReport]
 }>()
@@ -41,8 +44,16 @@ function canDeleteReport(report: WeeklyReport) {
   return props.canDelete?.(report) ?? false
 }
 
+function canSubmitReport(report: WeeklyReport) {
+  return props.canSubmit?.(report) ?? false
+}
+
 function canFillDailyReport(report: WeeklyReport) {
   return props.canFillDaily?.(report) ?? false
+}
+
+function hasActions() {
+  return props.scope === "self"
 }
 
 function editRoute(report: WeeklyReport) {
@@ -65,7 +76,7 @@ function editRoute(report: WeeklyReport) {
           <th v-if="scope !== 'self'">分组</th>
           <th>状态</th>
           <th>更新时间</th>
-          <th class="actions-heading">操作</th>
+          <th v-if="hasActions()" class="actions-heading">操作</th>
         </tr>
       </thead>
       <tbody>
@@ -84,7 +95,7 @@ function editRoute(report: WeeklyReport) {
           <td v-if="scope !== 'self'">{{ report.group_name || "—" }}</td>
           <td><ReportStatusTag :status="report.status" /></td>
           <td class="date-cell">{{ formatDateTime(report.updated_at) }}</td>
-          <td class="action-cell">
+          <td v-if="hasActions()" class="action-cell">
             <button
               v-if="scope === 'self' && canFillDailyReport(report)"
               class="table-action"
@@ -101,6 +112,14 @@ function editRoute(report: WeeklyReport) {
               编辑
             </RouterLink>
             <button
+              v-if="canSubmitReport(report)"
+              class="table-action"
+              type="button"
+              @click="emit('submit', report)"
+            >
+              提交
+            </button>
+            <button
               v-if="canDeleteReport(report)"
               class="table-action table-action--danger"
               type="button"
@@ -111,10 +130,10 @@ function editRoute(report: WeeklyReport) {
           </td>
         </tr>
         <tr v-if="isLoading">
-          <td :colspan="scope === 'self' ? 7 : 8" class="empty-row">正在加载周报数据</td>
+          <td :colspan="scope === 'self' ? 6 : 7" class="empty-row">正在加载周报数据</td>
         </tr>
         <tr v-else-if="!reports.length">
-          <td :colspan="scope === 'self' ? 7 : 8" class="empty-row">{{ emptyMessage }}</td>
+          <td :colspan="scope === 'self' ? 6 : 7" class="empty-row">{{ emptyMessage }}</td>
         </tr>
       </tbody>
     </table>

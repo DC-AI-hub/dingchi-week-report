@@ -16,7 +16,18 @@ import PersonalTaskPanel from "./components/PersonalTaskPanel.vue"
 const authStore = useAuthStore()
 const dashboardStore = useDashboardStore()
 const summary = computed(() => dashboardStore.summary)
-const plans = computed(() => summary.value.my_tasks.slice(0, 3))
+const plans = computed(() => (dashboardStore.nextWeek.my_plans || []).slice(0, 3))
+const currentReportId = computed(() => {
+  const periodStart = summary.value.period.start?.slice(0, 10)
+  if (!periodStart) return null
+
+  const userId = authStore.user?.id ? String(authStore.user.id) : null
+  return summary.value.reports.find((report) => {
+    const samePeriod = report.period_start?.slice(0, 10) === periodStart
+    const sameUser = !userId || String(report.employee_id) === userId
+    return samePeriod && sameUser
+  })?.id ?? null
+})
 const customerDistribution = computed<DashboardDistribution[]>(() => {
   const grouped = new Map<string, number>()
   for (const task of summary.value.my_tasks) {
@@ -38,6 +49,10 @@ onMounted(() => {
 watch(() => authStore.activeRole?.role_code, () => {
   void dashboardStore.load()
 })
+
+function handlePeriodChange(periodStart: string) {
+  void dashboardStore.load(periodStart)
+}
 </script>
 
 <template>
@@ -47,6 +62,7 @@ watch(() => authStore.activeRole?.role_code, () => {
         :period="summary.period"
         :role-name="authStore.activeRole?.role_name || '个人视角'"
         :user-name="authStore.user?.display_name || ''"
+        @update:start="handlePeriodChange"
       />
       <PersonalMetricGrid
         v-if="!dashboardStore.isLoading && !dashboardStore.errorMessage"
@@ -72,8 +88,8 @@ watch(() => authStore.activeRole?.role_code, () => {
       />
 
       <div class="personal-lower-grid">
-        <PersonalTaskPanel :tasks="summary.my_tasks" />
-        <PersonalResultsPanel :tasks="summary.my_tasks" />
+        <PersonalTaskPanel :tasks="summary.my_tasks" :report-id="currentReportId" />
+        <PersonalResultsPanel :tasks="summary.my_tasks" :report-id="currentReportId" />
       </div>
 
       <PersonalPlansPanel :plans="plans" :period="summary.period" />

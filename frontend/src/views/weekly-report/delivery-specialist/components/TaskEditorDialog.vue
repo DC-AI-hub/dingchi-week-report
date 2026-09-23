@@ -281,10 +281,12 @@ function removeAttachment(index: number) {
         <label class="task-editor__field">
           是否在计划时间内完成
           <select v-model="form.on_time_status" :disabled="readonly">
+            <option value="pending">待完成</option>
             <option value="in_progress">进行中</option>
             <option value="on_time">是，按计划完成</option>
             <option value="late">否，已延期完成</option>
             <option value="overdue">否，已逾期未完成</option>
+            <option value="completed">已完成</option>
             <option value="not_applicable">不适用</option>
           </select>
         </label>

@@ -9,17 +9,17 @@
   white-space: nowrap;
 }
 
-.report-status-tag--active {
-  color: #087b54;
-  background: #dff8ed;
-}
-
-.report-status-tag--pending_activation {
+.report-status-tag--not_started {
   color: #976400;
   background: #fff1cc;
 }
 
-.report-status-tag--archived {
-  color: #64748b;
-  background: #e9eef5;
+.report-status-tag--in_progress {
+  color: #1769aa;
+  background: #e3f0ff;
+}
+
+.report-status-tag--completed {
+  color: #087b54;
+  background: #dff8ed;
 }

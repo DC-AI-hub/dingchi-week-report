@@ -11,10 +11,12 @@ defineProps<{
 }>()
 
 const statusLabels: Record<string, string> = {
+  pending: "待完成",
   in_progress: "进行中",
   overdue: "延期",
   late: "延期完成",
   on_time: "按时完成",
+  completed: "已完成",
   not_applicable: "不适用",
 }
 

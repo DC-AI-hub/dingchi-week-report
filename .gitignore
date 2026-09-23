@@ -33,3 +33,5 @@ backend/media/
 /docs
 /skills/weekly-report-consolidator
 /skills/*.zip
+/.workbuddy/memory
+/scripts

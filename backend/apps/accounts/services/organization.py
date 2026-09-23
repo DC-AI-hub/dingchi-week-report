@@ -57,7 +57,7 @@ def create_role(*, payload: Mapping[str, Any]) -> Role:
     role_name = str(payload.get("role_name") or "").strip()
     scope = str(payload.get("scope") or "self").strip()
     description = str(payload.get("description") or "").strip()
-    report_template_code = str(payload.get("report_template_code") or "general_v1").strip()
+    report_template_code = str(payload.get("report_template_code") or "").strip()
     role_group_code = str(payload.get("role_group_code") or "").strip()
     _validate_role_fields(
         role_code=role_code,
