@@ -484,6 +484,28 @@ def upload_report_attachment(
     )
 
 
+def get_report_attachment_for_download(
+    *,
+    user: UserAccount,
+    role_code: str,
+    attachment_id: int,
+) -> Attachment:
+    """校验附件及所属周报的可见权限，并返回可下载的附件记录。"""
+    attachment = Attachment.objects.filter(id=attachment_id).first()
+    if attachment is None or attachment.attachment_type != "weekly_report":
+        raise ReportNotFoundError("附件不存在。")
+
+    _get_accessible_report(
+        user=user,
+        role_code=role_code,
+        report_id=int(attachment.relation_id),
+    )
+    storage_key = str(attachment.storage_key or "").strip()
+    if not storage_key or not default_storage.exists(storage_key):
+        raise ReportNotFoundError("附件文件不存在。")
+    return attachment
+
+
 def get_monthly_plan(
     *,
     user: UserAccount,

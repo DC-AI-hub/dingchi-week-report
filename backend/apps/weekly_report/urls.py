@@ -5,6 +5,11 @@ from . import views
 app_name = "weekly_report"
 
 urlpatterns = [
+    path(
+        "attachments/<str:attachment_id>/download/",
+        views.attachment_download_view,
+        name="attachment-download",
+    ),
     path("dashboard/summary/", views.dashboard_view, name="dashboard"),
     path("dashboard/next-week/", views.dashboard_next_week_view, name="dashboard-next-week"),
     path("weekly-report-templates/<str:template_code>/", views.template_view, name="template"),

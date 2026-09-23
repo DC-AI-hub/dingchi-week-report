@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from django.http import HttpRequest, JsonResponse
+from django.core.files.storage import default_storage
+from django.http import FileResponse, HttpRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
@@ -29,6 +30,7 @@ from .services.reports import (
     dashboard_next_week,
     delete_report,
     get_monthly_plan,
+    get_report_attachment_for_download,
     get_report_detail,
     get_template_by_code,
     list_visible_reports,
@@ -347,5 +349,38 @@ def attachment_upload_view(request: HttpRequest, report_id: str) -> JsonResponse
             ),
             status=201,
         )
+    except Exception as exc:
+        return _error(exc)
+
+
+@require_GET
+def attachment_download_view(
+    request: HttpRequest, attachment_id: str
+) -> FileResponse | JsonResponse:
+    """鉴权下载系统附件。
+
+    方法/路径：GET /api/v1/attachments/{attachment_id}/download/；认证：Bearer；
+    参数：路径 attachment_id 为附件逻辑 ID。当前支持周报附件，登录用户当前角色必须
+    对附件所属周报具有查看权限。成功响应为二进制文件流并保留原始文件名；
+    失败：401/403/404；响应带 X-Trace-ID，不暴露宿主机存储路径。
+    """
+    try:
+        user, role_code = require_request_user(request)
+        attachment = get_report_attachment_for_download(
+            user=user,
+            role_code=role_code,
+            attachment_id=int(attachment_id),
+        )
+        response = FileResponse(
+            default_storage.open(attachment.storage_key, "rb"),
+            as_attachment=True,
+            filename=attachment.file_name,
+            content_type=attachment.mime_type or "application/octet-stream",
+        )
+        response["Cache-Control"] = "private, no-store"
+        response["X-Content-Type-Options"] = "nosniff"
+        if attachment.file_size:
+            response["Content-Length"] = str(attachment.file_size)
+        return response
     except Exception as exc:
         return _error(exc)

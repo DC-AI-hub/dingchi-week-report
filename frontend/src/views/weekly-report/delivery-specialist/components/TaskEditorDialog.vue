@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
+import AttachmentDownloadLink from "@/components/file/AttachmentDownloadLink.vue"
 import { computed, reactive, ref, watch } from "vue"
 
 import SearchableSelect from "@/components/form/SearchableSelect.vue"
@@ -321,8 +322,7 @@ function removeAttachment(index: number) {
         <div v-if="form.attachments.length" class="task-editor__attachment-list">
           <div v-for="(attachment, index) in form.attachments" :key="`${attachment.file_name}-${index}`" class="task-editor__attachment-item">
             <div class="task-editor__attachment-main">
-              <a v-if="attachment.file_url" :href="attachment.file_url" target="_blank" rel="noreferrer">{{ attachment.file_name }}</a>
-              <span v-else>{{ attachment.file_name }}</span>
+              <AttachmentDownloadLink :attachment-id="attachment.id" :file-name="attachment.file_name" />
               <small>{{ attachment.file ? "待保存后上传" : "已上传" }}</small>
             </div>
             <input v-model.trim="attachment.description" maxlength="500" placeholder="附件说明（可选）" :readonly="readonly" />

@@ -2,6 +2,7 @@
 import { computed } from "vue"
 
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
+import AttachmentDownloadLink from "@/components/file/AttachmentDownloadLink.vue"
 import {
   allReportTaskFields,
   formatReportTaskField,
@@ -113,15 +114,10 @@ const fields = computed(() => {
         <span class="report-task-detail__label">附件</span>
         <ul>
           <li v-for="attachment in attachments" :key="attachment.id">
-            <a
-              v-if="attachment.file_url"
-              :href="attachment.file_url"
-              target="_blank"
-              rel="noreferrer"
-            >
-              {{ attachment.file_name }}
-            </a>
-            <span v-else>{{ attachment.file_name }}</span>
+            <AttachmentDownloadLink
+              :attachment-id="attachment.id"
+              :file-name="attachment.file_name"
+            />
             <small>{{ attachment.description || "已上传" }}</small>
           </li>
         </ul>

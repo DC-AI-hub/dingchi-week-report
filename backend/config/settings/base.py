@@ -29,7 +29,6 @@ CORS_EXPOSE_HEADERS = env.list("CORS_EXPOSE_HEADERS")
 CORS_ALLOW_CREDENTIALS = env.bool("CORS_ALLOW_CREDENTIALS")
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",

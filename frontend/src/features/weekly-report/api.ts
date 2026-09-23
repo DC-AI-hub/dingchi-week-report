@@ -1,4 +1,4 @@
-import { request } from "@/shared/api/http"
+import { http, request } from "@/shared/api/http"
 
 import type {
   ReportListFilters,
@@ -219,4 +219,27 @@ export function uploadReportAttachment(
     url: "/v1/weekly-reports/" + reportId + "/attachments/",
     data,
   })
+}
+
+/**
+ * 鉴权下载附件。
+ * 方法/路径：GET /v1/attachments/{attachment_id}/download/；认证：Bearer；幂等：是。
+ * 当前角色必须对附件所属周报具有查看权限；响应为二进制文件流，不暴露存储路径。
+ */
+export async function downloadReportAttachment(
+  attachmentId: string,
+  fileName: string,
+): Promise<void> {
+  const response = await http.get<Blob>(
+    "/v1/attachments/" + attachmentId + "/download/",
+    { responseType: "blob" },
+  )
+  const objectUrl = URL.createObjectURL(response.data)
+  const anchor = document.createElement("a")
+  anchor.href = objectUrl
+  anchor.download = fileName || "附件"
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(objectUrl)
 }

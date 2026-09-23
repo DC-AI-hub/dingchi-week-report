@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
+import AttachmentDownloadLink from "@/components/file/AttachmentDownloadLink.vue"
 import { computed, reactive, ref, watch } from "vue"
 
 import SearchableSelect from "@/components/form/SearchableSelect.vue"
@@ -168,7 +169,7 @@ function removeAttachment(index: number) { form.attachments.splice(index, 1) }
         <label for="innovation-task-links">相关文档链接或佐证材料</label>
         <textarea id="innovation-task-links" v-model.trim="form.document_links" rows="3" :readonly="readonly" />
         <div v-if="!readonly" class="task-editor__attachment-toolbar"><button class="ghost-button" type="button" @click="openFilePicker">上传附件</button><input ref="fileInputRef" class="task-editor__file-input" type="file" multiple @change="handleFiles" /></div>
-        <div v-if="form.attachments.length" class="task-editor__attachment-list"><div v-for="(attachment, index) in form.attachments" :key="`${attachment.file_name}-${index}`" class="task-editor__attachment-item"><div class="task-editor__attachment-main"><a v-if="attachment.file_url" :href="attachment.file_url" target="_blank" rel="noreferrer">{{ attachment.file_name }}</a><span v-else>{{ attachment.file_name }}</span><small>{{ attachment.file ? "待保存后上传" : "已上传" }}</small></div><input v-model.trim="attachment.description" maxlength="500" placeholder="附件说明（可选）" :readonly="readonly" /><button v-if="!readonly" class="link-button danger" type="button" @click="removeAttachment(index)">移除</button></div></div>
+        <div v-if="form.attachments.length" class="task-editor__attachment-list"><div v-for="(attachment, index) in form.attachments" :key="`${attachment.file_name}-${index}`" class="task-editor__attachment-item"><div class="task-editor__attachment-main"><AttachmentDownloadLink :attachment-id="attachment.id" :file-name="attachment.file_name" /><small>{{ attachment.file ? "待保存后上传" : "已上传" }}</small></div><input v-model.trim="attachment.description" maxlength="500" placeholder="附件说明（可选）" :readonly="readonly" /><button v-if="!readonly" class="link-button danger" type="button" @click="removeAttachment(index)">移除</button></div></div>
       </div>
       <NoticeBridge :warning-message="validationMessage" />
     </form>
