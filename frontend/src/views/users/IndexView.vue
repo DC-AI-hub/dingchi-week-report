@@ -209,7 +209,7 @@ onMounted(() => void load())
       <div class="directory-hero">
         <div>
           <h1>用户与组织</h1>
-          <p>维护人员、角色、分组和上下级关系，周报权限会随组织关系自动计算。</p>
+          <p>维护人员、职位、分组和上下级关系，周报权限会随组织关系自动计算。</p>
         </div>
         <div class="hero-actions">
           <button class="ghost-button" type="button" @click="isGroupManagementOpen = true">分组管理</button>
@@ -230,8 +230,8 @@ onMounted(() => void load())
             placeholder="登录账号/工号/用户名/邮箱/手机号"
             @keyup.enter="load"
           />
-          <select v-model="filters.role_code" aria-label="按角色筛选" @change="load">
-            <option value="">全部角色</option>
+          <select v-model="filters.role_code" aria-label="按职位筛选" @change="load">
+            <option value="">全部职位</option>
             <option v-for="role in roles" :key="role.id" :value="role.role_code">{{ role.role_name }}</option>
           </select>
           <GroupTreeSelect

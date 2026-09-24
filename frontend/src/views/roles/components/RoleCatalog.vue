@@ -51,8 +51,8 @@ const rolesByGroup = computed(() => {
 const ungroupedRoles = computed(() => props.roles.filter((role) => !props.groupOptions.some((group) => group.group_code === role.role_group_code)))
 
 function deleteDisabledReason(role: DirectoryRole): string {
-  if (role.role_code === "system_admin") return "系统管理员角色受保护，不能删除"
-  if (role.role_code === props.activeRoleCode) return "当前正在使用的角色不能删除"
+  if (role.role_code === "system_admin") return "系统管理员职位受保护，不能删除"
+  if (role.role_code === props.activeRoleCode) return "当前正在使用的职位不能删除"
   return ""
 }
 </script>
@@ -63,7 +63,7 @@ function deleteDisabledReason(role: DirectoryRole): string {
     <OrganizationChart v-else :collapsible="true" :groups="groupOptions">
       <template #node="{ group, isExpanded }">
         <strong class="organization-role-group">{{ group.group_name }}</strong>
-        <span class="organization-role-count">{{ rolesByGroup.get(group.group_code)?.length || 0 }} 个角色</span>
+        <span class="organization-role-count">{{ rolesByGroup.get(group.group_code)?.length || 0 }} 个职位</span>
         <div
           v-if="isExpanded && rolesByGroup.get(group.group_code)?.length"
           class="organization-roles"
@@ -90,7 +90,7 @@ function deleteDisabledReason(role: DirectoryRole): string {
       </template>
     </OrganizationChart>
     <section v-if="ungroupedRoles.length" class="ungrouped-roles">
-      <strong>未分组角色</strong>
+      <strong>未分组职位</strong>
       <button v-for="role in ungroupedRoles" :key="role.id" type="button" @click="$emit('edit', role)">
         {{ role.role_name }}
       </button>

@@ -74,11 +74,13 @@ CREATE TABLE IF NOT EXISTS `user_account` (
     `status` VARCHAR(16) NOT NULL COMMENT '状态：active启用、inactive停用',
     `is_demo` BOOL NOT NULL COMMENT '是否为演示账号：1是、0否',
     `last_login_at` DATETIME(6) NULL COMMENT '最近登录时间',
+    `mcp_api_key` VARCHAR(255) NULL COMMENT 'MCP 接口调用密钥，用于按密钥定位调用用户并判定数据范围',
     `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
     `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_user_account_username` (`username`),
-    UNIQUE KEY `uq_user_account_employee_no` (`employee_no`)
+    UNIQUE KEY `uq_user_account_employee_no` (`employee_no`),
+    UNIQUE KEY `uq_user_account_mcp_api_key` (`mcp_api_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户账号表';
 
 CREATE TABLE IF NOT EXISTS `user_role` (

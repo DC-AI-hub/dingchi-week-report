@@ -96,7 +96,7 @@ function submitForm() {
   }
 
   if (!payload.role_code || !payload.role_name || !payload.scope || !payload.report_template_code) {
-    formError.value = "请完整填写角色编码、角色名称、数据范围和周报模板。"
+    formError.value = "请完整填写职位编码、职位名称、数据范围和周报模板。"
     return
   }
   if (!props.scopeOptions.some((item) => item.dict_code === payload.scope)) {
@@ -108,11 +108,11 @@ function submitForm() {
     return
   }
   if (!props.groupOptions.some((item) => item.group_code === payload.role_group_code)) {
-    formError.value = "请选择有效的角色分组。"
+    formError.value = "请选择有效的职位分组。"
     return
   }
   if (!/^[a-z][a-z0-9_]*$/.test(payload.role_code)) {
-    formError.value = "角色编码必须以小写字母开头，只能包含小写字母、数字和下划线。"
+    formError.value = "职位编码必须以小写字母开头，只能包含小写字母、数字和下划线。"
     return
   }
   formError.value = ""
@@ -124,7 +124,7 @@ function submitForm() {
   <BaseDialog
     :busy="isSaving"
     :open="open"
-    :title="isEditing ? '编辑角色' : '新增角色'"
+    :title="isEditing ? '编辑职位' : '新增职位'"
     width="920px"
     @close="$emit('close')"
   >
@@ -133,7 +133,7 @@ function submitForm() {
 
       <div class="form-grid">
         <label>
-          <span>角色编码</span>
+          <span>职位编码</span>
           <input
             ref="roleCodeInput"
             v-model="form.role_code"
@@ -145,7 +145,7 @@ function submitForm() {
         </label>
 
         <label>
-          <span>角色名称</span>
+          <span>职位名称</span>
           <input
             ref="roleNameInput"
             v-model="form.role_name"
@@ -187,19 +187,19 @@ function submitForm() {
         </label>
 
         <label>
-          <span>角色分组</span>
+          <span>职位分组</span>
           <GroupTreeSelect
             v-model="form.role_group_code"
             :allow-empty="false"
             :disabled="isSaving || !groupOptions.length"
-            empty-label="请选择角色分组"
+            empty-label="请选择职位分组"
             :groups="groupOptions"
             value-field="group_code"
           />
         </label>
 
         <label class="description-field">
-          <span>角色说明</span>
+          <span>职位说明</span>
           <textarea
             v-model="form.description"
             maxlength="255"
@@ -217,7 +217,7 @@ function submitForm() {
         取消
       </button>
       <button class="primary-button" form="role-editor-form" type="submit" :disabled="isSaving">
-        {{ isSaving ? "保存中…" : isEditing ? "保存修改" : "创建角色" }}
+        {{ isSaving ? "保存中…" : isEditing ? "保存修改" : "创建职位" }}
       </button>
     </template>
   </BaseDialog>

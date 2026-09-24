@@ -42,7 +42,7 @@ const navItems = computed(() => [
     visible: isSystemAdmin.value,
   },
   {
-    label: "角色管理",
+    label: "职位管理",
     to: "/roles",
     icon: "roles" as const,
     visible: isSystemAdmin.value,

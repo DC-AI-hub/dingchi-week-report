@@ -72,7 +72,7 @@ function editRoute(report: WeeklyReport) {
           <th>周报周期</th>
           <th>所属月度</th>
           <th v-if="scope !== 'self'">填写人</th>
-          <th>角色</th>
+          <th>职位</th>
           <th v-if="scope !== 'self'">分组</th>
           <th>状态</th>
           <th>更新时间</th>

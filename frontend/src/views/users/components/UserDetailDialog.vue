@@ -39,7 +39,7 @@ const emit = defineEmits<{
         <div><dt>手机号</dt><dd>{{ user.phone || "未填写" }}</dd></div>
         <div><dt>所属分组</dt><dd>{{ user.group_name || "未分组" }}</dd></div>
         <div><dt>直属上级</dt><dd>{{ managerDisplayName }}</dd></div>
-        <div class="detail-grid__wide"><dt>角色</dt><dd class="detail-roles">{{ user.role_names.length ? user.role_names.join("、") : "未分配" }}</dd></div>
+        <div class="detail-grid__wide"><dt>职位</dt><dd class="detail-roles">{{ user.role_names.length ? user.role_names.join("、") : "未分配" }}</dd></div>
       </dl>
     </div>
     <template #actions>

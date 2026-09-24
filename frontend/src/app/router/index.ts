@@ -49,7 +49,7 @@ const routes: RouteRecordRaw[] = [
     path: "/roles",
     name: "roles",
     component: () => import("@/views/roles/IndexView.vue"),
-    meta: { title: "角色管理", requiresAuth: true, adminOnly: true },
+    meta: { title: "职位管理", requiresAuth: true, adminOnly: true },
   },
   {
     path: "/ai-chat",

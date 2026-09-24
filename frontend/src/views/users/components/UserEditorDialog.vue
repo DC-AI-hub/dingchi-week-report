@@ -118,7 +118,7 @@ function submitForm() {
     return
   }
   if (!payload.role_codes.length) {
-    formError.value = "请至少选择一个角色。"
+    formError.value = "请至少选择一个职位。"
     return
   }
   if (payload.email && !/^\S+@\S+\.\S+$/.test(payload.email)) {
@@ -192,12 +192,12 @@ function submitForm() {
           </select>
         </label>
         <fieldset class="role-fieldset">
-          <legend>角色</legend>
+          <legend>职位</legend>
           <label v-for="role in roles" :key="role.id" class="role-option">
             <input :checked="form.role_codes.includes(role.role_code)" type="checkbox" @change="toggleRole(role.role_code)" />
             <span>{{ role.role_name }}</span>
           </label>
-          <p v-if="!roles.length" class="role-empty">暂无可用角色</p>
+          <p v-if="!roles.length" class="role-empty">暂无可用职位</p>
         </fieldset>
       </div>
     </form>

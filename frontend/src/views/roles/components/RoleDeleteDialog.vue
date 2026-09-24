@@ -23,21 +23,21 @@ defineEmits<{
 <template>
   <BaseDialog
     :busy="isDeleting"
-    description="删除后该角色不再出现在角色列表和用户可选角色中。"
+    description="删除后该职位不再出现在职位列表和用户可选职位中。"
     :open="open"
-    title="删除角色"
+    title="删除职位"
     width="480px"
     @close="$emit('close')"
   >
     <div v-if="role" class="delete-content">
       <p>
-        确认删除角色“<strong>{{ role.role_name }}</strong>”吗？
+        确认删除职位“<strong>{{ role.role_name }}</strong>”吗？
       </p>
       <div class="role-summary">
-        <span>角色编码</span>
+        <span>职位编码</span>
         <strong>{{ role.role_code }}</strong>
       </div>
-      <p class="delete-note">历史周报数据会保留，已分配此角色的用户将无法再切换到该角色。</p>
+      <p class="delete-note">历史周报数据会保留，已分配此职位的用户将无法再切换到该职位。</p>
     </div>
 
     <template #actions>

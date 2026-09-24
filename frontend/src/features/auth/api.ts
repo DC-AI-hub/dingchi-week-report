@@ -51,5 +51,5 @@ export function logout(): Promise<{ logged_out: boolean }> {
 }
 
 export function roleLabel(role: Role | null | undefined): string {
-  return role?.role_name || "未选择角色"
+  return role?.role_name || "未选择职位"
 }

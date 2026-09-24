@@ -28,7 +28,7 @@ export function useRoleManagement() {
     try {
       roles.value = (await listRoles()).items
     } catch (error: unknown) {
-      errorMessage.value = getErrorMessage(error, "角色数据加载失败。")
+      errorMessage.value = getErrorMessage(error, "职位数据加载失败。")
     } finally {
       isLoading.value = false
     }
@@ -60,11 +60,11 @@ export function useRoleManagement() {
     try {
       if (role) await updateRole(role.id, payload)
       else await createRole(payload)
-      successMessage.value = role ? "角色配置已更新。" : "角色已创建。"
+      successMessage.value = role ? "职位配置已更新。" : "职位已创建。"
       await loadRoles()
       return true
     } catch (error: unknown) {
-      errorMessage.value = getErrorMessage(error, role ? "角色更新失败。" : "角色创建失败。")
+      errorMessage.value = getErrorMessage(error, role ? "职位更新失败。" : "职位创建失败。")
       return false
     } finally {
       isSaving.value = false
@@ -77,11 +77,11 @@ export function useRoleManagement() {
     successMessage.value = ""
     try {
       await deleteRole(role.id)
-      successMessage.value = `角色“${role.role_name}”已删除。`
+      successMessage.value = `职位“${role.role_name}”已删除。`
       await loadRoles()
       return true
     } catch (error: unknown) {
-      errorMessage.value = getErrorMessage(error, "角色删除失败。")
+      errorMessage.value = getErrorMessage(error, "职位删除失败。")
       return false
     } finally {
       isDeleting.value = false

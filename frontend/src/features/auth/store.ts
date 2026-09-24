@@ -80,7 +80,7 @@ export const useAuthStore = defineStore("auth", () => {
     try {
       persist(await switchRole(roleCode))
     } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : "角色切换失败。"
+      errorMessage.value = error instanceof Error ? error.message : "职位切换失败。"
       throw error
     } finally {
       isLoading.value = false
