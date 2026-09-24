@@ -17,8 +17,11 @@ from starlette.routing import Mount  # noqa: E402
 from apps.ai_gateway.services.openai_chat import close_chat_service  # noqa: E402
 from apps.core.middleware.trace_id import TraceIdMiddleware  # noqa: E402
 from apps.mcp_server.server import mcp_server  # noqa: E402
+from apps.mcp_server.header_auth import McpApiKeyMiddleware  # noqa: E402
 
 mcp_application = mcp_server.streamable_http_app(streamable_http_path="/")
+# 从 HTTP 头（X-MCP-API-Key / Authorization: Bearer）提取调用方密钥，经 ContextVar 透传工具
+mcp_application = McpApiKeyMiddleware(mcp_application)
 
 
 @asynccontextmanager

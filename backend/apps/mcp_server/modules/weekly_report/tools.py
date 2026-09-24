@@ -9,6 +9,7 @@ from typing import Any
 
 from mcp.server import MCPServer
 
+from apps.mcp_server.header_auth import MCP_API_KEY_VAR
 from apps.mcp_server.security import (
     get_caller_by_api_key,
     resolve_owner_id,
@@ -21,7 +22,6 @@ from apps.weekly_report.dao import get_report_items, list_reports
 def register(server: MCPServer) -> None:
     @server.tool()
     def query_weekly_report(
-        mcp_api_key: str,
         owner: str = "",
         year: int | None = None,
         month: int | None = None,
@@ -33,10 +33,11 @@ def register(server: MCPServer) -> None:
         """按调用方的数据范围查询鼎驰周报系统的周报数据，返回 JSON。
 
         工具/入口：query_weekly_report，经统一 MCP HTTP 入口 /mcp/ 调用。
-        认证：必填 mcp_api_key；后端按密钥定位调用用户，并依据其角色 scope
-              （个人/团队/领导）判定可见的周报数据范围。
+        认证：密钥通过 HTTP 头传入（X-MCP-API-Key，或 Authorization: Bearer），
+             由 config/asgi.py 的 McpApiKeyMiddleware 提取后存入 ContextVar；
+             后端按密钥定位调用用户，并依据其角色 scope（个人/团队/领导）判定
+             可见的周报数据范围。工具参数中不再需要传 mcp_api_key。
         请求参数：
-          - mcp_api_key：必填，调用方密钥。
           - owner：可选，按 username/employee_no/display_name 限定某人；
                    缺省表示查询「数据范围内的全部」周报。
           - year/month/week/day：时间范围；优先级 day > week > month > 默认本周。
@@ -46,6 +47,13 @@ def register(server: MCPServer) -> None:
         成功响应：{ ok:true, scope, caller, query, total, reports:[...] }。
         失败响应：{ ok:false, error, message }。
         """
+        mcp_api_key = MCP_API_KEY_VAR.get()
+        if not mcp_api_key:
+            return {
+                "ok": False,
+                "error": "missing_api_key",
+                "message": "缺少 X-MCP-API-Key 请求头（或 Authorization: Bearer）。",
+            }
         caller = get_caller_by_api_key(mcp_api_key)
         if caller is None:
             return {
