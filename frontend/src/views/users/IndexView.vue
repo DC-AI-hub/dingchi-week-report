@@ -282,9 +282,28 @@ onMounted(() => void load())
       <section v-if="ungroupedUsers.length" class="ungrouped-users">
         <h3>未分组人员</h3>
         <div class="ungrouped-users__list">
-          <button v-for="user in ungroupedUsers" :key="user.id" type="button" @click="viewingUser = user">
-            {{ user.display_name }} · {{ user.username }}
-          </button>
+          <article
+            v-for="user in ungroupedUsers"
+            :key="user.id"
+            class="ungrouped-user"
+            role="button"
+            tabindex="0"
+            @click="viewingUser = user"
+            @keydown.enter.prevent="viewingUser = user"
+            @keydown.space.prevent="viewingUser = user"
+          >
+            <span class="person-avatar" :style="{ background: user.avatar_color || '#2f80ed' }">
+              {{ user.display_name.slice(0, 1) }}
+            </span>
+            <span class="ungrouped-user__identity">
+              <strong>{{ user.display_name }}</strong>
+              <small>{{ user.username }}</small>
+            </span>
+            <span class="ungrouped-user__actions">
+              <button type="button" @click.stop="openEditUser(user)">编辑</button>
+              <button class="is-danger" type="button" @click.stop="requestDeleteUser(user)">删除</button>
+            </span>
+          </article>
         </div>
       </section>
     </section>

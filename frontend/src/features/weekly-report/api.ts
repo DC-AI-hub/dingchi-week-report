@@ -196,28 +196,36 @@ export function submitReport(
 }
 
 /**
- * 上传周报任务附件。
- * 方法/路径：POST /v1/weekly-reports/{id}/attachments/；认证：Bearer；幂等：否�?
- * 请求体：multipart/form-data，file 必填，item_id 和 description 可选；attachment_type 固定为 weekly_report。
- * 成功响应为系统通用附件信息。
- * 仅允许本人当前或未来周期周报；失败 400/401/403/404，统一客户端携带 trace_id�?
+ * 上传尚未绑定工作任务的附件。
+ * 方法/路径：POST /v1/attachments/；认证：Bearer；幂等：否。
+ * 请求体：multipart/form-data，file 必填，description 可选。
+ * 成功响应返回附件 ID；保存周报工作任务时再通过附件 ID 建立业务关联。
  */
-export function uploadReportAttachment(
-  reportId: string,
+export function uploadPendingReportAttachment(
   file: File,
-  itemId?: string | null,
   description = "",
-  attachmentType = "weekly_report",
 ): Promise<ReportAttachment> {
   const data = new FormData()
   data.append("file", file)
-  if (itemId) data.append("item_id", itemId)
   if (description) data.append("description", description)
-  data.append("attachment_type", attachmentType)
   return request<ReportAttachment>({
     method: "POST",
-    url: "/v1/weekly-reports/" + reportId + "/attachments/",
+    url: "/v1/attachments/",
     data,
+  })
+}
+
+/**
+ * 物理删除周报附件。
+ * 方法/路径：DELETE /v1/attachments/{attachment_id}/；认证：Bearer；幂等：否。
+ * 仅周报本人且周报未提交时允许操作；成功后附件表记录和磁盘文件均被删除。
+ */
+export function deleteReportAttachment(
+  attachmentId: string,
+): Promise<{ id: string; deleted: true }> {
+  return request<{ id: string; deleted: true }>({
+    method: "DELETE",
+    url: "/v1/attachments/" + attachmentId + "/",
   })
 }
 

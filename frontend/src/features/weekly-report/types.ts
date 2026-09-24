@@ -204,7 +204,7 @@ export interface ReportPayload {
   items: Array<Partial<ReportItem> & { task_code: string }>
   metrics: Array<Partial<ReportMetric> & { metric_code: string }>
   /** 已上传附件的保留及任务关联信息；新文件通过 multipart 接口上传。 */
-  attachments?: Array<{ id: string; task_code?: string }>
+  attachments?: Array<{ id: string; task_code?: string; description?: string }>
   /** 新建周报阶段暂存的日报，由后端随周报在同一事务内保存。 */
   daily_tasks?: Array<{
     id?: string

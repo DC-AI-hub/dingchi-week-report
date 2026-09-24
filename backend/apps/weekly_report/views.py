@@ -28,6 +28,7 @@ from .services.reports import (
     create_or_update_report,
     dashboard_summary,
     dashboard_next_week,
+    delete_report_attachment,
     delete_report,
     get_monthly_plan,
     get_report_attachment_for_download,
@@ -35,7 +36,7 @@ from .services.reports import (
     get_template_by_code,
     list_visible_reports,
     save_monthly_plan,
-    upload_report_attachment,
+    upload_pending_report_attachment,
 )
 
 
@@ -325,27 +326,21 @@ def daily_task_detail_view(
 
 @csrf_exempt
 @require_POST
-def attachment_upload_view(request: HttpRequest, report_id: str) -> JsonResponse:
-    """上传当前或未来周报的任务附件。
+def pending_attachment_upload_view(request: HttpRequest) -> JsonResponse:
+    """上传尚未绑定工作任务的周报附件。
 
-    方法/路径：POST /api/v1/weekly-reports/{report_id}/attachments/；认证：Bearer；
-    请求体：multipart/form-data；file 必填；item_id、description 可选，
-    附件类型固定为 weekly_report。
-    成功响应：201，data 为系统通用附件记录；仅本人未完成周报可上传，提交后只读；
-    失败：400/401/403/404；响应带 X-Trace-ID，文件名、URL 和逻辑 ID 均按统一 JSON 契约返回。
+    方法/路径：POST /api/v1/attachments/；认证：Bearer；幂等：否。
+    请求体：multipart/form-data，file 必填，description 可选。附件先绑定当前上传人，
+    成功响应：201，data 返回附件 ID；保存周报工作任务时通过附件 ID 完成业务绑定。
+    失败：400/401；响应带 X-Trace-ID，不要求周报或工作任务预先存在。
     """
     try:
-        user, role_code = require_request_user(request)
-        uploaded_file = request.FILES.get("file")
+        user, _role_code = require_request_user(request)
         return api_success(
-            upload_report_attachment(
+            upload_pending_report_attachment(
                 user=user,
-                role_code=role_code,
-                report_id=int(report_id),
-                uploaded_file=uploaded_file,
-                item_id=request.POST.get("item_id"),
+                uploaded_file=request.FILES.get("file"),
                 description=request.POST.get("description") or "",
-                attachment_type=request.POST.get("attachment_type") or "weekly_report",
             ),
             status=201,
         )
@@ -382,5 +377,27 @@ def attachment_download_view(
         if attachment.file_size:
             response["Content-Length"] = str(attachment.file_size)
         return response
+    except Exception as exc:
+        return _error(exc)
+
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def attachment_delete_view(request: HttpRequest, attachment_id: str) -> JsonResponse:
+    """删除本人未提交周报的附件。
+
+    方法/路径：DELETE /api/v1/attachments/{attachment_id}/；认证：Bearer；幂等：否。
+    无请求体；成功后物理删除附件表记录与宿主机磁盘文件，返回
+    {id, deleted:true}；仅周报本人且周报未提交时允许操作。
+    """
+    try:
+        user, role_code = require_request_user(request)
+        return api_success(
+            delete_report_attachment(
+                user=user,
+                role_code=role_code,
+                attachment_id=int(attachment_id),
+            )
+        )
     except Exception as exc:
         return _error(exc)

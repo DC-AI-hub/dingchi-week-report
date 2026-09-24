@@ -8,7 +8,6 @@ import {
   getReportTemplate,
   saveMonthlyPlan,
   updateReport,
-  uploadReportAttachment,
 } from "../api"
 import type {
   DailyWorkTask,
@@ -212,29 +211,8 @@ export function useInnovationSalesReportForm(reportId: () => string) {
         work_content: task.work_content,
       })),
       attachments: weeklyTasks.value.flatMap((item) => item.attachments
-        .filter((attachment) => Boolean(attachment.id) && !attachment.file)
-        .map((attachment) => ({ id: attachment.id as string, task_code: taskCode(item) }))),
-    }
-  }
-
-  async function uploadPendingAttachments(detail: WeeklyReportDetail) {
-    for (const task of weeklyTasks.value) {
-      const item = detail.items.find((candidate) => candidate.task_code === taskCode(task))
-      for (const attachment of task.attachments) {
-        if (!attachment.file) continue
-        const uploaded = await uploadReportAttachment(detail.report.id, attachment.file, item?.id, attachment.description, attachment.attachment_type || "weekly_report")
-        Object.assign(attachment, {
-          id: uploaded.id,
-          attachment_type: uploaded.attachment_type,
-          storage_key: uploaded.storage_key,
-          file_url: uploaded.file_url,
-          file_name: uploaded.file_name || attachment.file_name,
-          mime_type: uploaded.mime_type,
-          file_size: uploaded.file_size,
-          description: uploaded.description || attachment.description,
-          file: undefined,
-        })
-      }
+        .filter((attachment) => Boolean(attachment.id))
+        .map((attachment) => ({ id: attachment.id as string, task_code: taskCode(item), description: attachment.description }))),
     }
   }
 
@@ -244,8 +222,6 @@ export function useInnovationSalesReportForm(reportId: () => string) {
     try {
       const detail = reportId() ? await updateReport(reportId(), buildPayload()) : await createReport(buildPayload())
       report.id = detail.report.id
-      try { await uploadPendingAttachments(detail) }
-      catch (error) { errorMessage.value = error instanceof Error ? error.message : "附件上传失败，请重试。"; return "" }
       return detail.report.id
     } catch (error) { errorMessage.value = error instanceof Error ? error.message : "保存周报失败。"; return "" }
     finally { isSaving.value = false }

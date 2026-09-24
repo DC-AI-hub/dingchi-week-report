@@ -18,6 +18,15 @@ export const http = axios.create({
 
 http.interceptors.request.use((config) => {
   config.headers = config.headers ?? {}
+
+  // 浏览器必须根据 FormData 自动生成 multipart boundary。axios 实例默认的
+  // application/json 头如果继续保留，Django 将不会解析 request.FILES，
+  // 于是明明选择了文件，后端仍会收到“请选择附件”。
+  if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+    delete config.headers["Content-Type"]
+    delete config.headers["content-type"]
+  }
+
   const traceId = config.headers["X-Trace-ID"] ?? config.headers["x-trace-id"]
   if (!traceId) {
     config.headers["X-Trace-ID"] = createTraceId()

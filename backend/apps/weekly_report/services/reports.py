@@ -327,6 +327,8 @@ def create_or_update_report(
             value=payload.get("attachments"),
             item_id_map=item_id_map,
             existing=existing_attachments,
+            report=report,
+            user=user,
         )
         _save_daily_tasks(report, payload.get("daily_tasks"))
     return get_report_detail(user=user, role_code=role_code, report_id=int(report.id))
@@ -400,26 +402,15 @@ def submit_report(*, user: UserAccount, role_code: str, report_id: int) -> dict[
     return {"id": str(report.id), "status": REPORT_STATUS_COMPLETED, "submitted": True}
 
 
-def upload_report_attachment(
+def upload_pending_report_attachment(
     *,
     user: UserAccount,
-    role_code: str,
-    report_id: int,
     uploaded_file: UploadedFile | None,
-    item_id: Any = None,
     description: Any = "",
-    attachment_type: Any = "weekly_report",
 ) -> dict[str, Any]:
-    """上传本人未完成周报的附件，并写入系统通用附件表。"""
+    """上传尚未绑定周报任务的附件，并返回可在保存任务时使用的附件 ID。"""
     if uploaded_file is None:
         raise ReportError("请选择附件。")
-    report = WeeklyReport.objects.filter(id=report_id).first()
-    if report is None:
-        raise ReportNotFoundError("周报不存在。")
-    if int(report.employee_id) != int(user.id) or report.role_code != role_code:
-        raise ReportPermissionError("只能上传当前角色下自己的周报附件。")
-    if _effective_report_status(report.status, report.period_start) == REPORT_STATUS_COMPLETED:
-        raise ReportPermissionError("已完成的周报不支持上传附件。")
 
     max_size = int(settings.ATTACHMENT_MAX_SIZE_BYTES)
     if uploaded_file.size is not None and uploaded_file.size > max_size:
@@ -435,16 +426,7 @@ def upload_report_attachment(
     if allowed and extension not in allowed:
         raise ReportError("附件类型不在允许范围内。")
 
-    parsed_item_id = _optional_int(item_id)
-    if parsed_item_id is not None and not WeeklyReportItem.objects.filter(
-        id=parsed_item_id, report_id=report.id
-    ).exists():
-        raise ReportError("附件关联的任务不存在。")
-
-    normalized_type = str(attachment_type or "weekly_report").strip()[:64] or "weekly_report"
-    if normalized_type != "weekly_report":
-        raise ReportError("当前接口只支持周报附件类型。")
-    upload_dir = f"{str(settings.ATTACHMENT_UPLOAD_DIR).strip('/')}/{report.id}"
+    upload_dir = f"{str(settings.ATTACHMENT_UPLOAD_DIR).strip('/')}/pending/{user.id}"
     storage_name = default_storage.save(
         f"{upload_dir}/{uuid4().hex}_{safe_name}",
         uploaded_file,
@@ -452,18 +434,17 @@ def upload_report_attachment(
     file_url = f"{str(settings.MEDIA_URL).rstrip('/')}/{storage_name}"
     try:
         attachment = Attachment.objects.create(
-            attachment_type=normalized_type,
-            relation_id=report.id,
-            relation_sub_id=parsed_item_id,
+            attachment_type="weekly_report_pending",
+            relation_id=user.id,
+            relation_sub_id=None,
             storage_key=storage_name,
             file_url=file_url,
             file_name=original_name,
             mime_type=str(uploaded_file.content_type or "application/octet-stream")[:128],
             file_size=int(uploaded_file.size or 0),
-            description=str(description or "").strip(),
+            description=str(description or "").strip()[:500],
         )
     except Exception:
-        # 数据库写入失败时删除已落盘文件，避免产生无法追踪的孤儿文件。
         default_storage.delete(storage_name)
         raise
     return _serialize_row(
@@ -492,8 +473,19 @@ def get_report_attachment_for_download(
 ) -> Attachment:
     """校验附件及所属周报的可见权限，并返回可下载的附件记录。"""
     attachment = Attachment.objects.filter(id=attachment_id).first()
-    if attachment is None or attachment.attachment_type != "weekly_report":
+    if attachment is None or attachment.attachment_type not in {
+        "weekly_report",
+        "weekly_report_pending",
+    }:
         raise ReportNotFoundError("附件不存在。")
+
+    if attachment.attachment_type == "weekly_report_pending":
+        if int(attachment.relation_id) != int(user.id):
+            raise ReportPermissionError("无权下载该附件。")
+        storage_key = str(attachment.storage_key or "").strip()
+        if not storage_key or not default_storage.exists(storage_key):
+            raise ReportNotFoundError("附件文件不存在。")
+        return attachment
 
     _get_accessible_report(
         user=user,
@@ -504,6 +496,36 @@ def get_report_attachment_for_download(
     if not storage_key or not default_storage.exists(storage_key):
         raise ReportNotFoundError("附件文件不存在。")
     return attachment
+
+
+def delete_report_attachment(
+    *,
+    user: UserAccount,
+    role_code: str,
+    attachment_id: int,
+) -> dict[str, Any]:
+    """物理删除本人未提交周报的附件记录和存储文件。"""
+    with transaction.atomic():
+        attachment = Attachment.objects.select_for_update().filter(id=attachment_id).first()
+        if attachment is None or attachment.attachment_type not in {
+            "weekly_report",
+            "weekly_report_pending",
+        }:
+            raise ReportNotFoundError("附件不存在。")
+        if attachment.attachment_type == "weekly_report_pending":
+            if int(attachment.relation_id) != int(user.id):
+                raise ReportPermissionError("只能删除自己上传的附件。")
+            _delete_attachment_record(attachment)
+            return {"id": str(attachment_id), "deleted": True}
+        report = WeeklyReport.objects.filter(id=attachment.relation_id).first()
+        if report is None:
+            raise ReportNotFoundError("附件所属周报不存在。")
+        if int(report.employee_id) != int(user.id) or report.role_code != role_code:
+            raise ReportPermissionError("只能删除当前角色下自己的周报附件。")
+        if _effective_report_status(report.status, report.period_start) == REPORT_STATUS_COMPLETED:
+            raise ReportPermissionError("已提交的周报不支持删除附件。")
+        _delete_attachment_record(attachment)
+    return {"id": str(attachment_id), "deleted": True}
 
 
 def get_monthly_plan(
@@ -1147,7 +1169,12 @@ def _save_metrics(
 
 
 def _sync_attachments(
-    *, value: Any, item_id_map: Mapping[str, int], existing: Sequence[Attachment]
+    *,
+    value: Any,
+    item_id_map: Mapping[str, int],
+    existing: Sequence[Attachment],
+    report: WeeklyReport,
+    user: UserAccount,
 ) -> None:
     """同步周报附件的任务关联和删除操作。
 
@@ -1157,33 +1184,58 @@ def _sync_attachments(
     if not isinstance(value, list):
         raise ReportError("附件列表格式无效。")
     submitted = value
-    requested: dict[int, str] = {}
+    requested: dict[int, tuple[str, str]] = {}
     for raw in submitted:
         if not isinstance(raw, Mapping):
             continue
         attachment_id = _optional_int(raw.get("id") or raw.get("attachment_id"))
         if attachment_id is None:
             continue
-        requested[attachment_id] = str(raw.get("task_code") or "").strip()
+        requested[attachment_id] = (
+            str(raw.get("task_code") or "").strip(),
+            str(raw.get("description") or "").strip()[:500],
+        )
 
     existing_by_id = {int(attachment.id): attachment for attachment in existing}
+    pending_ids = set(requested) - set(existing_by_id)
+    if pending_ids:
+        pending_attachments = Attachment.objects.select_for_update().filter(
+            id__in=pending_ids,
+            attachment_type="weekly_report_pending",
+            relation_id=user.id,
+        )
+        existing_by_id.update(
+            {int(attachment.id): attachment for attachment in pending_attachments}
+        )
     unknown_ids = set(requested) - set(existing_by_id)
     if unknown_ids:
         raise ReportError("附件不存在或不属于当前周报。")
 
-    for attachment in existing:
+    for attachment in existing_by_id.values():
         attachment_id = int(attachment.id)
         if attachment_id not in requested:
-            _delete_attachment_record(attachment)
+            if attachment.attachment_type == "weekly_report":
+                _delete_attachment_record(attachment)
             continue
-        task_code = requested[attachment_id]
+        task_code, description = requested[attachment_id]
         if task_code:
             if task_code not in item_id_map:
                 raise ReportError("附件关联的任务不存在。")
             attachment.relation_sub_id = item_id_map[task_code]
         else:
             attachment.relation_sub_id = None
-        attachment.save(update_fields=["relation_sub_id", "updated_at"])
+        attachment.attachment_type = "weekly_report"
+        attachment.relation_id = report.id
+        attachment.description = description
+        attachment.save(
+            update_fields=[
+                "attachment_type",
+                "relation_id",
+                "relation_sub_id",
+                "description",
+                "updated_at",
+            ]
+        )
 
 
 def _save_daily_tasks(report: WeeklyReport, value: Any) -> None:

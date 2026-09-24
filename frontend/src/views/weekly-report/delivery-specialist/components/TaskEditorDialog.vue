@@ -12,6 +12,8 @@ import {
   type DeliveryTaskDraft,
 } from "@/features/weekly-report/delivery-specialist/types"
 import { useCustomerHistory } from "@/features/weekly-report/delivery-specialist/useCustomerHistory"
+import { deleteReportAttachment, uploadPendingReportAttachment } from "@/features/weekly-report/api"
+import { useNoticeStore } from "@/app/stores/notice"
 
 const props = withDefaults(
   defineProps<{
@@ -22,6 +24,7 @@ const props = withDefaults(
     users?: DirectoryUserOption[]
     includeCustomer?: boolean
     readonly?: boolean
+    reportId?: string
   }>(),
   {
     ownerName: "",
@@ -40,6 +43,8 @@ const ownerId = ref("")
 const collaboratorIds = ref<string[]>([])
 const unknownCollaboratorNames = ref<string[]>([])
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const attachmentBusy = ref(false)
+const noticeStore = useNoticeStore()
 const customerHistoryOpen = ref(false)
 const validationMessage = ref("")
 const { customerHistory, refresh: refreshCustomerHistory, remember: rememberCustomer } = useCustomerHistory()
@@ -186,28 +191,39 @@ function openFilePicker() {
   fileInputRef.value?.click()
 }
 
-function handleFiles(event: Event) {
+async function handleFiles(event: Event) {
   const input = event.target as HTMLInputElement
   const files = Array.from(input.files || [])
-  for (const file of files) {
-    const duplicate = form.attachments.some(
-      (attachment) => attachment.file_name === file.name && attachment.file?.size === file.size,
-    )
-    if (!duplicate) {
-      const attachment: DeliveryTaskAttachment = {
-        file,
-        attachment_type: "weekly_report",
-        file_name: file.name,
-        description: "",
-      }
-      form.attachments.push(attachment)
-    }
-  }
   input.value = ""
+  attachmentBusy.value = true
+  try {
+    for (const file of files) {
+      const duplicate = form.attachments.some(
+        (attachment) => attachment.file_name === file.name && attachment.file_size === file.size,
+      )
+      if (!duplicate) {
+        const uploaded = await uploadPendingReportAttachment(file)
+        form.attachments.push({ ...uploaded })
+      }
+    }
+    if (files.length) noticeStore.reminder("附件上传成功。")
+  } catch (error) {
+    noticeStore.warning(error instanceof Error ? error.message : "附件上传失败。")
+  } finally {
+    attachmentBusy.value = false
+  }
 }
 
-function removeAttachment(index: number) {
-  form.attachments.splice(index, 1)
+async function removeAttachment(index: number) {
+  const attachment = form.attachments[index]
+  if (!attachment?.id) return
+  try {
+    await deleteReportAttachment(attachment.id)
+    form.attachments.splice(index, 1)
+    noticeStore.reminder("附件已删除。")
+  } catch (error) {
+    noticeStore.warning(error instanceof Error ? error.message : "附件删除失败。")
+  }
 }
 </script>
 
@@ -315,7 +331,7 @@ function removeAttachment(index: number) {
         <label for="task-document-links">相关文档链接或佐证材料</label>
         <textarea id="task-document-links" v-model.trim="form.document_links" rows="3" :readonly="readonly" />
         <div v-if="!readonly" class="task-editor__attachment-toolbar">
-          <button class="ghost-button" type="button" @click="openFilePicker">上传附件</button>
+          <button class="ghost-button" type="button" :disabled="attachmentBusy" @click="openFilePicker">{{ attachmentBusy ? "上传中" : "上传附件" }}</button>
           <input ref="fileInputRef" class="task-editor__file-input" type="file" multiple @change="handleFiles" />
           <span>可选择多个文件</span>
         </div>
@@ -323,10 +339,10 @@ function removeAttachment(index: number) {
           <div v-for="(attachment, index) in form.attachments" :key="`${attachment.file_name}-${index}`" class="task-editor__attachment-item">
             <div class="task-editor__attachment-main">
               <AttachmentDownloadLink :attachment-id="attachment.id" :file-name="attachment.file_name" />
-              <small>{{ attachment.file ? "待保存后上传" : "已上传" }}</small>
+              <small>已上传</small>
             </div>
             <input v-model.trim="attachment.description" maxlength="500" placeholder="附件说明（可选）" :readonly="readonly" />
-            <button v-if="!readonly" class="link-button danger" type="button" @click="removeAttachment(index)">移除</button>
+            <button v-if="!readonly" class="link-button danger" type="button" @click="removeAttachment(index)">删除</button>
           </div>
         </div>
       </div>

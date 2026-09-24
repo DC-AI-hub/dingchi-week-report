@@ -34,6 +34,7 @@ const props = withDefaults(defineProps<{
   includeCustomer?: boolean
   sampleContent?: string
   sampleFields?: ReadonlyArray<ExamplePreviewField>
+  reportId?: string
 }>(), {
   includeCustomer: true,
   sampleContent: deliveryWeeklyTaskSample,
@@ -302,7 +303,7 @@ onMounted(() => void loadUsers())
     />
   </section>
 
-  <TaskEditorDialog :key="editorKey" :open="editorOpen" :task="editingTask" :mode="mode" :owner-name="ownerName" :users="users" :include-customer="showCustomer" @close="editorOpen = false" @save="saveTask" />
+  <TaskEditorDialog :key="editorKey" :open="editorOpen" :task="editingTask" :mode="mode" :owner-name="ownerName" :users="users" :include-customer="showCustomer" :report-id="reportId" @close="editorOpen = false" @save="saveTask" />
   <TaskEditorDialog
     :open="detailOpen"
     :task="detailTask"
@@ -311,6 +312,7 @@ onMounted(() => void loadUsers())
     :users="users"
     :include-customer="showCustomer"
     :readonly="true"
+    :report-id="reportId"
     @close="detailOpen = false"
   />
   <BaseDialog :open="columnsOpen" title="选择展示字段" width="620px" @close="columnsOpen = false">

@@ -6,6 +6,16 @@ app_name = "weekly_report"
 
 urlpatterns = [
     path(
+        "attachments/",
+        views.pending_attachment_upload_view,
+        name="pending-attachment-upload",
+    ),
+    path(
+        "attachments/<str:attachment_id>/",
+        views.attachment_delete_view,
+        name="attachment-delete",
+    ),
+    path(
         "attachments/<str:attachment_id>/download/",
         views.attachment_download_view,
         name="attachment-download",
@@ -24,11 +34,6 @@ urlpatterns = [
         "weekly-reports/<str:report_id>/daily-tasks/<str:daily_task_id>/",
         views.daily_task_detail_view,
         name="daily-task-detail",
-    ),
-    path(
-        "weekly-reports/<str:report_id>/attachments/",
-        views.attachment_upload_view,
-        name="attachment-upload",
     ),
     path(
         "weekly-reports/<str:report_id>/submit/",

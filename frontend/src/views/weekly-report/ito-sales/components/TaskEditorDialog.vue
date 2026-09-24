@@ -6,6 +6,8 @@ import { computed, reactive, ref, watch } from "vue"
 import SearchableSelect from "@/components/form/SearchableSelect.vue"
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
 import type { DirectoryUserOption } from "@/features/directory/types"
+import { useNoticeStore } from "@/app/stores/notice"
+import { deleteReportAttachment, uploadPendingReportAttachment } from "@/features/weekly-report/api"
 import {
   emptyItoSalesTask,
   type ItoSalesTaskAttachment,
@@ -29,6 +31,8 @@ const ownerId = ref("")
 const collaboratorIds = ref<string[]>([])
 const unknownCollaboratorNames = ref<string[]>([])
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const attachmentBusy = ref(false)
+const noticeStore = useNoticeStore()
 const customerHistoryOpen = ref(false)
 const validationMessage = ref("")
 const { customerHistory, refresh: refreshCustomerHistory, remember: rememberCustomer } = useItoSalesCustomerHistory()
@@ -128,18 +132,36 @@ function scheduleCustomerHistoryClose() { globalThis.setTimeout(() => { customer
 function selectCustomer(value: string) { form.customer_name = value; customerHistoryOpen.value = false }
 function openFilePicker() { fileInputRef.value?.click() }
 
-function handleFiles(event: Event) {
+async function handleFiles(event: Event) {
   const input = event.target as HTMLInputElement
-  for (const file of Array.from(input.files || [])) {
-    if (!form.attachments.some((attachment) => attachment.file_name === file.name && attachment.file?.size === file.size)) {
-      const attachment: ItoSalesTaskAttachment = { file, attachment_type: "weekly_report", file_name: file.name, description: "" }
-      form.attachments.push(attachment)
-    }
-  }
+  const files = Array.from(input.files || [])
   input.value = ""
+  attachmentBusy.value = true
+  try {
+    for (const file of files) {
+      if (!form.attachments.some((attachment) => attachment.file_name === file.name && attachment.file_size === file.size)) {
+        form.attachments.push({ ...(await uploadPendingReportAttachment(file)) })
+      }
+    }
+    if (files.length) noticeStore.reminder("附件上传成功。")
+  } catch (error) {
+    noticeStore.warning(error instanceof Error ? error.message : "附件上传失败。")
+  } finally {
+    attachmentBusy.value = false
+  }
 }
 
-function removeAttachment(index: number) { form.attachments.splice(index, 1) }
+async function removeAttachment(index: number) {
+  const attachment = form.attachments[index]
+  if (!attachment?.id) return
+  try {
+    await deleteReportAttachment(attachment.id)
+    form.attachments.splice(index, 1)
+    noticeStore.reminder("附件已删除。")
+  } catch (error) {
+    noticeStore.warning(error instanceof Error ? error.message : "附件删除失败。")
+  }
+}
 </script>
 
 <template>
@@ -168,8 +190,8 @@ function removeAttachment(index: number) { form.attachments.splice(index, 1) }
       <div class="task-editor__field task-editor__field--wide task-editor__evidence">
         <label for="ito-task-links">相关文档链接或佐证材料</label>
         <textarea id="ito-task-links" v-model.trim="form.document_links" rows="3" :readonly="readonly" />
-        <div v-if="!readonly" class="task-editor__attachment-toolbar"><button class="ghost-button" type="button" @click="openFilePicker">上传附件</button><input ref="fileInputRef" class="task-editor__file-input" type="file" multiple @change="handleFiles" /></div>
-        <div v-if="form.attachments.length" class="task-editor__attachment-list"><div v-for="(attachment, index) in form.attachments" :key="`${attachment.file_name}-${index}`" class="task-editor__attachment-item"><div class="task-editor__attachment-main"><AttachmentDownloadLink :attachment-id="attachment.id" :file-name="attachment.file_name" /><small>{{ attachment.file ? "待保存后上传" : "已上传" }}</small></div><input v-model.trim="attachment.description" maxlength="500" placeholder="附件说明（可选）" :readonly="readonly" /><button v-if="!readonly" class="link-button danger" type="button" @click="removeAttachment(index)">移除</button></div></div>
+        <div v-if="!readonly" class="task-editor__attachment-toolbar"><button class="ghost-button" type="button" :disabled="attachmentBusy" @click="openFilePicker">{{ attachmentBusy ? "上传中" : "上传附件" }}</button><input ref="fileInputRef" class="task-editor__file-input" type="file" multiple @change="handleFiles" /></div>
+        <div v-if="form.attachments.length" class="task-editor__attachment-list"><div v-for="(attachment, index) in form.attachments" :key="`${attachment.file_name}-${index}`" class="task-editor__attachment-item"><div class="task-editor__attachment-main"><AttachmentDownloadLink :attachment-id="attachment.id" :file-name="attachment.file_name" /><small>已上传</small></div><input v-model.trim="attachment.description" maxlength="500" placeholder="附件说明（可选）" :readonly="readonly" /><button v-if="!readonly" class="link-button danger" type="button" @click="removeAttachment(index)">删除</button></div></div>
       </div>
       <NoticeBridge :warning-message="validationMessage" />
     </form>
