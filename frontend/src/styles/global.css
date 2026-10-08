@@ -162,3 +162,37 @@ textarea::placeholder {
   color: var(--text);
   background: var(--surface-strong);
 }
+
+.danger-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid #f3a5ad;
+  border-radius: 10px;
+  color: #d83f4f;
+  background: #fff3f4;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease;
+}
+
+.danger-action-button:hover:not(:disabled) {
+  border-color: #e1515d;
+  color: #fff;
+  background: #e1515d;
+}
+
+.danger-action-button:focus-visible {
+  outline: 3px solid rgba(225, 81, 93, 0.18);
+  outline-offset: 2px;
+}
+
+.danger-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}

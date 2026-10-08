@@ -35,10 +35,13 @@ const props = withDefaults(defineProps<{
   sampleContent?: string
   sampleFields?: ReadonlyArray<ExamplePreviewField>
   reportId?: string
+  /** 不同周报模板使用独立的列偏好，避免共用组件时互相覆盖。 */
+  columnPreferenceKey?: string
 }>(), {
   includeCustomer: true,
   sampleContent: deliveryWeeklyTaskSample,
   sampleFields: () => deliveryWeeklyTaskSampleFields,
+  columnPreferenceKey: "delivery_specialist_v1",
 })
 const emit = defineEmits<{ "update:tasks": [tasks: DeliveryTaskDraft[]] }>()
 const editorOpen = ref(false)
@@ -62,6 +65,9 @@ const weeklyFallbackColumns: DeliveryTaskColumn[] = [
 ]
 const selectedColumns = ref<DeliveryTaskColumn[]>([])
 const showCustomer = computed(() => props.includeCustomer)
+const columnStorageKey = computed(
+  () => `weekly-report:visible-columns:${props.columnPreferenceKey}:${props.mode}`,
+)
 
 const customerOptions = computed(() =>
   Array.from(
@@ -100,13 +106,16 @@ const availableFields = computed<DeliveryTaskFieldDefinition[]>(() => {
     : deliveryTaskFieldDefinitions
   const monthlyAllowed = new Set(monthlyColumns)
   const fields = source
-    .filter((field) => (showCustomer.value ? true : field.code !== "customer_name"))
-    .filter((field) => field.code !== "task_name")
+    // 客户和工作任务始终是固定列，不进入“选择展示字段”。
+    .filter((field) => !["customer_name", "task_name"].includes(field.code))
     .filter((field) => props.mode === "weekly" || monthlyAllowed.has(field.code))
     .sort((left, right) => left.sort_order - right.sort_order)
   if (fields.length) return fields
   const fallback = props.mode === "monthly" ? monthlyColumns : weeklyFallbackColumns
-  return deliveryTaskFieldDefinitions.filter((field) => fallback.includes(field.code))
+  return deliveryTaskFieldDefinitions.filter(
+    (field) =>
+      !["customer_name", "task_name"].includes(field.code) && fallback.includes(field.code),
+  )
 })
 
 const selectedFields = computed(() => {
@@ -123,10 +132,33 @@ function defaultColumns(fields: DeliveryTaskFieldDefinition[]) {
   return fields.filter((field) => fallback.includes(field.code)).map((field) => field.code)
 }
 
-watch(availableFields, (fields) => {
-  // 字段配置变化时重新按 sort_order 建立默认展示列；用户勾选不会触发此监听。
-  selectedColumns.value = defaultColumns(fields)
+function loadStoredColumns(fields: DeliveryTaskFieldDefinition[]) {
+  const availableCodes = new Set(fields.map((field) => field.code))
+  try {
+    const storedValue = localStorage.getItem(columnStorageKey.value)
+    if (storedValue !== null) {
+      const parsed = JSON.parse(storedValue)
+      if (Array.isArray(parsed)) {
+        return parsed.filter(
+          (code): code is DeliveryTaskColumn =>
+            typeof code === "string" && availableCodes.has(code as DeliveryTaskColumn),
+        )
+      }
+    }
+  } catch {
+    localStorage.removeItem(columnStorageKey.value)
+  }
+  return defaultColumns(fields)
+}
+
+watch([availableFields, columnStorageKey], ([fields]) => {
+  // 优先恢复当前模板的本地偏好；字段配置变化后自动清理已经失效的字段。
+  selectedColumns.value = loadStoredColumns(fields)
 }, { immediate: true, deep: true })
+
+watch(selectedColumns, (columns) => {
+  localStorage.setItem(columnStorageKey.value, JSON.stringify(columns))
+}, { deep: true })
 
 watch([customerFilter, plannedDateFilter, () => props.tasks.length], () => {
   taskPage.value = 1

@@ -75,6 +75,7 @@ onMounted(() => void form.load())
         v-model:tasks="form.weeklyTasks.value"
         title="本周工作任务"
         mode="weekly"
+        column-preference-key="delivery_specialist_v1"
         :field-definitions="form.taskFields.value"
         :report-id="reportId"
       />

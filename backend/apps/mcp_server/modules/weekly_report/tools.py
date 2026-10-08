@@ -16,7 +16,7 @@ from apps.mcp_server.security import (
     resolve_visible_employee_ids,
 )
 from apps.mcp_server.utils.date_scope import resolve_period
-from apps.weekly_report.dao import get_report_items, list_reports
+from apps.weekly_report.dao import get_report_items, list_monthly_plans, list_reports
 
 
 def register(server: MCPServer) -> None:
@@ -44,7 +44,8 @@ def register(server: MCPServer) -> None:
             未给任何时间则默认今年本月本周；仅给 month 表示整月。
           - status：可选，按周报状态过滤（not_started/in_progress/completed）。
           - include_items：可选，是否一并返回周报明细条目，默认 false。
-        成功响应：{ ok:true, scope, caller, query, total, reports:[...] }。
+        成功响应：{ ok:true, scope, caller, query, total, reports:[...], monthly_plans:[...] }。
+             monthly_plans 为范围内各员工当月的月度计划（月度目标，来自 monthly_plan 表）。
         失败响应：{ ok:false, error, message }。
         """
         mcp_api_key = MCP_API_KEY_VAR.get()
@@ -102,6 +103,14 @@ def register(server: MCPServer) -> None:
                 item["items"] = get_report_items(item["id"])
             reports.append(item)
 
+        monthly_plans = list_monthly_plans(
+            employee_ids=employee_ids,
+            month_key=period.get("month_key"),
+        )
+        name_by_id = {r["employee_id"]: r.get("employee_name") for r in rows}
+        for mp in monthly_plans:
+            mp["employee_name"] = name_by_id.get(mp["employee_id"])
+
         return {
             "ok": True,
             "scope": scope_label,
@@ -116,4 +125,5 @@ def register(server: MCPServer) -> None:
             },
             "total": len(reports),
             "reports": reports,
+            "monthly_plans": monthly_plans,
         }

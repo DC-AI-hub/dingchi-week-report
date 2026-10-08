@@ -206,6 +206,32 @@ def get_report_items(report_id: int) -> list[dict[str, Any]]:
     )
 
 
+def list_monthly_plans(
+    *,
+    employee_ids: list[int],
+    month_key: str | None = None,
+) -> list[dict[str, Any]]:
+    """按员工与月份查询月度计划（月度目标），供 MCP 导出使用。"""
+    if not employee_ids:
+        return []
+    placeholders = ",".join(["%s"] * len(employee_ids))
+    clauses = [f"employee_id IN ({placeholders})"]
+    params: list[Any] = [*employee_ids]
+    if month_key:
+        clauses.append("month_key = %s")
+        params.append(month_key)
+    return _fetch(
+        f"""
+        SELECT id, role_code, employee_id, group_id, month_key, summary,
+               created_at, updated_at
+        FROM monthly_plan
+        WHERE {' AND '.join(clauses)}
+        ORDER BY month_key DESC, updated_at DESC
+        """,
+        params,
+    )
+
+
 def get_report_item_progress_history(report_ids: list[int]) -> list[dict[str, Any]]:
     """查询指定周报的任务进度快照，供驾驶舱生成真实每日趋势。"""
 

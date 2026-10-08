@@ -342,7 +342,7 @@ async function removeAttachment(index: number) {
               <small>已上传</small>
             </div>
             <input v-model.trim="attachment.description" maxlength="500" placeholder="附件说明（可选）" :readonly="readonly" />
-            <button v-if="!readonly" class="link-button danger" type="button" @click="removeAttachment(index)">删除</button>
+            <button v-if="!readonly" class="danger-action-button" type="button" @click="removeAttachment(index)">删除</button>
           </div>
         </div>
       </div>

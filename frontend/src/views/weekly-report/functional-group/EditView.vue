@@ -79,6 +79,7 @@ onMounted(() => void form.load())
         v-model:tasks="form.weeklyTasks.value"
         title="本周工作任务"
         mode="weekly"
+        column-preference-key="functional_group_v1"
         owner-name=""
         :field-definitions="form.taskFields.value"
         :include-customer="false"
