@@ -5,6 +5,7 @@ import { useRouter } from "vue-router"
 import { useAppStore } from "@/app/stores/app"
 import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import { useAuthStore } from "@/features/auth/store"
+import ChangePasswordDialog from "./ChangePasswordDialog.vue"
 
 const appStore = useAppStore()
 const authStore = useAuthStore()
@@ -12,6 +13,7 @@ const router = useRouter()
 const menuElement = ref<HTMLElement | null>(null)
 const isOpen = ref(false)
 const isChangingRole = ref(false)
+const isChangePasswordOpen = ref(false)
 const displayName = computed(() => {
   const rawName = authStore.user?.display_name?.trim() || "未登录"
   const nameParts = rawName.split(/[·•]/).map((part) => part.trim()).filter(Boolean)
@@ -46,6 +48,11 @@ async function handleRoleSelect(roleCode: string) {
   } finally {
     isChangingRole.value = false
   }
+}
+
+function openChangePassword() {
+  isOpen.value = false
+  isChangePasswordOpen.value = true
 }
 
 async function handleSignOut() {
@@ -120,10 +127,13 @@ onBeforeUnmount(() => {
           <button type="button" @click="appStore.toggleTheme">
             {{ appStore.theme === "light" ? "切换深色" : "切换浅色" }}
           </button>
+          <button type="button" @click="openChangePassword">修改密码</button>
           <button class="profile-signout" type="button" @click="handleSignOut">退出登录</button>
         </div>
       </section>
     </Transition>
+
+    <ChangePasswordDialog :open="isChangePasswordOpen" @close="isChangePasswordOpen = false" />
   </div>
 </template>
 

@@ -43,6 +43,28 @@ export function switchRole(roleCode: string): Promise<Session> {
 }
 
 /**
+ * 修改当前登录用户密码：POST /v1/auth/change-password/；Bearer 认证、幂等：否。
+ * 请求：old_password、new_password（函数内部先通过 RSA-OAEP-SHA256 加密；
+ * 新密码至少 8 位且不能与旧密码相同，由后端最终校验）。
+ * 响应：完整的 Session（access_token、token_type、expires_in、user、roles、active_role），
+ * 调用方需把整个 Session 写回本地 store 以使用新令牌继续访问，实现"无感续期"；
+ * 旧令牌为 stateless 签名令牌，按 AUTH_TOKEN_MAX_AGE_SECONDS 自然过期，不会立即吊销。
+ * 错误：INVALID_REQUEST（旧密码不正确、密码不合规）、AUTHENTICATION_FAILED（未登录）。
+ * 安全/追踪：密码只以密文传输，http 层统一附加 X-Trace-ID；响应字段向后兼容。
+ */
+export async function changePassword(oldPassword: string, newPassword: string): Promise<Session> {
+  const [oldCiphertext, newCiphertext] = await Promise.all([
+    encryptPassword(oldPassword),
+    encryptPassword(newPassword),
+  ])
+  return request<Session>({
+    method: "POST",
+    url: "/v1/auth/change-password/",
+    data: { old_password: oldCiphertext, new_password: newCiphertext },
+  })
+}
+
+/**
  * 注销：POST /v1/auth/logout/；Bearer 认证，无请求参数，客户端随后清除令牌。
  * 服务端令牌按配置过期；错误：AUTHENTICATION_FAILED；响应带 X-Trace-ID。
  */

@@ -17,6 +17,7 @@ from .services.auth import (
     AuthorizationError,
     UserConflictError,
     UserNotFoundError,
+    change_password,
     create_user,
     delete_user,
     get_user_roles,
@@ -135,6 +136,37 @@ def switch_role_view(request: HttpRequest) -> JsonResponse:
         payload = _json_payload(request)
         return api_success(
             switch_role(user=user, role_code=str(payload.get("role_code") or "").strip())
+        )
+    except Exception as exc:
+        return _error_from_exception(exc)
+
+
+@csrf_exempt
+@require_POST
+def change_password_view(request: HttpRequest) -> JsonResponse:
+    """当前登录用户修改自己的登录密码，并自动签发新令牌以"无感续期"。
+
+    方法/路径：POST /api/v1/auth/change-password/；认证：Bearer；幂等：否。
+    请求参数：old_password、new_password（均为 RSA-OAEP-SHA256 密文，新密码至少 8 位
+    且不能与旧密码相同）。
+    成功响应：data 与登录会话同构（access_token、token_type、expires_in、user、roles、
+    active_role），客户端应整体替换本地会话以使用新令牌继续访问；
+    失败：400 INVALID_REQUEST（旧密码不正确、密码不合规）、
+    401 AUTHENTICATION_FAILED（未登录 / 当前角色不可用）。
+    安全/追踪/兼容：密码只接受加密值，不写日志、不回传明文；响应带 X-Trace-ID；
+    由于 token 为 stateless 签名令牌，旧令牌按 AUTH_TOKEN_MAX_AGE_SECONDS 自然过期，
+    不会立即吊销其他设备的旧会话。
+    """
+    try:
+        user, role_code = require_request_user(request)
+        payload = _json_payload(request)
+        return api_success(
+            change_password(
+                user=user,
+                old_password_ciphertext=str(payload.get("old_password") or ""),
+                new_password_ciphertext=str(payload.get("new_password") or ""),
+                current_role_code=role_code,
+            )
         )
     except Exception as exc:
         return _error_from_exception(exc)

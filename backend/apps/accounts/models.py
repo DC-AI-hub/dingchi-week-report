@@ -61,7 +61,7 @@ class UserAccount(SnowflakeIdModel):
     group_id = models.BigIntegerField(null=True, blank=True)
     avatar_color = models.CharField(max_length=16, default="#2f80ed")
     status = models.CharField(max_length=16, default="active")
-    is_demo = models.BooleanField(default=False)
+    is_super = models.BooleanField(default=False)
     last_login_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

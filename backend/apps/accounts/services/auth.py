@@ -69,6 +69,46 @@ def login(
     return build_session(user, roles, role.role_code)
 
 
+MIN_PASSWORD_LENGTH = 8
+
+
+def change_password(
+    *, user: UserAccount, old_password_ciphertext: str, new_password_ciphertext: str,
+    current_role_code: str,
+) -> dict[str, Any]:
+    """Verify the caller's old password and replace it with a new encrypted one.
+
+    改完密码后立刻按当前角色签发新会话（access_token + user + roles + active_role），
+    实现"无感续期"——前端收到响应后用新令牌替换本地凭证，不需要用户重新登录。
+    由于当前 token 是 stateless 签名 token（见 apps/core/authentication/token.py），
+    旧令牌按配置自然过期，不在本接口强制吊销；其他设备的旧会话将持续到
+    AUTH_TOKEN_MAX_AGE_SECONDS 到期为止。
+
+    旧密码校验失败按请求参数错误处理（ValueError -> 400），避免复用 401 语义
+    触发前端"会话失效跳登录"的逻辑；密码明文只在请求内存短暂存在。
+    """
+    if not old_password_ciphertext or not new_password_ciphertext:
+        raise ValueError("旧密码和新密码不能为空。")
+    try:
+        old_password = decrypt_client_password(old_password_ciphertext)
+        new_password = decrypt_client_password(new_password_ciphertext)
+    except CryptoPayloadError as exc:
+        raise ValueError("密码必须使用 RSA-OAEP-SHA256 加密。") from exc
+    stored_password = str(user.password_ciphertext or "")
+    if not constant_time_compare(stored_password, old_password):
+        raise ValueError("旧密码不正确。")
+    if old_password == new_password:
+        raise ValueError("新密码不能与旧密码相同。")
+    if len(new_password) < MIN_PASSWORD_LENGTH:
+        raise ValueError(f"新密码长度至少 {MIN_PASSWORD_LENGTH} 位。")
+    user.password_ciphertext = new_password
+    user.save(update_fields=["password_ciphertext", "updated_at"])
+    roles = get_user_roles(user.id)
+    if not any(role.role_code == current_role_code for role in roles):
+        raise AuthenticationError("当前角色不可用，请重新登录。")
+    return build_session(user, roles, current_role_code)
+
+
 def build_session(user: UserAccount, roles: list[Role], active_role_code: str) -> dict[str, Any]:
     """Return the public session contract used by the browser store."""
     active_role = next(role for role in roles if role.role_code == active_role_code)
@@ -162,7 +202,9 @@ def create_user(*, payload: Mapping[str, Any]) -> UserAccount:
             group_id=group_id,
             manager_id=manager_id,
             avatar_color=str(payload.get("avatar_color") or "#2f80ed"),
-            is_demo=bool(payload.get("is_demo", False)),
+            # Super administrators are provisioned only by database scripts;
+            # UI/API-created users are always ordinary users.
+            is_super=False,
         )
         for index, role in enumerate(roles):
             UserRole.objects.create(user_id=user.id, role_id=role.id, is_default=index == 0)
@@ -194,6 +236,8 @@ def _next_employee_no() -> str:
 
 def update_user(*, user: UserAccount, payload: Mapping[str, Any]) -> UserAccount:
     """Update profile/hierarchy and optionally replace the encrypted password."""
+    if user.is_super:
+        raise UserConflictError("超级管理员账号只能通过数据库维护。")
     allowed = {"display_name", "email", "phone", "group_id", "manager_id", "avatar_color", "status"}
     for field in allowed:
         if field in payload:
@@ -231,6 +275,8 @@ def delete_user(*, user_id: int, acting_user_id: int) -> UserAccount:
     user = UserAccount.objects.exclude(status="deleted").filter(id=user_id).first()
     if user is None:
         raise UserNotFoundError("用户不存在或已被删除。")
+    if user.is_super:
+        raise UserConflictError("超级管理员账号只能通过数据库维护。")
     if int(user.id) == int(acting_user_id):
         raise UserConflictError("当前登录用户不能删除，请先切换到其他管理员账号。")
     if UserAccount.objects.filter(manager_id=user.id, status="active").exists():

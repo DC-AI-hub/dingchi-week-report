@@ -166,7 +166,7 @@ VALUES
 
 INSERT INTO `user_account`
     (id, username, employee_no, display_name, email, password_ciphertext, manager_id, group_id,
-     avatar_color, status, is_demo, last_login_at, created_at, updated_at)
+     avatar_color, status, is_super, last_login_at, created_at, updated_at)
 VALUES
     (900000000000000001, 'admin', 'DC000001', '系统管理员', 'admin@dingchi.local',
      'rsa_oaep_sha256:Bz-noyQfgCd7QmVkrUOH9-Q6gjH2QzpGx5C5NHPMCEQ62LSi5CZTrgGfzpscjW1Fu4OLtp-Zzw7tR55xHTYF8bo57WCorWugHgzgLRkJmNGjn5nRm5cZ4WgDapv4zC3rBJ6BqW_HE7_H-AthmMoBCEY3d4I6fWYo_j4iOmQe8ldERIWeRT79g0NcRI9n3jSubY-at1SnMduZH6-u7FkgrQoidhIZ7wI1cCEkdjPK88TfgEhit9mc4uw6_Q_FbUp6wWUL9LtN5VwHaogWsZN8liFfQipFNJpESkvMj6eeMoNbJyjnpZ_-0OLYGr7Y0r8QgxsNDG6cwptiwlEai6gkbw==',
@@ -198,7 +198,7 @@ VALUES
 
 INSERT INTO `user_account`
     (id, username, employee_no, display_name, email, password_ciphertext, manager_id, group_id,
-     avatar_color, status, is_demo, last_login_at, created_at, updated_at)
+     avatar_color, status, is_super, last_login_at, created_at, updated_at)
 VALUES
     (900000000000000010, 'functional.group', 'DC000010', '职能组用户', 'functional.group@dingchi.local',
      'rsa_oaep_sha256:Bz-noyQfgCd7QmVkrUOH9-Q6gjH2QzpGx5C5NHPMCEQ62LSi5CZTrgGfzpscjW1Fu4OLtp-Zzw7tR55xHTYF8bo57WCorWugHgzgLRkJmNGjn5nRm5cZ4WgDapv4zC3rBJ6BqW_HE7_H-AthmMoBCEY3d4I6fWYo_j4iOmQe8ldERIWeRT79g0NcRI9n3jSubY-at1SnMduZH6-u7FkgrQoidhIZ7wI1cCEkdjPK88TfgEhit9mc4uw6_Q_FbUp6wWUL9LtN5VwHaogWsZN8liFfQipFNJpESkvMj6eeMoNbJyjnpZ_-0OLYGr7Y0r8QgxsNDG6cwptiwlEai6gkbw==',
@@ -227,6 +227,18 @@ INSERT INTO `user_group_membership` (id, user_id, group_id, is_primary, status, 
     (920000000000000007, 900000000000000007, 300000000000000001, 1, 'active', NOW(), NOW()),
     (920000000000000008, 900000000000000008, 300000000000000003, 1, 'active', NOW(), NOW()),
     (920000000000000009, 900000000000000009, 300000000000000003, 1, 'active', NOW(), NOW());
+
+-- 仅 admin 为超级管理员；超级管理员不属于任何组织分组，账号只能通过数据库维护。
+UPDATE `user_account`
+SET `is_super` = CASE WHEN `username` = 'admin' THEN 1 ELSE 0 END;
+
+UPDATE `user_account`
+SET `group_id` = NULL,
+    `manager_id` = NULL
+WHERE `username` = 'admin';
+
+DELETE FROM `user_group_membership`
+WHERE `user_id` = (SELECT `id` FROM `user_account` WHERE `username` = 'admin');
 
 -- 每个模板一份模板头；招聘专员和招聘经理共用 recruitment_v1，页面按配置渲染。
 INSERT INTO `user_role` (id, user_id, role_id, is_default, status, created_at, updated_at) VALUES

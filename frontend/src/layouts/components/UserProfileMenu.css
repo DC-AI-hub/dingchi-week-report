@@ -238,7 +238,7 @@
 
 .profile-panel-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;
   padding-top: 10px;
   border-top: 1px solid var(--line);

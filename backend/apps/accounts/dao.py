@@ -47,7 +47,11 @@ def find_group_by_id(group_id: int) -> OrganizationGroup | None:
 
 def find_user_by_id(user_id: int) -> UserAccount | None:
     """Find one non-deleted directory user for management operations."""
-    return UserAccount.objects.exclude(status="deleted").filter(id=user_id).first()
+    return (
+        UserAccount.objects.exclude(status="deleted")
+        .filter(id=user_id, is_super=False)
+        .first()
+    )
 
 
 def role_code_exists(role_code: str) -> bool:
@@ -97,7 +101,7 @@ def list_groups() -> list[dict[str, Any]]:
 def list_users(
     *, role_code: str | None = None, group_id: str | None = None, keyword: str | None = None
 ) -> list[dict[str, Any]]:
-    clauses = ["u.status = %s"]
+    clauses = ["u.status = %s", "u.is_super = 0"]
     params: list[Any] = ["active"]
     if role_code:
         clauses.append("r.role_code = %s")
@@ -148,7 +152,7 @@ def list_users(
 def list_user_options() -> list[dict[str, Any]]:
     """查询任务责任人和协作人下拉选项；只返回在职用户基础字段。"""
     rows = list(
-        UserAccount.objects.filter(status="active")
+        UserAccount.objects.filter(status="active", is_super=False)
         .order_by("employee_no", "id")
         .values("id", "employee_no", "display_name", "username", "group_id")
     )

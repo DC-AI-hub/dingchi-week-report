@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS `user_account` (
     `group_id` BIGINT NULL COMMENT '主组织分组ID，逻辑关联 organization_group.id',
     `avatar_color` VARCHAR(16) NOT NULL COMMENT '头像背景色',
     `status` VARCHAR(16) NOT NULL COMMENT '状态：active启用、inactive停用',
-    `is_demo` BOOL NOT NULL COMMENT '是否为演示账号：1是、0否',
+    `is_super` BOOL NOT NULL DEFAULT 0 COMMENT '是否为超级管理员：1是、0否；仅通过数据库维护',
     `last_login_at` DATETIME(6) NULL COMMENT '最近登录时间',
     `mcp_api_key` VARCHAR(255) NULL COMMENT 'MCP 接口调用密钥，用于按密钥定位调用用户并判定数据范围',
     `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',

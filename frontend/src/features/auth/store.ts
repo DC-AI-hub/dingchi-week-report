@@ -30,7 +30,7 @@ export const useAuthStore = defineStore("auth", () => {
   const activeRole = computed<Role | null>(() => session.value?.active_role || null)
   const isAuthenticated = computed(() => Boolean(token.value && user.value))
 
-  function persist(value: Session) {
+  function setSession(value: Session) {
     session.value = value
     localStorage.setItem(TOKEN_KEY, value.access_token)
     localStorage.setItem(SESSION_KEY, JSON.stringify(value))
@@ -52,7 +52,7 @@ export const useAuthStore = defineStore("auth", () => {
       const current = await getMe()
       const existing = session.value
       if (existing) {
-        persist({ ...existing, ...current })
+        setSession({ ...existing, ...current })
       }
     } catch {
       clear()
@@ -65,7 +65,7 @@ export const useAuthStore = defineStore("auth", () => {
     isLoading.value = true
     errorMessage.value = ""
     try {
-      persist(await login(username, password, roleCode))
+      setSession(await login(username, password, roleCode))
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : "登录失败，请稍后重试。"
       throw error
@@ -78,7 +78,7 @@ export const useAuthStore = defineStore("auth", () => {
     isLoading.value = true
     errorMessage.value = ""
     try {
-      persist(await switchRole(roleCode))
+      setSession(await switchRole(roleCode))
     } catch (error) {
       errorMessage.value = error instanceof Error ? error.message : "职位切换失败。"
       throw error
@@ -108,6 +108,7 @@ export const useAuthStore = defineStore("auth", () => {
     activeRole,
     isAuthenticated,
     bootstrap,
+    setSession,
     signIn,
     changeRole,
     signOut,

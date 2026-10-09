@@ -11,6 +11,7 @@ const props = withDefaults(
     height?: string
     fullscreen?: boolean
     overflowVisible?: boolean
+    closeOnBackdrop?: boolean
   }>(),
   {
     description: "",
@@ -19,6 +20,7 @@ const props = withDefaults(
     height: "",
     fullscreen: false,
     overflowVisible: false,
+    closeOnBackdrop: true,
   },
 )
 
@@ -28,6 +30,10 @@ const emit = defineEmits<{
 
 function requestClose() {
   if (!props.busy) emit("close")
+}
+
+function handleBackdropClick() {
+  if (props.closeOnBackdrop) requestClose()
 }
 
 function handleKeydown(event: KeyboardEvent) {
@@ -49,7 +55,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown))
 <template>
   <Teleport to="body">
     <Transition name="base-dialog">
-      <div v-if="open" class="dialog-backdrop" @mousedown.self="requestClose">
+      <div v-if="open" class="dialog-backdrop" @click.self="handleBackdropClick">
         <section
           aria-modal="true"
           class="dialog-panel"
