@@ -223,7 +223,7 @@ watch(() => authStore.activeRole?.role_code, () => {
     <AlertDialog
       :open="templateWarningOpen"
       title="无法填写周报"
-      message="当前角色未配置周报模板，无法填写周报。"
+      message="当前职位未配置周报模板，无法填写周报。"
       @close="templateWarningOpen = false"
     />
   </div>

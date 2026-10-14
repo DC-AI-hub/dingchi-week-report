@@ -31,6 +31,22 @@ const roleNameMap: Record<string, string> = {
 
 const reports = computed<TeamReportEntry[]>(() => summary.value.reports.map((report) => ({
   id: report.id,
+  updatedAt: report.updated_at || "",
+  employeeId: report.employee_id,
+  employeeName: report.employee_name || "未命名成员",
+  roleName: roleNameMap[report.role_code] || report.role_code || "团队成员",
+  groupName: report.group_name || "未分组",
+  summary: report.summary || "",
+  completionRate: Number(report.completion_rate || 0),
+  status: report.status || "进行中",
+  riskLevel: report.risk_level || "none",
+  periodStart: formatDate(report.period_start),
+  periodEnd: formatDate(report.period_end),
+})))
+
+const submissionReports = computed<TeamReportEntry[]>(() => (summary.value.member_reports || summary.value.reports).map((report) => ({
+  id: report.id,
+  updatedAt: report.updated_at || "",
   employeeId: report.employee_id,
   employeeName: report.employee_name || "未命名成员",
   roleName: roleNameMap[report.role_code] || report.role_code || "团队成员",
@@ -101,7 +117,7 @@ const plans = computed<TeamPlanEntry[]>(() => {
     }))
 })
 
-const currentReportTotal = computed(() => memberStats.value.reduce((total, member) => total + member.report_count, 0))
+const currentReportTotal = computed(() => submissionReports.value.filter(report => report.status === "completed" && members.value.some(member => member.employeeId === report.employeeId)).length)
 const currentTaskTotal = computed(() => memberStats.value.reduce((total, member) => total + member.task_count, 0))
 const currentCompletedTaskTotal = computed(() => memberStats.value.reduce((total, member) => total + member.completed_task_count, 0))
 const currentRiskTaskTotal = computed(() => memberStats.value.reduce((total, member) => total + member.risk_task_count, 0))
@@ -220,7 +236,7 @@ function taskStatusText(task: DashboardTeamTask) {
         :own-plan-count="ownPlanCount"
       />
       <TeamReportsPanel
-        :reports="currentReports"
+        :reports="submissionReports"
         :members="members"
         :member-stats="memberStats"
         :tasks="currentTasks"

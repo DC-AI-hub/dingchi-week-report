@@ -3,6 +3,8 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router"
 import { useAuthStore } from "@/features/auth/store"
 
 const routes: RouteRecordRaw[] = [
+  {path:"/monthly-plans/changes/:changeId/edit",name:"monthly-plan-change-edit",component:()=>import("@/views/monthly-plan/EditView.vue"),meta:{title:"填写月度计划变更",requiresAuth:true}},
+  {path:"/monthly-plans/changes/:changeId",name:"monthly-plan-change-detail",component:()=>import("@/views/monthly-plan/ChangeDetailView.vue"),meta:{title:"月度计划变更",requiresAuth:true}},
   {
     path: "/",
     name: "dashboard",
@@ -14,6 +16,26 @@ const routes: RouteRecordRaw[] = [
     name: "login",
     component: () => import("@/views/login/IndexView.vue"),
     meta: { title: "登录", public: true },
+  },
+  {
+    path: "/monthly-plans", name: "monthly-plans",
+    component: () => import("@/views/monthly-plan/IndexView.vue"),
+    meta: {title: "月度计划", requiresAuth: true},
+  },
+  {
+    path: "/monthly-plans/new", name: "monthly-plan-new",
+    component: () => import("@/views/monthly-plan/EditView.vue"),
+    meta: {title: "填写月度计划", requiresAuth: true},
+  },
+  {
+    path: "/monthly-plans/:planId/edit", name: "monthly-plan-edit",
+    component: () => import("@/views/monthly-plan/EditView.vue"),
+    meta: {title: "修改月度计划", requiresAuth: true},
+  },
+  {
+    path: "/monthly-plans/:planId", name: "monthly-plan-detail",
+    component: () => import("@/views/monthly-plan/DetailView.vue"),
+    meta: {title: "月度计划详情", requiresAuth: true},
   },
   {
     path: "/weekly-reports",
@@ -50,6 +72,25 @@ const routes: RouteRecordRaw[] = [
     name: "roles",
     component: () => import("@/views/roles/IndexView.vue"),
     meta: { title: "职位管理", requiresAuth: true, adminOnly: true },
+  },
+  {
+    path: "/customers",
+    name: "customers",
+    redirect: { name: "system-settings-customers" },
+  },
+  {
+    path: "/system-settings",
+    component: () => import("@/views/system-settings/IndexView.vue"),
+    meta: { title: "系统设置", requiresAuth: true, adminOnly: true },
+    children: [
+      { path: "", name: "system-settings", redirect: { name: "system-settings-customers" } },
+      {
+        path: "customers",
+        name: "system-settings-customers",
+        component: () => import("@/views/system-settings/CustomerManagementView.vue"),
+        meta: { title: "系统设置 - 客户管理" },
+      },
+    ],
   },
   {
     path: "/ai-chat",

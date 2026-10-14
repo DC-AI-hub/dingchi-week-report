@@ -13,7 +13,9 @@ from django.utils import timezone
 from apps.core.authentication.token import create_access_token
 from apps.core.security.passwords import CryptoPayloadError, decrypt_client_password
 
-from ..models import Role, UserAccount, UserGroupMembership, UserRole
+from ..manager_dao import ordered_manager_ids
+from ..models import Role, UserAccount, UserGroupMembership, UserManager, UserRole
+from .managers import set_managers
 
 
 class AuthenticationError(ValueError):
@@ -73,7 +75,10 @@ MIN_PASSWORD_LENGTH = 8
 
 
 def change_password(
-    *, user: UserAccount, old_password_ciphertext: str, new_password_ciphertext: str,
+    *,
+    user: UserAccount,
+    old_password_ciphertext: str,
+    new_password_ciphertext: str,
     current_role_code: str,
 ) -> dict[str, Any]:
     """Verify the caller's old password and replace it with a new encrypted one.
@@ -132,9 +137,7 @@ def get_user_roles(user_id: int) -> list[Role]:
     role_ids = list(assignments)
     if not role_ids:
         return []
-    role_map = {
-        role.id: role for role in Role.objects.filter(id__in=role_ids, status="active")
-    }
+    role_map = {role.id: role for role in Role.objects.filter(id__in=role_ids, status="active")}
     return [role_map[role_id] for role_id in role_ids if role_id in role_map]
 
 
@@ -206,6 +209,11 @@ def create_user(*, payload: Mapping[str, Any]) -> UserAccount:
             # UI/API-created users are always ordinary users.
             is_super=False,
         )
+        if "manager_ids" in payload:
+            ids = set_managers(int(user.id), payload["manager_ids"])
+            user.manager_id = ids[0] if ids else None
+        elif manager_id:
+            set_managers(int(user.id), [manager_id])
         for index, role in enumerate(roles):
             UserRole.objects.create(user_id=user.id, role_id=role.id, is_default=index == 0)
     return user
@@ -234,6 +242,7 @@ def _next_employee_no() -> str:
     return f"DC{max_sequence + 1:06d}"
 
 
+@transaction.atomic
 def update_user(*, user: UserAccount, payload: Mapping[str, Any]) -> UserAccount:
     """Update profile/hierarchy and optionally replace the encrypted password."""
     if user.is_super:
@@ -253,6 +262,11 @@ def update_user(*, user: UserAccount, payload: Mapping[str, Any]) -> UserAccount
         except CryptoPayloadError as exc:
             raise ValueError("密码必须使用 RSA-OAEP-SHA256 加密。") from exc
     user.save()
+    if "manager_ids" in payload or "manager_id" in payload:
+        ids = set_managers(
+            int(user.id), payload.get("manager_ids", [user.manager_id] if user.manager_id else [])
+        )
+        user.manager_id = ids[0] if ids else None
     if "role_codes" in payload:
         role_codes = _normalise_role_codes(payload.get("role_codes"))
         roles = list(Role.objects.filter(role_code__in=role_codes, status="active"))
@@ -279,7 +293,10 @@ def delete_user(*, user_id: int, acting_user_id: int) -> UserAccount:
         raise UserConflictError("超级管理员账号只能通过数据库维护。")
     if int(user.id) == int(acting_user_id):
         raise UserConflictError("当前登录用户不能删除，请先切换到其他管理员账号。")
-    if UserAccount.objects.filter(manager_id=user.id, status="active").exists():
+    if (
+        UserAccount.objects.filter(manager_id=user.id, status="active").exists()
+        or UserManager.objects.filter(manager_id=user.id).exists()
+    ):
         raise UserConflictError("该用户仍有直属下属，请先调整下属的直属上级。")
     user.status = "deleted"
     user.save(update_fields=["status", "updated_at"])
@@ -298,6 +315,7 @@ def serialize_user(user: UserAccount) -> dict[str, Any]:
         "display_name": user.display_name,
         "email": user.email,
         "phone": user.phone,
+        "manager_ids": [str(value) for value in ordered_manager_ids(int(user.id))],
         "manager_id": str(user.manager_id) if user.manager_id is not None else None,
         "group_id": str(user.group_id) if user.group_id is not None else None,
         "avatar_color": user.avatar_color,

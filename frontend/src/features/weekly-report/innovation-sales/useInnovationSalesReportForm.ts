@@ -1,12 +1,14 @@
+import { useUnsavedChanges } from "@/shared/forms/useUnsavedChanges"
 import { computed, reactive, ref, watch } from "vue"
 
 import { useAuthStore } from "@/features/auth/store"
+import { useMonthlyPlanTasks } from "../monthly-plan/useMonthlyPlanTasks"
 import {
   createReport,
-  getMonthlyPlan,
+
   getReportDetail,
   getReportTemplate,
-  saveMonthlyPlan,
+
   updateReport,
 } from "../api"
 import type {
@@ -98,49 +100,35 @@ function normalizeFields(fields: ReportTemplateField[] | undefined): InnovationS
 export function useInnovationSalesReportForm(reportId: () => string) {
   const authStore = useAuthStore()
   const start = currentMonday()
-  const report = reactive({ id: reportId(), period_start: start, period_end: endOfWeek(start), summary: "" })
+  const report = reactive({ id: reportId(), month_key: start.slice(0, 7), period_start: start, period_end: endOfWeek(start), summary: "" })
+  const monthlyTasksState = useMonthlyPlanTasks()
   const monthlySummary = ref("")
-  const monthlyPlanLocked = ref(false)
-  const monthlyPlanErrorMessage = ref("")
-  const isMonthlyPlanSaving = ref(false)
   const weeklyTasks = ref<InnovationSalesTaskDraft[]>([])
   const dailyTasks = ref<DailyWorkTask[]>([])
   const taskFields = ref<InnovationSalesTaskFieldDefinition[]>(innovationSalesTaskFieldDefinitions)
   const isLoading = ref(true)
   const isSaving = ref(false)
   const errorMessage = ref("")
-  const monthKey = computed(() => report.period_start.slice(0, 7))
+  const unsavedChanges = useUnsavedChanges(() => ({
+    period_start: report.period_start, period_end: report.period_end,
+    month_key: report.month_key, summary: report.summary,
+    weeklyTasks: weeklyTasks.value, dailyTasks: reportId() ? [] : dailyTasks.value,
+  }), () => !isLoading.value)
+
+  const monthKey = computed(() => report.month_key)
   const isNew = computed(() => !reportId())
   let initialized = false
 
   function setPeriodStart(value: string) {
+    report.month_key = value.slice(0, 7)
     report.period_start = value
     report.period_end = endOfWeek(value)
   }
 
   async function loadMonthlyPlan() {
-    monthlyPlanErrorMessage.value = ""
-    try {
-      const plan = await getMonthlyPlan(monthKey.value)
-      monthlySummary.value = plan?.summary || ""
-      monthlyPlanLocked.value = Boolean(plan?.id)
-    } catch {
-      monthlySummary.value = ""
-      monthlyPlanLocked.value = false
-    }
-  }
+    await monthlyTasksState.load(monthKey.value)
+    monthlySummary.value = monthlyTasksState.summary.value
 
-  async function saveMonthlyPlanSummary(summary: string) {
-    isMonthlyPlanSaving.value = true
-    monthlyPlanErrorMessage.value = ""
-    try {
-      monthlySummary.value = (await saveMonthlyPlan(monthKey.value, summary)).summary || ""
-      monthlyPlanLocked.value = true
-      return true
-    } catch (error) {
-      monthlyPlanErrorMessage.value = error instanceof Error ? error.message : "月度计划保存失败。"
-      return false
-    } finally { isMonthlyPlanSaving.value = false }
   }
 
   async function loadTaskFields() {
@@ -155,9 +143,10 @@ export function useInnovationSalesReportForm(reportId: () => string) {
       await loadTaskFields()
       if (reportId()) {
         const detail = await getReportDetail(reportId())
-        Object.assign(report, { id: detail.report.id, period_start: detail.report.period_start, period_end: detail.report.period_end, summary: detail.report.summary || "" })
-        monthlySummary.value = detail.monthly_plan?.summary || ""
-        monthlyPlanLocked.value = Boolean(detail.monthly_plan?.id)
+        Object.assign(report, { id: detail.report.id, month_key: detail.report.month_key, period_start: detail.report.period_start, period_end: detail.report.period_end, summary: detail.report.summary || "" })
+        await monthlyTasksState.load(monthKey.value)
+        monthlySummary.value = monthlyTasksState.summary.value
+
         const attachments = detail.attachments || []
         weeklyTasks.value = detail.items.map((item) => fromReportItem(item, attachments.filter((attachment) => attachment.relation_sub_id === item.id)))
         dailyTasks.value = detail.daily_tasks || []
@@ -217,17 +206,20 @@ export function useInnovationSalesReportForm(reportId: () => string) {
   }
 
   async function save() {
+    const savingSnapshot = unsavedChanges.snapshot()
     isSaving.value = true
     errorMessage.value = ""
     try {
+      if (!monthlyTasksState.approved.value) throw new Error("请先完成所属月度的月度计划审批。")
       const detail = reportId() ? await updateReport(reportId(), buildPayload()) : await createReport(buildPayload())
       report.id = detail.report.id
+      unsavedChanges.markSaved(savingSnapshot)
       return detail.report.id
     } catch (error) { errorMessage.value = error instanceof Error ? error.message : "保存周报失败。"; return "" }
     finally { isSaving.value = false }
   }
 
-  watch(monthKey, async () => { if (initialized && isNew.value) await loadMonthlyPlan() })
+  watch(() => report.period_start, async () => { if (initialized) await loadMonthlyPlan() })
 
-  return { report, monthlySummary, monthlyPlanLocked, weeklyTasks, dailyTasks, taskFields, monthKey, isNew, isLoading, isSaving, errorMessage, isMonthlyPlanSaving, monthlyPlanErrorMessage, authStore, setPeriodStart, load, save, saveMonthlyPlanSummary }
+  return { unsavedChanges, monthlyTasksState, report, monthlySummary, weeklyTasks, dailyTasks, taskFields, monthKey, isNew, isLoading, isSaving, errorMessage, authStore, setPeriodStart, load, save, }
 }

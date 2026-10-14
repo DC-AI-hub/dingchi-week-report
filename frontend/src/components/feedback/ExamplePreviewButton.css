@@ -26,53 +26,34 @@
 }
 
 .example-preview__panel {
-  position: absolute;
-  z-index: 30;
-  /* 桌面端向左展开，避免操作区靠近页面底部时被截断。 */
-  top: 50%;
-  right: calc(100% + 2px);
+  position: fixed;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
   box-sizing: border-box;
   width: min(720px, calc(100vw - 32px));
-  max-height: min(760px, calc(100vh - 32px));
-  overflow-x: hidden;
-  overflow-y: auto;
+  max-height: min(760px, calc(100dvh - 32px));
+  overflow: hidden;
   padding: 15px;
   border: 1px solid #d3e4f8;
   border-radius: 16px;
   color: #173764;
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 18px 40px rgba(44, 91, 145, 0.2);
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transform: translateY(-50%) translateX(5px);
-  transition: opacity 160ms ease, visibility 160ms ease, transform 160ms ease;
 }
 
-.example-preview__panel::before {
-  position: absolute;
-  top: 50%;
-  right: -6px;
-  width: 10px;
-  height: 10px;
-  border-top: 1px solid #d3e4f8;
-  border-right: 1px solid #d3e4f8;
-  background: #fff;
-  content: "";
-  transform: translateY(-50%) rotate(45deg);
-}
-
-.example-preview:hover .example-preview__panel,
-.example-preview:focus-within .example-preview__panel {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transform: translateY(-50%) translateX(0);
+.example-preview__scroll {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .example-preview__panel-header {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   margin-bottom: 10px;
 }
 
@@ -174,29 +155,6 @@
 }
 
 @media (max-width: 720px) {
-  .example-preview__panel {
-    top: 100%;
-    right: auto;
-    left: 0;
-    max-height: min(620px, calc(100vh - 32px));
-    transform: translateY(-5px);
-  }
-
-  .example-preview__panel::before {
-    top: -6px;
-    right: auto;
-    left: 24px;
-    border-top: 1px solid #d3e4f8;
-    border-right: 0;
-    border-left: 1px solid #d3e4f8;
-    transform: rotate(45deg);
-  }
-
-  .example-preview:hover .example-preview__panel,
-  .example-preview:focus-within .example-preview__panel {
-    transform: translateY(0);
-  }
-
   .example-preview__field {
     grid-template-columns: 1fr;
     gap: 7px;

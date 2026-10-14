@@ -62,7 +62,7 @@ function save() {
   if (planLocked.value) return
   const value = draft.value.trim()
   if (!value) {
-    localValidationError.value = "月度计划不能为空。"
+    localValidationError.value = "月度目标不能为空。"
     return
   }
   confirmOpen.value = true
@@ -78,31 +78,31 @@ function confirmSave() {
 <template>
   <section class="dashboard-card monthly-plan-section" :class="{ 'is-locked': planLocked }">
     <div class="monthly-plan-section__heading">
-      <h2>月度计划</h2>
+      <h2>月度目标</h2>
       <div class="monthly-plan-section__actions">
         <ExamplePreviewButton
           :content="sampleContent"
           :fields="sampleFields"
-          panel-title="月度计划填写样例"
+          panel-title="月度目标填写样例"
         />
         <button v-if="!planLocked" class="ghost-button" type="button" @click="emit('open')">
-          编辑月度计划
+          编辑月度目标
         </button>
       </div>
     </div>
-    <textarea :value="summary" rows="4" readonly aria-label="月度计划内容" />
+    <textarea :value="summary" rows="4" readonly aria-label="月度目标内容" />
   </section>
 
   <BaseDialog
     :open="editorOpen"
-    title="月度计划"
+    title="月度目标"
     width="720px"
     :busy="busy"
     @close="emit('close')"
   >
     <div class="monthly-plan-editor">
       <div class="monthly-plan-editor__month">{{ monthKey }}</div>
-      <textarea v-model="draft" rows="12" :readonly="planLocked" aria-label="编辑月度计划内容" />
+      <textarea v-model="draft" rows="12" :readonly="planLocked" aria-label="编辑月度目标内容" />
       <p v-if="localValidationError || errorMessage" class="monthly-plan-editor__error" role="alert">
         {{ localValidationError || errorMessage }}
       </p>
@@ -119,13 +119,13 @@ function confirmSave() {
 
   <BaseDialog
     :open="confirmOpen"
-    title="确认保存月度计划"
+    title="确认保存月度目标"
     width="520px"
     @close="confirmOpen = false"
   >
     <div class="monthly-plan-confirm">
       <div class="monthly-plan-confirm__warning" role="alert">
-        请确认月度计划内容无误。保存后，该月度计划将锁定，后续不支持修改。
+        请确认月度目标内容无误。保存后，该月度目标将锁定，后续不支持修改。
       </div>
     </div>
     <template #actions>

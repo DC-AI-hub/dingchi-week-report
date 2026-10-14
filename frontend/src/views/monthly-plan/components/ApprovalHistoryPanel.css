@@ -1,0 +1,8 @@
+.approval-history { padding:1.5rem; min-width:0; }
+.approval-history h2 { margin:0 0 1rem; font-size:1.2rem; }
+.approval-record { padding:1rem 0; border-top:1px solid var(--line); }
+.approval-record header { display:flex; flex-wrap:wrap; gap:1rem; }
+.approval-record header span { color:var(--muted); }
+.approval-record li { padding:0.3rem 0; overflow-wrap:anywhere; white-space:pre-wrap; }
+.snapshot { white-space:pre-wrap; }
+summary { cursor:pointer; color:var(--accent-dark); }

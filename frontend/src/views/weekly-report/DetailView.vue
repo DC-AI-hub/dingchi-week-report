@@ -9,6 +9,7 @@ import type { ReportTemplate, WeeklyReportDetail } from "@/features/weekly-repor
 import { formatDateTime } from "@/utils/date"
 
 import MetricSection from "./components/MetricSection.vue"
+import MonthlyPlanTaskPanel from "@/features/monthly-plan/components/MonthlyPlanTaskPanel.vue"
 import DailyTaskSection from "./components/DailyTaskSection.vue"
 import ReportHeader from "./components/ReportHeader.vue"
 import ReportStatusTag from "./components/ReportStatusTag.vue"
@@ -21,6 +22,9 @@ const template = ref<ReportTemplate | null>(null)
 const taskTableRef = ref<InstanceType<typeof ReportTaskTable> | null>(null)
 const isLoading = ref(true)
 const errorMessage = ref("")
+const taskColumnPreferenceKey = computed(() =>
+  `${authStore.user?.id || "anonymous"}:${detail.value?.report.template_code || "default"}`,
+)
 
 const canEdit = computed(() => Boolean(
   detail.value
@@ -75,6 +79,7 @@ onMounted(() => void load())
               :to="{
                 name: 'weekly-report-edit',
                 params: { reportId: detail.report.id },
+                query: route.query,
               }"
             >
               编辑周报
@@ -92,6 +97,12 @@ onMounted(() => void load())
         </div>
         <p class="summary-text">{{ detail.monthly_plan?.summary || "暂无月度目标" }}</p>
       </section>
+      <MonthlyPlanTaskPanel
+        :template-code="detail.report.template_code"
+        :tasks="detail.monthly_plan_tasks || []"
+        :month-key="detail.report.month_key"
+        readonly
+      />
       <section class="dashboard-card detail-card">
         <div class="section-heading section-heading--tasks">
           <h2>本周工作任务</h2>
@@ -102,6 +113,7 @@ onMounted(() => void load())
           :items="detail.items"
           :fields="template?.fields"
           :attachments="detail.attachments"
+          :preference-key="taskColumnPreferenceKey"
           :show-columns-button="false"
         />
       </section>
@@ -115,7 +127,7 @@ onMounted(() => void load())
         :can-edit="canEdit"
       />
       <section class="dashboard-card detail-card">
-        <div class="section-heading"><h2>角色指标</h2></div>
+        <div class="section-heading"><h2>职位指标</h2></div>
         <MetricSection
           :metrics="detail.metrics.map((metric) => ({ ...metric, metric_code: metric.metric_code }))"
           :template-metrics="template?.metrics || []"

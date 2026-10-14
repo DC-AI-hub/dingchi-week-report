@@ -345,7 +345,8 @@ def user_options_view(request: HttpRequest) -> JsonResponse:
     """查询周报责任人和协作人下拉选项。
 
     方法/路径：GET /api/v1/users/options/；认证：Bearer；参数：无；幂等：是。
-    成功响应：data.items 为在职用户数组，包含 id、employee_no、display_name、username、group_id，
+    成功响应：data.items 为在职用户数组，含字符串 id、employee_no、display_name、username、
+    group_id、group_name（未分组使用“未分组”），供人员公共组件分组搜索；新增字段向后兼容。
     不返回密码或其他敏感字段；失败：401 AUTHENTICATION_FAILED；响应带 X-Trace-ID。
     """
     try:

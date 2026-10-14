@@ -3,6 +3,7 @@ import { computed, nextTick, reactive, ref, watch } from "vue"
 
 import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
+import PersonSelect from "@/features/directory/components/PersonSelect.vue"
 import GroupTreeSelect from "@/features/directory/components/GroupTreeSelect.vue"
 import type {
   DirectoryGroup,
@@ -46,8 +47,14 @@ const form = reactive<UserMutationPayload>({
   password: "",
   group_id: null,
   manager_id: null,
+  manager_ids: [],
   role_codes: [],
   status: "active",
+})
+
+const managerSelection = computed({
+  get: () => form.manager_ids || [],
+  set: (value: string | string[]) => { form.manager_ids = Array.isArray(value) ? value : value ? [value] : [] },
 })
 
 const availableManagers = computed(() => props.users.filter((item) => item.id !== props.user?.id))
@@ -68,6 +75,7 @@ watch(
             password: "",
             group_id: user.group_id,
             manager_id: user.manager_id,
+            manager_ids: user.manager_ids?.length ? [...user.manager_ids] : user.manager_id ? [user.manager_id] : [],
             role_codes: [...user.role_codes],
             status: user.status,
           }
@@ -80,6 +88,7 @@ watch(
             password: "",
             group_id: null,
             manager_id: null,
+            manager_ids: [],
             role_codes: roles[0] ? [roles[0].role_code] : [],
             status: "active",
           },
@@ -105,7 +114,8 @@ function submitForm() {
     phone: form.phone.trim(),
     password: form.password?.trim() || undefined,
     group_id: form.group_id || null,
-    manager_id: form.manager_id || null,
+    manager_id: form.manager_ids?.[0] || null,
+    manager_ids: [...(form.manager_ids || [])],
     role_codes: [...form.role_codes],
     status: form.status || "active",
   }
@@ -177,12 +187,8 @@ function submitForm() {
         </label>
         <label>
           <span>直属上级</span>
-          <select v-model="form.manager_id" :disabled="isSaving">
-            <option :value="null">无</option>
-            <option v-for="manager in availableManagers" :key="manager.id" :value="manager.id">
-              {{ manager.display_name }}（{{ manager.employee_no }}）
-            </option>
-          </select>
+          <PersonSelect v-model="managerSelection" :users="availableManagers" :disabled="isSaving" multiple ordered aria-label="直属上级审批顺序" />
+          <small>按选择顺序依次审批，取消后重新选择可调整顺序。</small>
         </label>
         <label v-if="isEditing">
           <span>账号状态</span>

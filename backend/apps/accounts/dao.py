@@ -10,6 +10,7 @@ from typing import Any
 
 from django.db import connection
 
+from .manager_dao import ordered_manager_ids
 from .models import OrganizationGroup, Role, UserAccount, UserRole
 
 
@@ -30,7 +31,9 @@ def list_roles() -> list[dict[str, Any]]:
             "sort_order",
         )
     )
+    group_names = dict(OrganizationGroup.objects.values_list("id", "group_name"))
     for row in rows:
+        row["group_name"] = group_names.get(row.get("group_id"), "未分组")
         row["id"] = str(row["id"])
     return rows
 
@@ -47,11 +50,7 @@ def find_group_by_id(group_id: int) -> OrganizationGroup | None:
 
 def find_user_by_id(user_id: int) -> UserAccount | None:
     """Find one non-deleted directory user for management operations."""
-    return (
-        UserAccount.objects.exclude(status="deleted")
-        .filter(id=user_id, is_super=False)
-        .first()
-    )
+    return UserAccount.objects.exclude(status="deleted").filter(id=user_id, is_super=False).first()
 
 
 def role_code_exists(role_code: str) -> bool:
@@ -145,6 +144,7 @@ def list_users(
                     item[field] = str(item[field])
             item["role_codes"] = _split_group_values(item.pop("role_codes_csv", None))
             item["role_names"] = _split_group_values(item.pop("role_names_csv", None))
+            item["manager_ids"] = [str(value) for value in ordered_manager_ids(int(item["id"]))]
             rows.append(item)
         return rows
 
@@ -156,7 +156,9 @@ def list_user_options() -> list[dict[str, Any]]:
         .order_by("employee_no", "id")
         .values("id", "employee_no", "display_name", "username", "group_id")
     )
+    group_names = dict(OrganizationGroup.objects.values_list("id", "group_name"))
     for row in rows:
+        row["group_name"] = group_names.get(row.get("group_id"), "未分组")
         row["id"] = str(row["id"])
         if row.get("group_id") is not None:
             row["group_id"] = str(row["group_id"])

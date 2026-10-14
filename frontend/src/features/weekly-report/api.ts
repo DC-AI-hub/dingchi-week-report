@@ -44,7 +44,7 @@ export function listReports(filters: ReportListFilters = {}): Promise<ReportList
 /**
  * 获取当前用户当前角色指定月度的共用计划。
  * 方法/路径：GET /v1/monthly-plans/{month_key}/；认证：Bearer；幂等：是。
- * 路径参数 month_key 为 YYYY-MM；响应 data 为月度计划文本，未填写时为 null；
+ * 路径参数 month_key 为 YYYY-MM；响应 data 为月度目标文本，未填写时为 null；
  * 失败：400/401/403，统一客户端携带 trace_id。
  */
 export function getMonthlyPlan(monthKey: string): Promise<MonthlyPlan | null> {
@@ -57,7 +57,7 @@ export function getMonthlyPlan(monthKey: string): Promise<MonthlyPlan | null> {
 /**
  * 保存当前用户当前角色指定月度的计划文本。
  * 方法/路径：PUT /v1/monthly-plans/{month_key}/；认证：Bearer；幂等：是。
- * 请求体：summary 月度计划文本；响应 data 为保存后的月度计划；失败：400/401/403。
+ * 请求体：summary 月度目标文本；响应 data 为保存后的月度目标；失败：400/401/403。
  */
 export function saveMonthlyPlan(monthKey: string, summary: string): Promise<MonthlyPlan> {
   return request<MonthlyPlan>({
@@ -71,6 +71,10 @@ export function saveMonthlyPlan(monthKey: string, summary: string): Promise<Mont
  * 创建当前用户当前角色的周报。
  * 方法/路径：POST /v1/weekly-reports/；认证：Bearer；幂等：否。
  * 请求体：period_start/period_end、动态 items、summary；统计日期由服务端按当前日期处理；
+ * monthly_plan_tasks 可选，最多 200 条，每项 work_task 必填且最多 2000 字符，
+ * scope_name 为客户/维度（最多255字符，显示该字段的模板必填，职能可为空），顺序按数组；
+ * 随周报事务替换本人当前角色当月共用计划，省略保留；
+ * 月度目标和计划不能为空，空数组会返回 400 INVALID_REQUEST。
  * 只能创建当前或未来周期，周期不能重复。响应 data 为完整周报详情；失败 400/401/409，
  * 统一客户端携带 trace_id，页面不得依赖后端实现细节。
  */
@@ -81,7 +85,8 @@ export function createReport(payload: ReportPayload): Promise<WeeklyReportDetail
 /**
  * 更新本人当前周报。
  * 方法/路径：PATCH /v1/weekly-reports/{id}/；认证：Bearer；幂等：否。
- * 请求体字段同创建，周报周期不可修改且仅本人未完成周报可编辑；响应 data 为更新后的详情；
+ * 请求体字段同创建（含可选 monthly_plan_tasks），周报周期不可修改且仅本人未完成周报可编辑；
+ * 响应 data 为更新后的详情，月度计划明细按员工、角色、月份共用；
  * 失败 400/401/403/404，统一客户端携带 trace_id。
  */
 export function updateReport(reportId: string, payload: ReportPayload): Promise<WeeklyReportDetail> {
@@ -97,6 +102,7 @@ export function updateReport(reportId: string, payload: ReportPayload): Promise<
  * 方法/路径：GET /v1/weekly-reports/{id}/；认证：Bearer；幂等：是。
  * 当前角色必须对该员工可见；响应 data 返回 report/template/monthly_plan/items/metrics/attachments/daily_tasks；
  * template 按 report.template_code 返回周报创建时绑定的完整版本模板；
+ * monthly_plan_tasks 为当前月份共用计划列表，ID 为字符串，work_task 为工作任务，按 sort_order 排序；
  * 失败 401/403/404，ID 和日期字段遵守统一 JSON 契约。
  */
 export function getReportDetail(reportId: string): Promise<WeeklyReportDetail> {

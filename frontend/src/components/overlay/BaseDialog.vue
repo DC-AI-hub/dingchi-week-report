@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { onBeforeUnmount, watch } from "vue"
-
 const props = withDefaults(
   defineProps<{
     open: boolean
@@ -11,7 +9,6 @@ const props = withDefaults(
     height?: string
     fullscreen?: boolean
     overflowVisible?: boolean
-    closeOnBackdrop?: boolean
   }>(),
   {
     description: "",
@@ -20,7 +17,6 @@ const props = withDefaults(
     height: "",
     fullscreen: false,
     overflowVisible: false,
-    closeOnBackdrop: true,
   },
 )
 
@@ -32,30 +28,12 @@ function requestClose() {
   if (!props.busy) emit("close")
 }
 
-function handleBackdropClick() {
-  if (props.closeOnBackdrop) requestClose()
-}
-
-function handleKeydown(event: KeyboardEvent) {
-  if (event.key === "Escape" && props.open) requestClose()
-}
-
-watch(
-  () => props.open,
-  (isOpen) => {
-    if (isOpen) window.addEventListener("keydown", handleKeydown)
-    else window.removeEventListener("keydown", handleKeydown)
-  },
-  { immediate: true },
-)
-
-onBeforeUnmount(() => window.removeEventListener("keydown", handleKeydown))
 </script>
 
 <template>
   <Teleport to="body">
     <Transition name="base-dialog">
-      <div v-if="open" class="dialog-backdrop" @click.self="handleBackdropClick">
+      <div v-if="open" class="dialog-backdrop">
         <section
           aria-modal="true"
           class="dialog-panel"

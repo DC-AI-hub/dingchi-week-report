@@ -94,6 +94,10 @@ class MonthlyPlan(SnowflakeIdModel):
     group_id = models.BigIntegerField(null=True, blank=True)
     month_key = models.CharField(max_length=7)
     summary = models.TextField(blank=True, default="")
+    template_code = models.CharField(max_length=64, blank=True, default="")
+    status = models.CharField(max_length=16, default="draft")
+    revision = models.PositiveIntegerField(default=0)
+    rejection_reason = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -106,6 +110,67 @@ class MonthlyPlan(SnowflakeIdModel):
             ),
         ]
         ordering = ["-month_key", "-updated_at"]
+
+
+class MonthlyPlanChange(SnowflakeIdModel):
+    """已生效月度计划的变更子流程，审批前不覆盖主流程数据。"""
+
+    monthly_plan_id = models.BigIntegerField()
+    base_revision = models.PositiveIntegerField()
+    base_snapshot_json = models.TextField()
+    proposed_snapshot_json = models.TextField()
+    published_snapshot_json = models.TextField(blank=True, default="")
+    effective_revision = models.PositiveIntegerField(default=0)
+    revision = models.PositiveIntegerField(default=0)
+    status = models.CharField(max_length=16, default="draft")
+    rejection_reason = models.TextField(blank=True, default="")
+    created_by = models.BigIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "monthly_plan_change"
+        ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(fields=["monthly_plan_id", "created_at"], name="idx_monthly_change_root")
+        ]
+
+
+class MonthlyPlanRevision(SnowflakeIdModel):
+    monthly_plan_id = models.BigIntegerField()
+    revision = models.PositiveIntegerField()
+    changed_by = models.BigIntegerField()
+    action = models.CharField(max_length=16)
+    snapshot_json = models.TextField()
+    changes_json = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "monthly_plan_revision"
+        ordering = ["-revision", "-id"]
+
+
+class MonthlyPlanTask(SnowflakeIdModel):
+    """同一员工、角色、月份共用的月度计划任务，不与周工作任务混存。"""
+
+    employee_id = models.BigIntegerField()
+    role_code = models.CharField(max_length=64)
+    month_key = models.CharField(max_length=7)
+    scope_name = models.CharField(max_length=255, blank=True, null=True, default="")
+    work_task = models.TextField()
+    sort_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "monthly_plan_task"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["employee_id", "role_code", "month_key", "sort_order"],
+                name="uq_monthly_plan_task_order",
+            ),
+        ]
+        ordering = ["sort_order", "id"]
 
 
 class WeeklyReportItem(SnowflakeIdModel):

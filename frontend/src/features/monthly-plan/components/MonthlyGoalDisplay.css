@@ -1,0 +1,4 @@
+.monthly-goal-display { padding:22px; }
+.monthly-goal-display h2 { margin:0 0 1rem; font-size:22px; }
+.monthly-goal-display small { margin-left:0.5rem; color:var(--muted); font-size:0.875rem; font-weight:400; }
+.monthly-goal-display p { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }

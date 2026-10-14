@@ -1,0 +1,25 @@
+<script setup lang="ts">
+import PlanStatusTag from "./PlanStatusTag.vue"
+import { ref,watch } from "vue"
+import { RouterLink } from "vue-router"
+import { useAuthStore } from "@/features/auth/store"
+import { type ManagedMonthlyPlan, type PlanListView } from "@/features/monthly-plan/types"
+import { formatDateTime } from "@/utils/date"
+const props=defineProps<{items:ManagedMonthlyPlan[];busy:boolean;view:PlanListView;statusFilter?:string}>()
+defineEmits<{submit:[id:string];delete:[id:string];changeCreate:[id:string];changeSubmit:[id:string];changeDelete:[id:string]}>()
+const auth=useAuthStore(),expanded=ref<Record<string,boolean>>({})
+function visibleChildren(plan:ManagedMonthlyPlan){return (plan.children || []).filter(child=>!props.statusFilter || child.status===props.statusFilter)}
+function isExpanded(plan:ManagedMonthlyPlan){return expanded.value[plan.id] ?? (props.statusFilter ? visibleChildren(plan).length>0 : (plan.children || []).some(child=>child.status==='pending'))}
+function toggle(plan:ManagedMonthlyPlan){expanded.value={...expanded.value,[plan.id]:!isExpanded(plan)}}
+watch(()=>[props.items,props.statusFilter],()=>{expanded.value={}})
+function own(plan:ManagedMonthlyPlan) { return plan.employee_id===auth.user?.id && plan.role_code===auth.activeRole?.role_code && plan.status!=='pending' }
+</script>
+<template>
+  <div class="monthly-table-wrap">
+    <table class="monthly-table" :class="{'is-personal':view==='mine'}"><colgroup><col class="col-month" /><col v-if="view!=='mine'" class="col-person" /><col v-if="view!=='mine'" class="col-group" /><col /><col class="col-status" /><col class="col-time" /><col class="col-actions" /></colgroup><thead><tr><th>月份</th><th v-if="view!=='mine'">人员</th><th v-if="view!=='mine'">分组</th><th>月度目标</th><th>审批状态</th><th>更新日期</th><th>操作</th></tr></thead>
+      <tbody><template v-for="plan in items" :key="plan.id"><tr :class="{'is-pending':plan.status==='pending'}"><td><button v-if="visibleChildren(plan).length" class="tree-toggle" type="button" aria-label="展开或收起变更申请" :aria-expanded="isExpanded(plan)" @click="toggle(plan)">{{isExpanded(plan)?'▾':'▸'}}</button>{{plan.month_key}}</td><td v-if="view!=='mine'">{{plan.employee_name}}</td><td v-if="view!=='mine'">{{plan.group_name}}</td><td class="summary">{{plan.summary}}</td><td><PlanStatusTag :status="plan.status" /></td><td>{{formatDateTime(plan.updated_at)}}</td><td class="actions"><RouterLink :to="{name:'monthly-plan-detail',params:{planId:plan.id},query:{tab:view}}">查看</RouterLink><template v-if="view === 'mine' && own(plan)"><button v-if="plan.can_create_change" :disabled="busy" @click="$emit('changeCreate',plan.id)">申请变更</button><RouterLink v-if="plan.status!=='approved'" :to="{name:'monthly-plan-edit',params:{planId:plan.id},query:{tab:view}}">修改</RouterLink><button v-if="plan.status==='draft'" type="button" :disabled="busy" @click="$emit('submit',plan.id)">提交审批</button><button v-if="['draft','rejected'].includes(plan.status) && !plan.children?.some(child=>['draft','pending','rejected'].includes(child.status))" type="button" :disabled="busy" class="danger" @click="$emit('delete',plan.id)">删除</button></template></td></tr><template v-if="isExpanded(plan)"><tr v-for="child in visibleChildren(plan)" :key="child.id" class="change-row" :class="{'is-pending':child.status==='pending'}"><td>↳ 变更申请</td><td v-if="view!=='mine'">{{plan.employee_name}}</td><td v-if="view!=='mine'">{{plan.group_name}}</td><td class="summary">{{child.summary}}</td><td><PlanStatusTag :status="child.status" /></td><td>{{formatDateTime(child.updated_at)}}</td><td class="actions"><RouterLink :to="{name:'monthly-plan-change-detail',params:{changeId:child.id},query:{tab:view}}">查看</RouterLink><template v-if="view==='mine' && own(plan) && ['draft','rejected'].includes(child.status)"><RouterLink :to="{name:'monthly-plan-change-edit',params:{changeId:child.id},query:{tab:view}}">修改</RouterLink><button v-if="child.status==='draft'" :disabled="busy" @click="$emit('changeSubmit',child.id)">提交审批</button><button class="danger" :disabled="busy" @click="$emit('changeDelete',child.id)">删除</button></template></td></tr></template></template>
+      <tr v-if="busy && !items.length"><td class="empty-row" :colspan="view==='mine'?5:7">正在加载月度计划…</td></tr><tr v-else-if="!items.length"><td class="empty-row" :colspan="view==='mine'?5:7">暂无月度计划</td></tr></tbody>
+    </table>
+  </div>
+</template>
+<style scoped src="./MonthlyPlanTable.css"></style>

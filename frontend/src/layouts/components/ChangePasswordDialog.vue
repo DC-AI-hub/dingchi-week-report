@@ -79,7 +79,6 @@ async function submitForm() {
 <template>
   <BaseDialog
     :busy="isSaving"
-    :close-on-backdrop="false"
     :open="open"
     title="修改密码"
     width="480px"

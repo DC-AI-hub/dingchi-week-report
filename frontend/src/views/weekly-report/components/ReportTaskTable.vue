@@ -23,6 +23,7 @@ const props = withDefaults(
     fields?: ReportTemplateField[] | null
     attachments?: ReportAttachment[]
     showColumnsButton?: boolean
+    preferenceKey?: string
   }>(),
   { showColumnsButton: true },
 )
@@ -35,6 +36,9 @@ const page = ref(1)
 const pageSize = 10
 
 const availableFields = computed(() => normalizeReportTaskFields(props.fields))
+const columnStorageKey = computed(
+  () => `weekly-report:detail-visible-columns:${props.preferenceKey || "default"}`,
+)
 const primaryField = computed<ReportTemplateField | null>(() => {
   const source = props.fields || []
   const dimension = source.find((field) => field.field_code === "dimension")
@@ -87,13 +91,34 @@ const selectedFields = computed(() => {
 })
 
 watch(
-  availableFields,
-  (fields) => {
+  [availableFields, columnStorageKey],
+  ([fields, storageKey]) => {
     const available = new Set(fields.map((field) => field.field_code))
-    selectedCodes.value = selectedCodes.value.filter((code) => available.has(code))
+    try {
+      const stored = localStorage.getItem(storageKey)
+      if (stored !== null) {
+        const parsed: unknown = JSON.parse(stored)
+        if (Array.isArray(parsed)) {
+          selectedCodes.value = parsed.filter(
+            (code): code is string => typeof code === "string" && available.has(code),
+          )
+          return
+        }
+      }
+    } catch {
+      try { localStorage.removeItem(storageKey) } catch { /* storage may be unavailable */ }
+    }
+    selectedCodes.value = fields
+      .filter((field) => field.default_visible)
+      .map((field) => field.field_code)
   },
-  { immediate: true },
+  { immediate: true, deep: true },
 )
+
+watch(selectedCodes, (codes) => {
+  try { localStorage.setItem(columnStorageKey.value, JSON.stringify(codes)) }
+  catch { /* keep the table usable when browser storage is unavailable */ }
+})
 
 watch(totalPages, (value) => {
   if (page.value > value) page.value = value

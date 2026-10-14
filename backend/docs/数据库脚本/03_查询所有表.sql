@@ -48,6 +48,11 @@ SELECT * FROM `weekly_report`;
 
 -- 角色月度共用计划主表：保存同一员工、角色和月份共用的月度计划。
 SELECT * FROM `monthly_plan`;
+SELECT * FROM `monthly_plan_task`;
+SELECT * FROM `monthly_plan_revision`;
+SELECT * FROM `business_approval`;
+SELECT * FROM `business_approval_step`;
+SELECT * FROM `user_manager`;
 
 -- 周报任务明细表：保存周报中的客户任务、进度、负责人和文档链接。
 SELECT * FROM `weekly_report_item`;
@@ -94,3 +99,7 @@ SELECT * FROM `django_admin_log`;
 
 -- Django 会话表：保存服务端会话数据和过期时间。
 SELECT * FROM `django_session`;
+
+SELECT * FROM `monthly_plan_change`;
+
+SELECT * FROM `todo_item`;

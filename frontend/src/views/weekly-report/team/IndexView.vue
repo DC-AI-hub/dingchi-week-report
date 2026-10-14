@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
+import type { LocationQueryRaw } from "vue-router"
 
 import { listGroups } from "@/features/directory/api"
 import type { DirectoryGroup } from "@/features/directory/types"
@@ -44,13 +45,22 @@ const pageSize = computed(() => reportList.pageSize.value)
 const total = computed(() => reportList.total.value)
 const totalPages = computed(() => reportList.totalPages.value)
 const createRouteName = computed(() => "weekly-report-new")
+const returnQuery = computed<LocationQueryRaw>(() => ({
+  tab: activeTab.value,
+  month_key: filters.month_key || undefined,
+  period_start: filters.period_start || undefined,
+  period_end: filters.period_end || undefined,
+  group_id: filters.group_id || undefined,
+  employee_id: filters.employee_id || undefined,
+  page: String(page.value),
+}))
 
 function openCreateReport() {
   if (!authStore.activeRole?.report_template_code?.trim()) {
     templateWarningOpen.value = true
     return
   }
-  void router.push({ name: createRouteName.value })
+  void router.push({ name: createRouteName.value, query: returnQuery.value })
 }
 
 function queryFilters(): ReportListFilters {
@@ -75,12 +85,27 @@ function syncRouteFilters() {
   filters.group_id = queryValue(route.query.group_id)
   filters.employee_id = queryValue(route.query.employee_id)
 
+  const requestedTab = queryValue(route.query.tab)
   const currentEmployeeId = String(authStore.user?.id || "")
-  if (filters.employee_id && filters.employee_id === currentEmployeeId) {
-    activeTab.value = "self"
-  } else if (filters.employee_id || filters.group_id) {
-    activeTab.value = "team"
-  }
+  if (requestedTab === "self" || requestedTab === "team") activeTab.value = requestedTab
+  else if (filters.employee_id && filters.employee_id === currentEmployeeId) activeTab.value = "self"
+  else if (filters.employee_id || filters.group_id) activeTab.value = "team"
+
+  const requestedPage = Number(queryValue(route.query.page))
+  if (Number.isInteger(requestedPage) && requestedPage > 0) reportList.setPage(requestedPage)
+  else reportList.resetPage()
+}
+
+function currentListState() {
+  return JSON.stringify([
+    activeTab.value,
+    filters.month_key,
+    filters.period_start,
+    filters.period_end,
+    filters.group_id,
+    filters.employee_id,
+    page.value,
+  ])
 }
 
 async function loadReports() {
@@ -97,6 +122,7 @@ async function loadGroups() {
 
 function search() {
   reportList.resetPage()
+  void router.replace({ query: returnQuery.value })
   void loadReports()
 }
 
@@ -116,6 +142,7 @@ function switchTab(tab: ReportTab) {
   filters.employee_id = ""
   if (tab === "self") filters.group_id = ""
   reportList.resetPage()
+  void router.replace({ query: returnQuery.value })
   void loadReports()
 }
 
@@ -171,6 +198,7 @@ async function confirmReportAction() {
 
 function changePage(page: number) {
   reportList.setPage(page)
+  void router.replace({ query: returnQuery.value })
   void loadReports()
 }
 
@@ -183,9 +211,9 @@ watch(() => authStore.activeRole?.role_code, () => {
   void loadReports()
 })
 watch(() => route.query, () => {
+  const previousState = currentListState()
   syncRouteFilters()
-  reportList.resetPage()
-  void loadReports()
+  if (currentListState() !== previousState) void loadReports()
 }, { deep: true })
 </script>
 
@@ -233,6 +261,7 @@ watch(() => route.query, () => {
       <ReportListTable
         :reports="reports"
         :scope="activeTab === 'self' ? 'self' : 'team'"
+        :return-query="returnQuery"
         :is-loading="isLoading"
         :can-edit="canEdit"
         :can-submit="canSubmit"
@@ -265,7 +294,7 @@ watch(() => route.query, () => {
     <AlertDialog
       :open="templateWarningOpen"
       title="无法填写周报"
-      message="当前角色未配置周报模板，无法填写周报。"
+      message="当前职位未配置周报模板，无法填写周报。"
       @close="templateWarningOpen = false"
     />
   </div>

@@ -175,11 +175,30 @@ CREATE TABLE IF NOT EXISTS `monthly_plan` (
     `group_id` BIGINT NULL COMMENT '填报时组织分组ID，逻辑关联 organization_group.id',
     `month_key` VARCHAR(7) NOT NULL COMMENT '计划月度，格式 YYYY-MM',
     `summary` LONGTEXT NOT NULL COMMENT '月度计划概述',
+    `template_code` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '模板编码',
+    `status` VARCHAR(16) NOT NULL DEFAULT 'draft' COMMENT '草稿/审批中/通过/驳回/删除',
+    `revision` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '内容版本',
+    `rejection_reason` LONGTEXT NOT NULL COMMENT '最新驳回原因',
     `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
     `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_monthly_plan_employee_role_month` (`employee_id`, `role_code`, `month_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='员工角色月度共用计划主表';
+
+-- 同一员工、角色、月份共用的月度计划任务明细；与周工作任务独立。
+CREATE TABLE IF NOT EXISTS `monthly_plan_task` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `employee_id` BIGINT NOT NULL COMMENT '计划所属员工逻辑ID',
+    `role_code` VARCHAR(64) NOT NULL COMMENT '计划所属角色编码',
+    `month_key` VARCHAR(7) NOT NULL COMMENT '所属月份YYYY-MM',
+    `scope_name` VARCHAR(255) NULL DEFAULT NULL COMMENT '客户或维度，由模板决定显示名称',
+    `work_task` TEXT NOT NULL COMMENT '工作任务，接口限制最多2000字符',
+    `sort_order` INT UNSIGNED NOT NULL COMMENT '列表顺序，从0开始',
+    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
+    `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_monthly_plan_task_order` (`employee_id`, `role_code`, `month_key`, `sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='月度计划任务明细';
 
 CREATE TABLE IF NOT EXISTS `weekly_report_item` (
     `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
@@ -396,9 +415,99 @@ CREATE TABLE IF NOT EXISTS `weekly_report_daily_task` (
     `report_id` BIGINT NOT NULL COMMENT '周报逻辑ID',
     `work_date` DATE NOT NULL COMMENT '日报日期',
     `work_content` TEXT NOT NULL COMMENT '主要工作内容',
-    `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '创建时间',
-    `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '更新时间',
+    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
+    `updated_at` DATETIME(6) NOT NULL COMMENT '更新时间',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_weekly_report_daily_task_date` (`report_id`, `work_date`),
     KEY `idx_weekly_report_daily_task_report_date` (`report_id`, `work_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='周报每日工作任务（日报）';
+-- 月度计划审批管理相关业务表。
+-- 直属上级以逻辑 ID 关联，sort_order 从 0 开始，雪花 ID 由应用生成。
+CREATE TABLE IF NOT EXISTS `user_manager` (
+  `id` BIGINT NOT NULL,
+  `user_id` BIGINT NOT NULL,
+  `manager_id` BIGINT NOT NULL,
+  `sort_order` INT UNSIGNED NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_user_manager_pair` (`user_id`, `manager_id`),
+  UNIQUE KEY `uq_user_manager_order` (`user_id`, `sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='直属上级及顺序';
+
+CREATE TABLE IF NOT EXISTS `business_approval` (
+  `id` BIGINT NOT NULL,
+  `business_type` VARCHAR(64) NOT NULL,
+  `business_id` BIGINT NOT NULL,
+  `applicant_id` BIGINT NOT NULL,
+  `revision` INT UNSIGNED NOT NULL,
+  `status` VARCHAR(16) NOT NULL,
+  `current_step` INT UNSIGNED NOT NULL,
+  `snapshot_json` LONGTEXT NOT NULL,
+  `created_at` DATETIME(6) NOT NULL,
+  `completed_at` DATETIME(6) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_approval_business` (`business_type`, `business_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通用业务审批单及提交快照';
+
+CREATE TABLE IF NOT EXISTS `business_approval_step` (
+  `id` BIGINT NOT NULL,
+  `approval_id` BIGINT NOT NULL,
+  `approver_id` BIGINT NOT NULL,
+  `approver_name` VARCHAR(128) NOT NULL,
+  `approver_role_code` VARCHAR(64) NOT NULL,
+  `sort_order` INT UNSIGNED NOT NULL,
+  `status` VARCHAR(16) NOT NULL,
+  `reason` LONGTEXT NOT NULL,
+  `acted_at` DATETIME(6) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_approval_step_order` (`approval_id`, `sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='顺序审批节点及意见';
+
+CREATE TABLE IF NOT EXISTS `monthly_plan_revision` (
+  `id` BIGINT NOT NULL,
+  `monthly_plan_id` BIGINT NOT NULL,
+  `revision` INT UNSIGNED NOT NULL,
+  `changed_by` BIGINT NOT NULL,
+  `action` VARCHAR(16) NOT NULL,
+  `snapshot_json` LONGTEXT NOT NULL,
+  `changes_json` LONGTEXT NOT NULL,
+  `created_at` DATETIME(6) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='月度目标和计划变更历史';
+
+-- 月度计划变更子流程；主流程仅保留最后审批通过的生效数据。
+CREATE TABLE IF NOT EXISTS `monthly_plan_change` (
+ `id` BIGINT NOT NULL,
+ `monthly_plan_id` BIGINT NOT NULL,
+ `base_revision` INT UNSIGNED NOT NULL,
+ `base_snapshot_json` LONGTEXT NOT NULL,
+ `proposed_snapshot_json` LONGTEXT NOT NULL,
+ `published_snapshot_json` LONGTEXT NOT NULL,
+ `effective_revision` INT UNSIGNED NOT NULL,
+ `revision` INT UNSIGNED NOT NULL,
+ `status` VARCHAR(16) NOT NULL,
+ `rejection_reason` LONGTEXT NOT NULL,
+ `created_by` BIGINT NOT NULL,
+ `created_at` DATETIME(6) NOT NULL,
+ `updated_at` DATETIME(6) NOT NULL,
+ PRIMARY KEY (`id`),
+ KEY `idx_monthly_change_root` (`monthly_plan_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='月度计划变更子流程及冻结快照';
+
+-- 通用待办：已读提醒与业务完成状态分别记录；雪花ID，无外键。
+CREATE TABLE IF NOT EXISTS `todo_item` (
+ `id` BIGINT NOT NULL,
+ `recipient_id` BIGINT NOT NULL,
+ `role_code` VARCHAR(64) NOT NULL,
+ `source` VARCHAR(64) NOT NULL,
+ `dedupe_key` VARCHAR(192) NOT NULL,
+ `title` VARCHAR(255) NOT NULL,
+ `target_json` LONGTEXT NOT NULL,
+ `status` VARCHAR(16) NOT NULL,
+ `read_at` DATETIME(6) NULL,
+ `completed_at` DATETIME(6) NULL,
+ `created_at` DATETIME(6) NOT NULL,
+ `updated_at` DATETIME(6) NOT NULL,
+ PRIMARY KEY (`id`),
+ UNIQUE KEY `uq_todo_recipient_key` (`recipient_id`, `role_code`, `dedupe_key`),
+ KEY `idx_todo_recipient_status` (`recipient_id`, `role_code`, `status`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通用待办及独立未读提醒';

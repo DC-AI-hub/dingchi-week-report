@@ -34,4 +34,7 @@ backend/media/
 /skills/weekly-report-consolidator
 /skills/*.zip
 /.workbuddy/memory
+/.workbuddy/deploy
 /scripts
+/backend/docs/数据库脚本
+/backend/docs

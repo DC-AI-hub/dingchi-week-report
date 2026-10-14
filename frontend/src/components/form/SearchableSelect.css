@@ -172,3 +172,7 @@
 .searchable-select--disabled .searchable-select__control {
   cursor: not-allowed;
 }
+
+.searchable-select__option:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.searchable-select__group { padding: 8px 12px; background: var(--surface-soft); color: var(--muted); font-size: 0.8rem; font-weight: 600; }

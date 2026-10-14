@@ -24,18 +24,18 @@ from .services.reports import (
     ReportError,
     ReportNotFoundError,
     ReportPermissionError,
-    submit_report,
     create_or_update_report,
-    dashboard_summary,
     dashboard_next_week,
-    delete_report_attachment,
+    dashboard_summary,
     delete_report,
+    delete_report_attachment,
     get_monthly_plan,
     get_report_attachment_for_download,
     get_report_detail,
     get_template_by_code,
     list_visible_reports,
     save_monthly_plan,
+    submit_report,
     upload_pending_report_attachment,
 )
 
@@ -72,7 +72,8 @@ def _error(exc: Exception) -> JsonResponse:
 def dashboard_view(request: HttpRequest) -> JsonResponse:
     """按当前激活角色返回驾驶舱 KPI、趋势、状态分布和可见周报。
 
-    方法/路径：GET /api/v1/dashboard/summary/；认证：Bearer；参数：period_start（可选，YYYY-MM-DD，必须为周一）；幂等：是。
+    方法/路径：GET /api/v1/dashboard/summary/；认证：Bearer；幂等：是。
+    参数：period_start（可选，YYYY-MM-DD，必须为周一）。
     权限：个人仅自己，经理含下属，总裁/系统管理员含全部；成功响应为 dashboard JSON。
     失败：401 AUTHENTICATION_FAILED；追踪：响应带 X-Trace-ID；字段只增不改。
     """
@@ -135,6 +136,7 @@ def report_list_view(request: HttpRequest) -> JsonResponse:
     GET 参数：page、page_size、month_key（YYYY-MM）、period_start、period_end
     （周期范围上下限）、group_id；
     team 角色额外支持 employee_scope=self/team。POST 参数为周报 JSON。
+    可选 monthly_plan_tasks 随周报保存当月共用工作任务；详见 docs/monthly-plan-tasks-api.md。
     GET 成功响应：data.items、page、page_size、total、total_pages；
     POST 成功响应：201 周报详情；权限按角色作用域过滤。
     失败：400/401/403/404/409；响应带 X-Trace-ID。
@@ -210,7 +212,8 @@ def report_detail_view(request: HttpRequest, report_id: str) -> JsonResponse:
 
     方法/路径：GET/PATCH/DELETE /api/v1/weekly-reports/{id}/；认证：Bearer；参数：路径 report_id。
     PATCH/DELETE 仅允许操作本人且未完成的周报；提交请调用独立的 submit 接口。
-    成功响应：report/template/monthly_plan/items/metrics/attachments/daily_tasks，
+    成功响应：report/template/monthly_plan/monthly_plan_tasks/items/metrics/attachments/daily_tasks，
+    monthly_plan_tasks 随周报保存本人当前角色当月计划；详见 docs/monthly-plan-tasks-api.md，
     或 id/deleted=true；
     失败：400/401/403/404/409；响应带 X-Trace-ID。
     """

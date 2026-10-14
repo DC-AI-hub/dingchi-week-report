@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed } from "vue"
 import { useRouter } from "vue-router"
-import { ArrowRight, Check, ClipboardList, Target, UserRound } from "lucide-vue-next"
+import { ArrowRight, Target, UserRound } from "lucide-vue-next"
 
 import type { DashboardMemberStats, DashboardTeamTask } from "@/features/dashboard/types"
 import type { TeamMemberSummary, TeamPlanEntry, TeamReportEntry } from "../types"
+
+import TeamSubmissionPanel from "./TeamSubmissionPanel.vue"
 
 const props = defineProps<{
   reports: TeamReportEntry[]
@@ -16,8 +18,6 @@ const props = defineProps<{
 }>()
 
 const router = useRouter()
-const submittedIds = computed(() => new Set(props.reports.map((report) => report.employeeId)))
-const submittedCount = computed(() => props.members.filter((member) => submittedIds.value.has(member.employeeId)).length)
 const taskMap = computed(() => new Map(props.tasks.map((task) => [task.id, task])))
 const focusTasks = computed(() => props.memberStats.flatMap((member) => member.tasks.map((task) => ({ member, task, detail: taskMap.value.get(task.id) }))).slice(0, 5))
 
@@ -34,19 +34,7 @@ function openAllReports() {
 <template>
   <section class="team-execution-grid">
     <div class="team-execution-column team-execution-column--left">
-      <article class="team-panel team-submission-panel">
-        <div class="team-panel-heading">
-          <div class="team-panel-title"><span class="team-panel-icon team-panel-icon--blue"><ClipboardList :size="18" /></span><strong>周报提交情况（{{ submittedCount }}/{{ members.length }}）</strong></div>
-          <span class="submission-summary" :class="{ 'is-complete': members.length > 0 && submittedCount === members.length }"><Check :size="13" />{{ members.length > 0 && submittedCount === members.length ? "本周已全部提交" : `尚有 ${Math.max(0, members.length - submittedCount)} 人未提交` }}</span>
-        </div>
-        <div v-if="members.length" class="submission-member-list">
-          <button v-for="(member, index) in members" :key="member.employeeId" class="submission-member" type="button" @click="openMemberReports(member.employeeId)">
-            <span class="submission-avatar" :class="{ 'is-purple': index === 3 }"><UserRound :size="25" /><i v-if="submittedIds.has(member.employeeId)">✓</i></span>
-            <strong>{{ member.employeeName }}</strong><small :class="{ 'is-pending': !submittedIds.has(member.employeeId) }">{{ submittedIds.has(member.employeeId) ? "已提交" : "未提交" }}</small>
-          </button>
-        </div>
-        <div v-else class="team-panel-empty">暂无团队成员</div>
-      </article>
+      <TeamSubmissionPanel :members="members" :reports="reports" @open="openMemberReports" />
 
     </div>
 

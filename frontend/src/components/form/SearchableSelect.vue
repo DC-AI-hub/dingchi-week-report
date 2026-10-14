@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from "vue"
+import { computed, nextTick, ref, watch } from "vue"
 
 type SearchableOption = {
   value: string
   label: string
   description?: string
+  disabled?: boolean
+  group?: string
 }
 
 const props = withDefaults(
@@ -15,12 +17,18 @@ const props = withDefaults(
     placeholder?: string
     disabled?: boolean
     ariaLabel?: string
+    validationMessage?: string
+    optionsDisabled?: boolean
+    showSelectionOrder?: boolean
   }>(),
   {
     multiple: false,
     placeholder: "请选择",
     disabled: false,
     ariaLabel: "选择",
+    validationMessage: "",
+    optionsDisabled: false,
+    showSelectionOrder: false,
   },
 )
 
@@ -32,6 +40,10 @@ const rootRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLInputElement | null>(null)
 const isOpen = ref(false)
 const query = ref("")
+
+watch(() => props.validationMessage, () => {
+  void nextTick(() => inputRef.value?.setCustomValidity(props.validationMessage))
+}, { immediate: true })
 
 const selectedValues = computed<string[]>(() => {
   if (props.multiple) {
@@ -50,10 +62,19 @@ const filteredOptions = computed(() => {
   const keyword = query.value.trim().toLocaleLowerCase()
   if (!keyword) return props.options
   return props.options.filter((option) =>
-    [option.label, option.description || ""].some((value) =>
+    [option.label, option.description || "", option.group || ""].some((value) =>
       value.toLocaleLowerCase().includes(keyword),
     ),
   )
+})
+
+const optionGroups = computed(() => {
+  const groups = new Map<string, typeof props.options>()
+  for (const option of filteredOptions.value) {
+    const name = option.group || ""
+    groups.set(name, [...(groups.get(name) || []), option])
+  }
+  return [...groups].map(([name, options]) => ({ name, options }))
 })
 
 function openList() {
@@ -71,6 +92,7 @@ function isSelected(value: string) {
 }
 
 function selectOption(option: SearchableOption) {
+  if (option.disabled || props.optionsDisabled) return
   if (props.multiple) {
     const values = selectedValues.value
     const next = isSelected(option.value)
@@ -87,6 +109,7 @@ function selectOption(option: SearchableOption) {
 }
 
 function removeOption(value: string) {
+  if (props.disabled || props.optionsDisabled) return
   if (!props.multiple) {
     emit("update:modelValue", "")
     return
@@ -118,13 +141,14 @@ function handleFocusOut() {
   >
     <div class="searchable-select__control" @mousedown="handleControlMouseDown">
       <div v-if="multiple" class="searchable-select__chips">
-        <span v-for="option in selectedOptions" :key="option.value" class="searchable-select__chip">
-          {{ option.label }}
+        <span v-for="(option, index) in selectedOptions" :key="option.value" class="searchable-select__chip">
+          {{ showSelectionOrder ? `${index + 1}. ` : "" }}{{ option.label }}
           <button
             type="button"
             aria-label="移除已选项"
             @mousedown.stop.prevent
-            @click.stop="removeOption(option.value)"
+            :disabled="disabled || optionsDisabled"
+            @click.stop.prevent="removeOption(option.value)"
           >
             移除
           </button>
@@ -155,23 +179,27 @@ function handleFocusOut() {
       </button>
     </div>
     <div v-if="isOpen" class="searchable-select__menu" role="listbox">
+      <template v-for="group in optionGroups" :key="group.name">
+      <div v-if="group.name" class="searchable-select__group">{{ group.name }}</div>
       <button
-        v-for="option in filteredOptions"
+        v-for="option in group.options"
         :key="option.value"
         class="searchable-select__option"
         :class="{ 'searchable-select__option--selected': isSelected(option.value) }"
         type="button"
         role="option"
         :aria-selected="isSelected(option.value)"
+        :disabled="option.disabled || optionsDisabled"
         @mousedown.prevent
         @click="selectOption(option)"
       >
         <span>
-          <strong>{{ option.label }}</strong>
-          <small v-if="option.description">{{ option.description }}</small>
+          <strong :title="option.label">{{ option.label }}</strong>
+          <small v-if="option.description" :title="option.description">{{ option.description }}</small>
         </span>
         <em v-if="isSelected(option.value)">已选</em>
       </button>
+      </template>
       <p v-if="!filteredOptions.length" class="searchable-select__empty">暂无匹配项</p>
     </div>
   </div>

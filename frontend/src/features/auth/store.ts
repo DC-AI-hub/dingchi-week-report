@@ -31,15 +31,15 @@ export const useAuthStore = defineStore("auth", () => {
   const isAuthenticated = computed(() => Boolean(token.value && user.value))
 
   function setSession(value: Session) {
-    session.value = value
     localStorage.setItem(TOKEN_KEY, value.access_token)
     localStorage.setItem(SESSION_KEY, JSON.stringify(value))
+    session.value = value
   }
 
   function clear() {
-    session.value = null
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(SESSION_KEY)
+    session.value = null
   }
 
   async function bootstrap() {
@@ -48,14 +48,16 @@ export const useAuthStore = defineStore("auth", () => {
       isBootstrapped.value = true
       return
     }
+    const requestedToken = token.value
     try {
       const current = await getMe()
+      if (token.value !== requestedToken) return
       const existing = session.value
       if (existing) {
         setSession({ ...existing, ...current })
       }
     } catch {
-      clear()
+      if (token.value === requestedToken) clear()
     } finally {
       isBootstrapped.value = true
     }

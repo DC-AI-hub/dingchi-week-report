@@ -17,7 +17,7 @@ const emit = defineEmits<{
 
 <template>
   <div v-if="open" class="confirm-layer">
-    <div class="confirm-backdrop" @mousedown.self="!isDeleting && emit('close')">
+    <div class="confirm-backdrop">
       <section class="confirm-panel" role="alertdialog" aria-modal="true" :aria-label="title">
         <h2>{{ title }}</h2>
         <p>{{ message }}</p>

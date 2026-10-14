@@ -1,12 +1,16 @@
 <script setup lang="ts">
+import UnsavedChangesGuard from "@/components/navigation/UnsavedChangesGuard.vue"
 import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import { computed, onMounted, ref } from "vue"
 import { useRoute, useRouter } from "vue-router"
 
 import { useRecruitmentReportForm } from "@/features/weekly-report/recruitment/useRecruitmentReportForm"
 import { recruitmentMonthlyPlanSample, recruitmentMonthlyPlanSampleFields } from "@/features/weekly-report/recruitment/samples"
-import MonthlyPlanSection from "@/views/weekly-report/components/MonthlyPlanSection.vue"
+import MonthlyGoalDisplay from "@/features/monthly-plan/components/MonthlyGoalDisplay.vue"
+import WeeklyPlanGate from "@/features/monthly-plan/components/WeeklyPlanGate.vue"
 import DailyTaskSection from "@/views/weekly-report/components/DailyTaskSection.vue"
+import ReportSaveButton from "@/views/weekly-report/components/ReportSaveButton.vue"
+import MonthlyPlanTaskPanel from "@/features/monthly-plan/components/MonthlyPlanTaskPanel.vue"
 
 import ReportBasics from "./components/ReportBasics.vue"
 import TaskCollectionSection from "./components/TaskCollectionSection.vue"
@@ -15,7 +19,6 @@ const route = useRoute()
 const router = useRouter()
 const reportId = computed(() => String(route.params.reportId || ""))
 const form = useRecruitmentReportForm(() => reportId.value)
-const monthlyPlanDialogOpen = ref(false)
 const currentPeriodStart = (() => {
   const date = new Date()
   date.setDate(date.getDate() - (date.getDay() || 7) + 1)
@@ -24,11 +27,7 @@ const currentPeriodStart = (() => {
 
 async function save() {
   const id = await form.save()
-  if (id) await router.push({ name: "weekly-report-detail", params: { reportId: id } })
-}
-
-async function saveMonthlyPlan(summary: string) {
-  if (await form.saveMonthlyPlanSummary(summary)) monthlyPlanDialogOpen.value = false
+  if (id) await router.push({ name: "weekly-report-detail", params: { reportId: id }, query: route.query })
 }
 
 onMounted(() => void form.load())
@@ -36,12 +35,29 @@ onMounted(() => void form.load())
 
 <template>
   <div class="recruitment-report-page">
+    <UnsavedChangesGuard :dirty="form.unsavedChanges.hasChanges.value" :enabled="!form.isLoading.value" :reset-key="form.unsavedChanges.resetKey.value" />
     <div v-if="form.isLoading.value" class="dashboard-card loading-card">正在加载周报</div>
     <template v-else>
+      <ReportSaveButton :busy="form.isSaving.value" :disabled="!form.monthlyTasksState.approved.value || form.monthlyTasksState.isLoading.value" @save="save" />
       <ReportBasics :period-start="form.report.period_start" :period-end="form.report.period_end" :month-key="form.monthKey.value" :is-new="form.isNew.value" :min-period-start="currentPeriodStart" @update:period-start="form.setPeriodStart" />
       <NoticeBridge :warning-message="form.errorMessage.value" />
-      <MonthlyPlanSection :editor-open="monthlyPlanDialogOpen" :month-key="form.monthKey.value" :summary="form.monthlySummary.value" :locked="form.monthlyPlanLocked.value" :sample-content="recruitmentMonthlyPlanSample" :sample-fields="recruitmentMonthlyPlanSampleFields" :busy="form.isMonthlyPlanSaving.value" :error-message="form.monthlyPlanErrorMessage.value" @open="monthlyPlanDialogOpen = true" @close="monthlyPlanDialogOpen = false" @save="saveMonthlyPlan" />
-      <TaskCollectionSection v-model:tasks="form.weeklyTasks.value" title="本周工作任务" :owner-name="form.authStore.user?.display_name || ''" :field-definitions="form.taskFields.value" />
+      <WeeklyPlanGate v-if="!form.monthlyTasksState.approved.value"
+        :month="form.monthKey.value" :loading="form.monthlyTasksState.isLoading.value"
+        :message="form.monthlyTasksState.errorMessage.value || form.monthlyTasksState.gateMessage.value"
+        @retry="form.monthlyTasksState.load(form.monthKey.value)" />
+      <template v-else>
+      <MonthlyGoalDisplay :month="form.monthKey.value" :summary="form.monthlyTasksState.summary.value" />
+      <MonthlyPlanTaskPanel
+        template-code="recruitment_v1"
+        :tasks="form.monthlyTasksState.tasks.value"
+        readonly
+        :month-key="form.monthKey.value"
+        :disabled="form.isSaving.value"
+        :is-loading="form.monthlyTasksState.isLoading.value"
+        :error-message="form.monthlyTasksState.errorMessage.value"
+        @retry="form.monthlyTasksState.load(form.monthKey.value)"
+      />
+      <TaskCollectionSection :default-owner-id="form.authStore.user?.id || ''" v-model:tasks="form.weeklyTasks.value" title="本周工作任务" :owner-name="form.authStore.user?.display_name || ''" :field-definitions="form.taskFields.value" />
       <section class="dashboard-card weekly-summary"><label>本周总结<textarea v-model.trim="form.report.summary" rows="4" /></label></section>
       <DailyTaskSection
         :report="form.report"
@@ -49,7 +65,7 @@ onMounted(() => void form.load())
         :defer-save="form.isNew.value"
         can-edit
       />
-      <footer class="form-actions"><button class="primary-button" type="button" :disabled="form.isSaving.value" @click="save">{{ form.isSaving.value ? "保存中" : "保存周报" }}</button></footer>
+      </template>
     </template>
   </div>
 </template>

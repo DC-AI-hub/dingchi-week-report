@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue"
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 
 import type { DirectoryGroup } from "../types"
 
@@ -33,7 +33,18 @@ const emit = defineEmits<{
 }>()
 
 const root = ref<HTMLElement | null>(null)
+const popup = ref<HTMLElement | null>(null)
+const popupStyle = ref<Record<string,string>>({})
+function positionPopup(event?:Event) {
+  if(!isOpen.value || (event?.target instanceof Node && popup.value?.contains(event.target)))return
+  const rect=root.value?.getBoundingClientRect();if(!rect)return
+  const below=window.innerHeight-rect.bottom-14,above=rect.top-14
+  const down=below>=160 || below>=above
+  const height=Math.max(0,Math.min(260,down?below:above))
+  popupStyle.value={left:`${Math.max(8,Math.min(rect.left,window.innerWidth-rect.width-8))}px`,width:`${Math.min(rect.width,window.innerWidth-16)}px`,maxHeight:`${height}px`,...(down?{top:`${rect.bottom+6}px`}:{bottom:`${window.innerHeight-rect.top+6}px`})}
+}
 const isOpen = ref(false)
+watch(isOpen,async open=>{if(open){await nextTick();positionPopup()}})
 const expandedIds = ref(new Set<string>())
 
 function idOf(value: string | number | null | undefined): string | null {
@@ -114,7 +125,7 @@ function select(value: string | null) {
 }
 
 function handleDocumentPointerDown(event: PointerEvent) {
-  if (!root.value?.contains(event.target as Node)) isOpen.value = false
+  if (!root.value?.contains(event.target as Node) && !popup.value?.contains(event.target as Node)) isOpen.value = false
 }
 
 function handleKeydown(event: KeyboardEvent) {
@@ -122,11 +133,15 @@ function handleKeydown(event: KeyboardEvent) {
 }
 
 onMounted(() => {
+  window.addEventListener("resize",positionPopup)
+  window.addEventListener("scroll",positionPopup,true)
   document.addEventListener("pointerdown", handleDocumentPointerDown)
   document.addEventListener("keydown", handleKeydown)
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener("resize",positionPopup)
+  window.removeEventListener("scroll",positionPopup,true)
   document.removeEventListener("pointerdown", handleDocumentPointerDown)
   document.removeEventListener("keydown", handleKeydown)
 })
@@ -145,7 +160,7 @@ onBeforeUnmount(() => {
       <span class="group-tree-select__chevron" aria-hidden="true"></span>
     </button>
 
-    <div v-if="isOpen" class="group-tree-select__popover" role="tree">
+    <Teleport to="body"><div v-if="isOpen" ref="popup" :style="popupStyle" class="group-tree-select__popover" role="tree">
       <button
         v-if="allowEmpty"
         class="group-tree-select__empty"
@@ -178,7 +193,7 @@ onBeforeUnmount(() => {
         </button>
       </div>
       <p v-if="!treeRows.length" class="group-tree-select__empty-state">暂无可用分组</p>
-    </div>
+    </div></Teleport>
   </div>
 </template>
 

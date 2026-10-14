@@ -1,0 +1,15 @@
+.approval-table-wrap { overflow-x:auto; }
+.approval-table { width:100%; min-width:1150px; table-layout:fixed; border-collapse:collapse; }
+.approval-table th { padding:0.78rem 0.7rem; background:#f2f7fd; color:#5b76a0; font-size:0.74rem; font-weight:750; text-align:left; white-space:nowrap; }
+.approval-table td { padding:0.82rem 0.7rem; border-bottom:1px solid #eaf1fa; font-size:0.8rem; text-align:left; vertical-align:middle; }
+.approval-table tbody tr:hover { background:#fbfdff; }
+.summary { white-space:pre-wrap; overflow-wrap:anywhere; }
+.date { white-space:nowrap; }
+.reason { margin:6px 0 0; max-width:200px; color:var(--muted); white-space:pre-wrap; overflow-wrap:anywhere; }
+.actions { white-space:nowrap; }
+.actions button { border:0; padding:0.3rem; color:var(--accent-dark); background:transparent; font:inherit; cursor:pointer; }
+.actions button.danger { color:var(--red); }
+.actions button:disabled { opacity:0.5; cursor:not-allowed; }
+.approval-table .empty { padding:2.8rem 1rem; color:var(--muted); text-align:center; }
+
+.col-month{width:96px}.col-person{width:90px}.col-group{width:110px}.col-kind{width:90px}.col-version{width:60px}.col-status{width:100px}.col-time{width:165px}.col-actions{width:70px}.approval-table td{overflow-wrap:anywhere}.approval-table .summary{line-height:1.7;}

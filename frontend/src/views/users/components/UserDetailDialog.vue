@@ -14,8 +14,8 @@ const props = withDefaults(
 )
 
 const managerDisplayName = computed(() => {
-  if (!props.user?.manager_id) return "无"
-  return props.users?.find((item) => item.id === props.user?.manager_id)?.display_name || "未知"
+  const ids = props.user?.manager_ids || (props.user?.manager_id ? [props.user.manager_id] : [])
+  return ids.map((id, index) => `${index + 1}. ${props.users?.find((item) => item.id === id)?.display_name || "未知"}`).join(" → ") || "无"
 })
 
 const emit = defineEmits<{

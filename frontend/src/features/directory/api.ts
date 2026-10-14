@@ -101,7 +101,8 @@ export function listUsers(
 /**
  * 查询周报责任人和协作人下拉选项。
  * 方法/路径：GET /v1/users/options/；请求参数：无；认证：Bearer；幂等：是。
- * 响应仅返回在职用户的 id、工号、姓名、账号和主分组，不暴露密码等敏感字段。
+ * 响应仅返回在职用户的 id、工号、姓名、账号、group_id/group_name，供公共人员组件分组搜索。
+ * ID为字符串；失败401；沿用X-Trace-ID，新增分组名称兼容旧客户端，不暴露敏感字段。
  */
 export function listUserOptions(): Promise<{ items: DirectoryUserOption[] }> {
   return request<{ items: DirectoryUserOption[] }>({ method: "GET", url: "/v1/users/options/" })
@@ -112,6 +113,8 @@ export function listUserOptions(): Promise<{ items: DirectoryUserOption[] }> {
  * 方法/路径：POST /v1/users/new/；请求体：username、display_name、password、role_codes 必填，
  * employee_no 不需要传入，由后端按 DC 加六位序号自动生成；
  * email/group_id/manager_id 可为空；password 必须由前端 RSA-OAEP-SHA256 加密；响应不返回密码。
+ * manager_ids 为按勾选顺序排列的字符串ID数组，空数组清空上级；manager_id兼容镜像首项。
+ * 不允许重复、本人、停用人员或循环关系；失败400/401/403，统一X-Trace-ID。
  */
 export function createUser(payload: Omit<UserMutationPayload, "employee_no"> & { password: string }): Promise<DirectoryUser> {
   return request<DirectoryUser>({ method: "POST", url: "/v1/users/new/", data: payload })
@@ -121,6 +124,7 @@ export function createUser(payload: Omit<UserMutationPayload, "employee_no"> & {
  * 修改用户资料、上下级、分组、状态和角色集合。
  * 方法/路径：PATCH /v1/users/{id}/；请求体为部分 UserMutationPayload，password 可省略表示不修改；
  * 响应为更新后的用户对象，不返回密码。
+ * manager_ids 保留选择顺序；省略保持原顺序，空数组清空，响应包含manager_ids。
  */
 export function updateUser(id: string, payload: Partial<UserMutationPayload>): Promise<DirectoryUser> {
   return request<DirectoryUser>({ method: "PATCH", url: `/v1/users/${id}/`, data: payload })

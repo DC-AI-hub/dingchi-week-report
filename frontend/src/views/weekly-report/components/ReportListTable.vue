@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { RouterLink } from "vue-router"
+import { RouterLink, type LocationQueryRaw } from "vue-router"
 
 import { getReportRoleName } from "@/features/weekly-report/constants"
 import type { WeeklyReport } from "@/features/weekly-report/types"
@@ -19,6 +19,7 @@ const props = withDefaults(
     canSubmit?: (report: WeeklyReport) => boolean
     canDelete?: (report: WeeklyReport) => boolean
     canFillDaily?: (report: WeeklyReport) => boolean
+    returnQuery?: LocationQueryRaw
   }>(),
   {
     isLoading: false,
@@ -60,6 +61,7 @@ function editRoute(report: WeeklyReport) {
   return {
     name: "weekly-report-edit",
     params: { reportId: report.id },
+    query: props.returnQuery,
   }
 }
 </script>
@@ -84,7 +86,7 @@ function editRoute(report: WeeklyReport) {
           <td class="period-cell">
             <RouterLink
               class="period-link"
-              :to="{ name: 'weekly-report-detail', params: { reportId: report.id } }"
+              :to="{ name: 'weekly-report-detail', params: { reportId: report.id }, query: returnQuery }"
             >
               <strong>{{ formatPeriod(report.period_start, report.period_end) }}</strong>
             </RouterLink>

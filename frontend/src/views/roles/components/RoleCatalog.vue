@@ -59,7 +59,7 @@ function deleteDisabledReason(role: DirectoryRole): string {
 
 <template>
   <div class="role-catalog-layout">
-    <div v-if="isLoading" class="dashboard-card empty-card" aria-live="polite">正在加载角色数据…</div>
+    <div v-if="isLoading" class="dashboard-card empty-card" aria-live="polite">正在加载职位数据…</div>
     <OrganizationChart v-else :collapsible="true" :groups="groupOptions">
       <template #node="{ group, isExpanded }">
         <strong class="organization-role-group">{{ group.group_name }}</strong>

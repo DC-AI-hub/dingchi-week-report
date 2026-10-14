@@ -9,7 +9,7 @@ export class ApiError extends Error {
     public readonly status?: number,
     public readonly details?: unknown,
   ) {
-    super(message)
+    super(message.replaceAll("角色", "职位"))
     this.name = "ApiError"
   }
 }

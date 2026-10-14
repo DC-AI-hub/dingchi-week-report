@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref } from "vue"
 
+import PersonSelect from "@/features/directory/components/PersonSelect.vue"
 import GroupTreeSelect from "@/features/directory/components/GroupTreeSelect.vue"
-import type { DirectoryGroup } from "@/features/directory/types"
+import type { DirectoryGroup, DirectoryUserOption } from "@/features/directory/types"
 
 withDefaults(
   defineProps<{
@@ -12,8 +13,11 @@ withDefaults(
     groupId?: string
     groupOptions?: DirectoryGroup[]
     showGroup?: boolean
+    showPerson?: boolean
+    employeeId?: string
+    userOptions?: DirectoryUserOption[]
   }>(),
-  { groupId: "", groupOptions: () => [], showGroup: false },
+  { groupId: "", groupOptions: () => [], showGroup: false, showPerson:false, employeeId:"",userOptions:()=>[] },
 )
 
 const emit = defineEmits<{
@@ -21,6 +25,7 @@ const emit = defineEmits<{
   "update:periodStart": [value: string]
   "update:periodEnd": [value: string]
   "update:groupId": [value: string]
+  "update:employeeId": [value:string]
   search: []
   reset: []
 }>()
@@ -118,6 +123,7 @@ function updatePeriodStart(value: string) {
         @update:model-value="emit('update:groupId', $event || '')"
       />
     </label>
+    <label v-if="showPerson" class="person-filter">人员<PersonSelect :model-value="employeeId" :users="userOptions" @update:model-value="emit('update:employeeId',String($event || ''))" /></label>
     <div class="report-filter-actions">
       <button class="primary-button" type="submit">查询</button>
       <button class="ghost-button" type="button" @click="emit('reset')">重置</button>

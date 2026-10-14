@@ -162,3 +162,5 @@
     flex: 1;
   }
 }
+
+.report-filter-bar .person-filter { width:220px; min-width:180px; }

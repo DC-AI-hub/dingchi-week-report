@@ -12,7 +12,7 @@ import { formatDateTime } from "@/utils/date"
 import ReportPagination from "../../components/ReportPagination.vue"
 import TaskEditorDialog from "./TaskEditorDialog.vue"
 
-const props = defineProps<{ title: string; tasks: DeliveryAssistantTaskDraft[]; ownerName?: string; fieldDefinitions?: DeliveryAssistantTaskFieldDefinition[] }>()
+const props = defineProps<{ title: string; tasks: DeliveryAssistantTaskDraft[]; defaultOwnerId?: string; ownerName?: string; fieldDefinitions?: DeliveryAssistantTaskFieldDefinition[] }>()
 const emit = defineEmits<{ "update:tasks": [tasks: DeliveryAssistantTaskDraft[]] }>()
 const editorOpen = ref(false); const editorKey = ref(0); const columnsOpen = ref(false); const editingIndex = ref(-1); const editingTask = ref<DeliveryAssistantTaskDraft | null>(null); const detailOpen = ref(false); const detailTask = ref<DeliveryAssistantTaskDraft | null>(null); const users = ref<DirectoryUserOption[]>([]); const customerFilter = ref(""); const plannedDateFilter = ref(""); const taskPage = ref(1); const pageSize = 10; const selectedColumns = ref<DeliveryAssistantTaskColumn[]>([])
 const customerOptions = computed(() => Array.from(new Set(props.tasks.map((task) => task.customer_name.trim()).filter(Boolean))).sort((left, right) => left.localeCompare(right, "zh-CN")))
@@ -61,11 +61,11 @@ onMounted(() => void loadUsers())
     </tbody></table></div>
     <ReportPagination :page="taskPage" :page-size="pageSize" :total="filteredTaskEntries.length" :total-pages="totalPages" @change="taskPage = $event" />
   </section>
-  <TaskEditorDialog :key="editorKey" :open="editorOpen" :task="editingTask" :owner-name="ownerName" :users="users" @close="editorOpen = false" @save="saveTask" />
+  <TaskEditorDialog :key="editorKey" :open="editorOpen" :task="editingTask" :default-owner-id="defaultOwnerId" :owner-name="ownerName" :users="users" @close="editorOpen = false" @save="saveTask" />
   <TaskEditorDialog
     :open="detailOpen"
     :task="detailTask"
-    :owner-name="ownerName"
+    :default-owner-id="defaultOwnerId" :owner-name="ownerName"
     :users="users"
     :readonly="true"
     @close="detailOpen = false"

@@ -1,10 +1,55 @@
 from django.urls import path
 
+from . import monthly_plan_management_views as monthly_views
 from . import views
+from .monthly_plan_task_views import monthly_plan_task_list_view
 
 app_name = "weekly_report"
 
 urlpatterns = [
+    path(
+        "monthly-plan-management/approvals/<str:approval_id>/", monthly_views.approval_detail_view
+    ),
+    path(
+        "monthly-plan-management/<str:plan_id>/changes/",
+        monthly_views.create_change_view,
+        name="monthly-change-create",
+    ),
+    path(
+        "monthly-plan-management/changes/<str:change_id>/",
+        monthly_views.change_detail_view,
+        name="monthly-change-detail",
+    ),
+    path(
+        "monthly-plan-management/changes/<str:change_id>/submit/",
+        monthly_views.change_submit_view,
+        name="monthly-change-submit",
+    ),
+    path(
+        "monthly-plan-management/changes/<str:change_id>/decide/",
+        monthly_views.change_decide_view,
+        name="monthly-change-decide",
+    ),
+    path("monthly-plan-management/context/", monthly_views.context_view, name="monthly-context"),
+    path(
+        "monthly-plan-management/gate/<str:month_key>/",
+        monthly_views.gate_view,
+        name="monthly-gate",
+    ),
+    path("monthly-plan-management/", monthly_views.list_view, name="monthly-list"),
+    path(
+        "monthly-plan-management/<str:plan_id>/submit/",
+        monthly_views.submit_view,
+        name="monthly-submit",
+    ),
+    path(
+        "monthly-plan-management/<str:plan_id>/decide/",
+        monthly_views.decide_view,
+        name="monthly-decide",
+    ),
+    path(
+        "monthly-plan-management/<str:plan_id>/", monthly_views.detail_view, name="monthly-detail"
+    ),
     path(
         "attachments/",
         views.pending_attachment_upload_view,
@@ -24,6 +69,11 @@ urlpatterns = [
     path("dashboard/next-week/", views.dashboard_next_week_view, name="dashboard-next-week"),
     path("weekly-report-templates/<str:template_code>/", views.template_view, name="template"),
     path("monthly-plans/<str:month_key>/", views.monthly_plan_view, name="monthly-plan"),
+    path(
+        "monthly-plan-tasks/<str:month_key>/",
+        monthly_plan_task_list_view,
+        name="monthly-plan-tasks",
+    ),
     path("weekly-reports/", views.report_list_view, name="list"),
     path(
         "weekly-reports/<str:report_id>/daily-tasks/",

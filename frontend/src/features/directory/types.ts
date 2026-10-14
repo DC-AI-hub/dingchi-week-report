@@ -47,6 +47,7 @@ export interface DirectoryUser {
   email: string
   phone: string
   manager_id: string | null
+  manager_ids?: string[]
   group_id: string | null
   group_name?: string | null
   avatar_color: string
@@ -57,6 +58,7 @@ export interface DirectoryUser {
 
 /** 周报责任人/协作人下拉所需的最小用户信息。 */
 export interface DirectoryUserOption {
+  group_name?: string | null
   id: string
   employee_no: string
   display_name: string
@@ -80,6 +82,7 @@ export interface UserMutationPayload {
   password?: string
   group_id: string | null
   manager_id: string | null
+  manager_ids?: string[]
   role_codes: string[]
   status?: string
 }

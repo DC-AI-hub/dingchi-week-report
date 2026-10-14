@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
+import { clearFieldValidity, reportFormValidity } from "@/utils/form-validation"
 import AttachmentDownloadLink from "@/components/file/AttachmentDownloadLink.vue"
 import { computed, reactive, ref, watch } from "vue"
 
-import SearchableSelect from "@/components/form/SearchableSelect.vue"
+import PersonSelect from "@/features/directory/components/PersonSelect.vue"
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
 import type { DirectoryUserOption } from "@/features/directory/types"
 import { useNoticeStore } from "@/app/stores/notice"
@@ -19,7 +19,7 @@ const props = withDefaults(
   defineProps<{
     open: boolean
     task: RecruitmentTaskDraft | null
-    ownerName?: string
+    defaultOwnerId?: string; ownerName?: string
     users?: DirectoryUserOption[]
     readonly?: boolean
   }>(),
@@ -33,7 +33,7 @@ const unknownCollaboratorNames = ref<string[]>([])
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const attachmentBusy = ref(false)
 const noticeStore = useNoticeStore()
-const validationMessage = ref("")
+const formElement = ref<HTMLFormElement | null>(null)
 
 const userOptions = computed(() => props.users.map((user) => ({
   value: user.id,
@@ -44,6 +44,7 @@ const completionRate = computed(() => Math.round(((Number(form.progress_percent)
 
 function cloneTask(task: RecruitmentTaskDraft | null) {
   const next = emptyRecruitmentTask(props.ownerName)
+  if (!task) next.owner_id = props.defaultOwnerId || null
   return task ? { ...next, ...task, attachments: (task.attachments || []).map((attachment) => ({ ...attachment })) } : next
 }
 
@@ -60,9 +61,8 @@ function syncAssignmentFields() {
   unknownCollaboratorNames.value = names.filter((name) => !matched.some((user) => user.display_name === name))
 }
 
-watch(() => [props.open, props.task, props.ownerName] as const, () => {
+watch(() => [props.open, props.task, props.ownerName, props.defaultOwnerId] as const, () => {
   Object.assign(form, cloneTask(props.task))
-  validationMessage.value = ""
   syncAssignmentFields()
 }, { immediate: true })
 watch(() => props.users, syncAssignmentFields, { deep: true })
@@ -88,22 +88,13 @@ function localTimestamp() {
 }
 
 function submit(action: "close" | "next") {
+  if (!reportFormValidity(formElement.value)) return
   const dimension = form.dimension.trim()
   const task = form.task_name.trim()
   const workContent = form.work_content.trim()
   const outputDescription = form.output_description.trim()
   const plannedCompletionDate = String(form.planned_completion_date || "").trim()
-  const missingFields = [
-    !dimension && "维度",
-    !task && "工作任务",
-    !workContent && "主要工作内容",
-    !outputDescription && "输出成果",
-    !plannedCompletionDate && "计划完成时间",
-  ].filter(Boolean)
-  if (missingFields.length) {
-    validationMessage.value = `${missingFields.join("、")}不能为空。`
-    return
-  }
+
   const progress = normalizePercent(form.progress_percent)
   const quality = normalizePercent(form.quality_percent)
   Object.assign(form, {
@@ -156,7 +147,7 @@ async function removeAttachment(index: number) {
 
 <template>
   <BaseDialog :open="open" :title="readonly ? '任务详情' : (task ? '编辑任务' : '新增任务')" width="1020px" height="88vh" @close="emit('close')">
-    <form class="task-editor" @submit.prevent="submit('close')">
+    <form ref="formElement" novalidate @input.capture="clearFieldValidity" @change.capture="clearFieldValidity" class="task-editor" @submit.prevent="submit('close')">
       <div class="task-editor__row">
         <label class="task-editor__field"><span class="task-editor__label">维度<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span><select v-model="form.dimension" required :disabled="readonly"><option value="" disabled>请选择维度</option><option v-for="dimension in recruitmentDimensionOptions" :key="dimension" :value="dimension">{{ dimension }}</option></select></label>
         <label class="task-editor__field"><span class="task-editor__label">工作任务<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span><input v-model.trim="form.task_name" maxlength="255" required :readonly="readonly" /></label>
@@ -170,13 +161,12 @@ async function removeAttachment(index: number) {
       <div class="task-editor__row"><label class="task-editor__field">完成进度（百分比）<input v-model.number="form.progress_percent" min="0" max="100" step="5" type="number" :readonly="readonly" @change="form.progress_percent = normalizePercent(form.progress_percent)" /></label><label class="task-editor__field">完成质量（百分比）<input v-model.number="form.quality_percent" min="0" max="100" step="5" type="number" :readonly="readonly" @change="form.quality_percent = normalizePercent(form.quality_percent)" /></label></div>
       <div class="task-editor__row"><label class="task-editor__field">月度工作完成率（完成进度*50%+完成质量*50%）<input :value="`${completionRate}%`" disabled /></label><label class="task-editor__field">是否在计划时间内完成<select v-model="form.on_time_status" :disabled="readonly"><option value="pending">待完成</option><option value="in_progress">进行中</option><option value="on_time">是，按计划完成</option><option value="late">否，已延期完成</option><option value="overdue">否，已逾期未完成</option><option value="completed">已完成</option><option value="not_applicable">不适用</option></select></label></div>
       <label class="task-editor__field task-editor__field--wide">进度缓慢原因说明<textarea v-model.trim="form.delay_reason" rows="4" :readonly="readonly" /></label>
-      <div class="task-editor__row"><label class="task-editor__field">责任人<SearchableSelect v-model="ownerId" :options="userOptions" :disabled="readonly" aria-label="选择责任人" placeholder="输入文字筛选" /></label><label class="task-editor__field">协作人<SearchableSelect v-model="collaboratorIds" :options="userOptions" :multiple="true" :disabled="readonly" aria-label="选择协作人" placeholder="输入文字筛选" /></label></div>
+      <div class="task-editor__row"><label class="task-editor__field">责任人<PersonSelect v-model="ownerId" :users="users || []" :disabled="readonly" aria-label="选择责任人" placeholder="输入文字筛选" /></label><label class="task-editor__field">协作人<PersonSelect v-model="collaboratorIds" :users="users || []" :multiple="true" :disabled="readonly" aria-label="选择协作人" placeholder="输入文字筛选" /></label></div>
 
       <div class="task-editor__field task-editor__field--wide task-editor__evidence"><label for="recruitment-task-links">相关文档链接或佐证材料</label><textarea id="recruitment-task-links" v-model.trim="form.document_links" rows="3" :readonly="readonly" /><div v-if="!readonly" class="task-editor__attachment-toolbar"><button class="ghost-button" type="button" :disabled="attachmentBusy" @click="openFilePicker">{{ attachmentBusy ? "上传中" : "上传附件" }}</button><input ref="fileInputRef" class="task-editor__file-input" type="file" multiple @change="handleFiles" /></div><div v-if="form.attachments.length" class="task-editor__attachment-list"><div v-for="(attachment, index) in form.attachments" :key="`${attachment.file_name}-${index}`" class="task-editor__attachment-item"><div class="task-editor__attachment-main"><AttachmentDownloadLink :attachment-id="attachment.id" :file-name="attachment.file_name" /><small>已上传</small></div><input v-model.trim="attachment.description" maxlength="500" placeholder="附件说明（可选）" :readonly="readonly" /><button v-if="!readonly" class="danger-action-button" type="button" @click="removeAttachment(index)">删除</button></div></div></div>
-      <NoticeBridge :warning-message="validationMessage" />
     </form>
     <template v-if="readonly" #actions><button class="primary-button" type="button" @click="emit('close')">关闭</button></template>
-    <template v-else #actions><button class="ghost-button" type="button" @click="emit('close')">取消</button><button class="ghost-button" type="button" @click="submit('close')">保存&amp;关闭</button><button class="primary-button" type="button" @click="submit('next')">保存&amp;下一个</button></template>
+    <template v-else #actions><button class="ghost-button" type="button" @click="emit('close')">取消</button><button class="ghost-button" type="button" @click="submit('close')">确定</button><button class="ghost-button" type="button" @click="submit('next')">确定并继续添加</button></template>
   </BaseDialog>
 </template>
 

@@ -89,6 +89,8 @@ export function formatReportTaskField(item: ReportItem, fieldCode: string): stri
     return dimensionLabels[item.section_code] || item.section_name_snapshot || item.section_code || "—"
   }
   if (fieldCode === "task_name") return item.task_name_snapshot || "—"
+  // API uses the persisted snapshot name while editable drafts call it owner_name.
+  if (fieldCode === "owner_name") return item.owner_name_snapshot || "—"
   if (fieldCode === "on_time_status") {
     return reportTaskStatusLabel(item.on_time_status)
   }

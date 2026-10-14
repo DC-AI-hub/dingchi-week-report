@@ -2,8 +2,7 @@
 import { computed, onMounted, reactive, watch } from "vue"
 import { useRoute } from "vue-router"
 
-import { listGroups } from "@/features/directory/api"
-import type { DirectoryGroup } from "@/features/directory/types"
+import { useDirectoryFilterOptions } from "@/features/directory/useDirectoryFilterOptions"
 import { useAuthStore } from "@/features/auth/store"
 import { useReportList } from "@/features/weekly-report/composables/useReportList"
 import type { ReportListFilters, WeeklyReport } from "@/features/weekly-report/types"
@@ -16,7 +15,8 @@ import ReportPagination from "../components/ReportPagination.vue"
 const authStore = useAuthStore()
 const route = useRoute()
 const reportList = useReportList()
-const groups = reactive<DirectoryGroup[]>([])
+const directory=useDirectoryFilterOptions()
+const {groups,users}=directory
 const filters = reactive({
   month_key: "",
   period_start: "",
@@ -26,7 +26,7 @@ const filters = reactive({
 })
 const reports = computed(() => reportList.reports.value)
 const isLoading = computed(() => reportList.isLoading.value)
-const errorMessage = computed(() => reportList.errorMessage.value)
+const errorMessage = computed(() => reportList.errorMessage.value || directory.error.value)
 const page = computed(() => reportList.page.value)
 const pageSize = computed(() => reportList.pageSize.value)
 const total = computed(() => reportList.total.value)
@@ -58,14 +58,6 @@ async function loadReports() {
   await reportList.load(queryFilters())
 }
 
-async function loadGroups() {
-  try {
-    groups.push(...(await listGroups()).items)
-  } catch (error) {
-    reportList.errorMessage.value = error instanceof Error ? error.message : "分组加载失败。"
-  }
-}
-
 function search() {
   reportList.resetPage()
   void loadReports()
@@ -91,7 +83,7 @@ function cannotEditOrDelete(_report: WeeklyReport) {
 
 onMounted(() => {
   syncRouteFilters()
-  void Promise.all([loadReports(), loadGroups()])
+  void Promise.all([loadReports(), directory.load()])
 })
 watch(() => authStore.activeRole?.role_code, () => {
   reportList.resetPage()
@@ -118,6 +110,9 @@ watch(() => route.query, () => {
         v-model:period-end="filters.period_end"
         v-model:group-id="filters.group_id"
         :group-options="groups"
+        v-model:employee-id="filters.employee_id"
+        :user-options="users"
+        show-person
         show-group
         @reset="resetFilters"
         @search="search"

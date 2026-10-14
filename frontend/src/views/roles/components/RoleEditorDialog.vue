@@ -203,7 +203,7 @@ function submitForm() {
           <textarea
             v-model="form.description"
             maxlength="255"
-            placeholder="说明角色职责与数据边界"
+            placeholder="说明职位职责与数据边界"
             rows="4"
             :disabled="isSaving"
           ></textarea>

@@ -6,17 +6,27 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
+from pathlib import Path
 from typing import Any
 
+from django.conf import settings
 from django.db import connection
+from django.utils import timezone
 
 
 def _fetch(sql: str, params: list[Any]) -> list[dict[str, Any]]:
     with connection.cursor() as cursor:
         cursor.execute(sql, params)
         columns = [column[0] for column in cursor.description]
-        return [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
+        rows = [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
+        # 原生 MySQL 游标返回不带时区的 DATETIME；与 ORM 一样按连接存储时区补全。
+        if settings.USE_TZ:
+            for row in rows:
+                for key, value in row.items():
+                    if isinstance(value, datetime) and timezone.is_naive(value):
+                        row[key] = timezone.make_aware(value, connection.timezone)
+        return rows
 
 
 def _report_clauses(
@@ -103,27 +113,13 @@ def list_dashboard_members(employee_ids: list[int]) -> list[dict[str, Any]]:
         return []
     placeholders = ",".join(["%s"] * len(employee_ids))
     return _fetch(
-        f"""
-        SELECT u.id AS employee_id, u.display_name AS employee_name,
-               u.group_id, COALESCE(g.group_name, '未分组') AS group_name,
-               COALESCE(
-                   GROUP_CONCAT(DISTINCT r.role_code ORDER BY r.sort_order SEPARATOR ','),
-                   ''
-               ) AS role_code,
-               COALESCE(
-                   GROUP_CONCAT(DISTINCT r.role_name ORDER BY r.sort_order SEPARATOR '、'),
-                   '团队成员'
-               ) AS role_name
-        FROM user_account u
-        LEFT JOIN organization_group g ON g.id = u.group_id
-        LEFT JOIN user_role ur ON ur.user_id = u.id AND ur.status = 'active'
-        LEFT JOIN role r ON r.id = ur.role_id AND r.status = 'active'
-        WHERE u.status = 'active' AND u.id IN ({placeholders})
-        GROUP BY u.id, u.display_name, u.group_id, g.group_name, u.employee_no
-        ORDER BY u.employee_no, u.id
-        """,
+        (Path(__file__).with_name("dao") / "sql" / "dashboard_reporting_members.sql")
+        .read_text(encoding="utf-8")
+        .format(employee_placeholders=placeholders),
         [*employee_ids],
     )
+
+
 def list_reports_page(
     *,
     employee_ids: list[int],
@@ -225,7 +221,7 @@ def list_monthly_plans(
         SELECT id, role_code, employee_id, group_id, month_key, summary,
                created_at, updated_at
         FROM monthly_plan
-        WHERE {' AND '.join(clauses)}
+        WHERE {" AND ".join(clauses)}
         ORDER BY month_key DESC, updated_at DESC
         """,
         params,

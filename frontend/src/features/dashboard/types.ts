@@ -19,6 +19,7 @@ export interface DashboardDistribution {
 }
 
 export interface DashboardReport {
+  updated_at?: string
   id: string
   role_code: string
   employee_id: string
@@ -76,6 +77,7 @@ export interface DashboardMemberTaskPreview {
 }
 
 export interface DashboardMemberStats {
+  group_id?: string | null
   employee_id: string
   employee_name: string
   role_code: string
@@ -111,6 +113,7 @@ export interface DashboardSummary {
   status_distribution: DashboardDistribution[]
   my_tasks: DashboardItem[]
   my_plans: DashboardItem[]
+  member_reports?: DashboardReport[]
   reports: DashboardReport[]
   team_tasks: DashboardTeamTask[]
   member_stats: DashboardMemberStats[]

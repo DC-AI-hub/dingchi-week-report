@@ -86,6 +86,20 @@ class UserRole(SnowflakeIdModel):
         ]
 
 
+class UserManager(SnowflakeIdModel):
+    user_id = models.BigIntegerField()
+    manager_id = models.BigIntegerField()
+    sort_order = models.PositiveIntegerField()
+
+    class Meta:
+        db_table = "user_manager"
+        ordering = ["sort_order", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["user_id", "manager_id"], name="uq_user_manager_pair"),
+            models.UniqueConstraint(fields=["user_id", "sort_order"], name="uq_user_manager_order"),
+        ]
+
+
 class UserGroupMembership(SnowflakeIdModel):
     """Optional multi-group membership while UserAccount keeps a primary group."""
 

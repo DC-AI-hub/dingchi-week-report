@@ -19,8 +19,10 @@ from django.utils import timezone
 from django.utils.text import get_valid_filename
 
 from apps.accounts.models import Role, UserAccount
+from apps.accounts.public import visible_user_ids
 from apps.core.models import Attachment
 from apps.dictionary.public import list_active_dictionary_items
+from apps.todos.public import complete as complete_todo
 
 from .. import dao
 from ..models import (
@@ -34,6 +36,11 @@ from ..models import (
     WeeklyReportMetric,
 )
 from ..templates import ROLE_TEMPLATES, get_default_task_fields, get_default_template
+from .dashboard_submissions import member_report_summaries
+from .monthly_plan_tasks import (
+    list_monthly_plan_tasks,
+)
+from .monthly_plans.policy import ensure_approved
 
 
 class ReportError(ValueError):
@@ -150,27 +157,8 @@ def resolve_role_template(role_code: str) -> dict[str, Any]:
 
 
 def visible_employee_ids(user: UserAccount, role_code: str) -> list[int]:
-    """Apply self/team/all visibility using the logical manager tree."""
-    role = Role.objects.filter(role_code=role_code, status="active").first()
-    if role is None or role.scope == "self":
-        return [int(user.id)]
-    all_users = list(UserAccount.objects.filter(status="active").values("id", "manager_id"))
-    if role.scope == "all":
-        return [int(item["id"]) for item in all_users]
-    children: dict[int, list[int]] = {}
-    for item in all_users:
-        manager_id = item["manager_id"]
-        if manager_id is not None:
-            children.setdefault(int(manager_id), []).append(int(item["id"]))
-    result = [int(user.id)]
-    pending = [int(user.id)]
-    while pending:
-        current = pending.pop()
-        for child_id in children.get(current, []):
-            if child_id not in result:
-                result.append(child_id)
-                pending.append(child_id)
-    return result
+    """Apply the same ordered-manager team visibility as monthly plans."""
+    return visible_user_ids(user, role_code)
 
 
 def list_visible_reports(
@@ -294,7 +282,7 @@ def create_or_update_report(
                 raise ReportError("编辑周报时不能修改周报周期。")
             report.period_end = period_end
             report.as_of_date = as_of_date
-            report.month_key = period_start.strftime("%Y-%m")
+            # 历史周报按其保存的所属月度校验，避免把月度归属隐式改为周期开始月。
             report.group_id = user.group_id
             # 保留已经持久化的状态。未来周报进入当前周期时只允许从
             # 未来周报进入当前周期时由展示层计算为进行中，不再根据周期结束日期自动变更状态。
@@ -306,13 +294,9 @@ def create_or_update_report(
         report.support_needed = str(payload.get("support_needed") or "").strip()
         report.expected_resolve_date = _parse_optional_date(payload.get("expected_resolve_date"))
         report.save()
-        if isinstance(payload.get("monthly_plan"), Mapping):
-            _save_monthly_plan(
-                user=user,
-                role_code=role_code,
-                month_key=report.month_key,
-                value=payload["monthly_plan"],
-            )
+        ensure_approved(user, role_code, report.month_key)
+        if "monthly_plan" in payload or "monthly_plan_tasks" in payload:
+            raise ReportError("月度目标和计划只能在月度计划管理中维护，周报中仅展示。")
         previous_item_progress = _get_item_progress_state(int(report.id))
         WeeklyReportItem.objects.filter(report_id=report.id).delete()
         WeeklyReportMetric.objects.filter(report_id=report.id).delete()
@@ -331,6 +315,11 @@ def create_or_update_report(
             user=user,
         )
         _save_daily_tasks(report, payload.get("daily_tasks"))
+        complete_todo(
+            recipient_id=user.id,
+            role_code=role_code,
+            dedupe_key=f"weekly:{role_code}:{report.period_start}",
+        )
     return get_report_detail(user=user, role_code=role_code, report_id=int(report.id))
 
 
@@ -381,6 +370,11 @@ def get_report_detail(*, user: UserAccount, role_code: str, report_id: int) -> d
         "metrics": [_serialize_row(row) for row in dao.get_report_metrics(report_id)],
         "attachments": [_serialize_row(row) for row in dao.get_report_attachments(report_id)],
         "daily_tasks": list_daily_tasks_for_report(report_id),
+        "monthly_plan_tasks": list_monthly_plan_tasks(
+            employee_id=int(header["employee_id"]),
+            role_code=str(header["role_code"]),
+            month_key=str(header["month_key"]),
+        ),
     }
 
 
@@ -545,32 +539,17 @@ def get_monthly_plan(
     plan = dao.get_monthly_plan(target_employee_id, role_code, parsed_month_key)
     if plan is None:
         return None
-    return _serialize_row(plan)
+    result = _serialize_row(plan)
+    record = MonthlyPlan.objects.filter(id=plan["id"]).first()
+    result["status"] = record.status if record else "draft"
+    return result
 
 
 def save_monthly_plan(
     *, user: UserAccount, role_code: str, month_key: Any, summary: Any
 ) -> dict[str, Any]:
-    """首次保存本人当前角色指定月份的计划，保存后永久只读。"""
-    if _role_scope(role_code) == "all":
-        raise ReportPermissionError("全员数据角色不支持编写月度计划。")
-    parsed_month_key = _parse_month_key(month_key, required=True)
-    with transaction.atomic():
-        _save_monthly_plan(
-            user=user,
-            role_code=role_code,
-            month_key=parsed_month_key,
-            value={"summary": summary},
-        )
-    return get_monthly_plan(
-        user=user,
-        access_role_code=role_code,
-        plan_role_code=role_code,
-        month_key=parsed_month_key,
-    ) or {
-        "month_key": parsed_month_key,
-        "summary": str(summary or "").strip(),
-    }
+    """旧写入接口停用；编辑和审批统一迁移到月度计划管理。"""
+    raise ReportPermissionError("请在月度计划管理页面填写、修改和提交审批。")
 
 
 def dashboard_summary(
@@ -626,6 +605,9 @@ def dashboard_summary(
         if (_as_date(item.get("report_period_start")) or current_start) == current_start
     ]
     visible_members = dao.list_dashboard_members(employee_ids)
+    reporting_ids = {str(member["employee_id"]) for member in visible_members}
+    week_rows = [row for row in week_rows if str(row["employee_id"]) in reporting_ids]
+    week_items = [item for item in week_items if str(item["employee_id"]) in reporting_ids]
     member_stats, group_stats = _build_dashboard_task_stats(
         week_rows,
         week_items,
@@ -652,9 +634,7 @@ def dashboard_summary(
     for row in own_rows:
         row_items = dao.get_report_items(int(row["id"]))
         own_week_items.extend(row_items)
-    progress_history = dao.get_report_item_progress_history(
-        [int(row["id"]) for row in week_rows]
-    )
+    progress_history = dao.get_report_item_progress_history([int(row["id"]) for row in week_rows])
     trend = _build_trend(week_items, progress_history, current_start)
     return {
         "scope": _role_scope(role_code),
@@ -691,6 +671,12 @@ def dashboard_summary(
         # 下周计划由独立接口返回，避免当前周期查询越过空周读取更远周期。
         "my_plans": [],
         "reports": [_serialize_row(row) for row in current_rows[:12]],
+        "member_reports": [
+            _serialize_row(row)
+            for row in member_report_summaries(
+                week_rows, {str(member["employee_id"]) for member in member_stats}
+            )
+        ],
         # 领导首页需要按部门和责任人展示当前可见任务；任务仍来自周报明细，避免前端生成演示数据。
         "team_tasks": [_serialize_row(item) for item in team_items[:200]],
         # 管理视角使用后端真实聚合结果，避免前端只根据截断后的任务明细计算出错误的总数。
@@ -775,6 +761,7 @@ def _build_dashboard_task_stats(
                 "employee_name": str(row.get("employee_name") or "未命名成员"),
                 "role_code": str(row.get("role_code") or ""),
                 "role_name": str(row.get("role_name") or row.get("role_code") or "团队成员"),
+                "group_id": str(row["group_id"]) if row.get("group_id") else None,
                 "group_name": str(row.get("group_name") or "未分组"),
                 "report_count": 0,
                 "task_count": 0,
@@ -847,10 +834,10 @@ def _build_dashboard_task_stats(
         is_risk = str(task.get("on_time_status") or "").lower() in {"overdue", "late"} or bool(
             str(task.get("delay_reason") or "").strip()
         )
-        is_completed = (
-            str(task.get("on_time_status") or "").lower() in {"completed", "on_time"}
-            or progress_number >= Decimal("100")
-        )
+        is_completed = str(task.get("on_time_status") or "").lower() in {
+            "completed",
+            "on_time",
+        } or progress_number >= Decimal("100")
         if is_risk:
             status = "延期/风险"
         elif is_completed:
@@ -936,11 +923,15 @@ def _save_monthly_plan(
 
     # 月度计划是同一用户、角色、月份下跨周复用的基线。首次保存后不允许
     # 覆盖，使用行锁确保并发请求也不会产生第二次写入。
-    existing = MonthlyPlan.objects.select_for_update().filter(
-        employee_id=user.id,
-        role_code=role_code,
-        month_key=month_key,
-    ).first()
+    existing = (
+        MonthlyPlan.objects.select_for_update()
+        .filter(
+            employee_id=user.id,
+            role_code=role_code,
+            month_key=month_key,
+        )
+        .first()
+    )
     if existing is not None:
         raise MonthlyPlanLockedError("月度计划不支持修改。")
     try:
@@ -980,10 +971,7 @@ def _save_items(
         config = template_map.get(task_code, {})
         customer_name = str(raw.get("customer_name_snapshot") or "").strip()
         dimension = str(
-            raw.get("dimension")
-            or raw.get("section_name")
-            or raw.get("section_code")
-            or ""
+            raw.get("dimension") or raw.get("section_name") or raw.get("section_code") or ""
         ).strip()
         task_name = str(raw.get("task_name_snapshot") or config.get("label") or "").strip()
         if requires_customer and not customer_name:
@@ -1010,7 +998,8 @@ def _save_items(
         requested_on_time = str(raw.get("on_time_status") or "").strip()
         on_time = (
             requested_on_time
-            if requested_on_time in {
+            if requested_on_time
+            in {
                 "pending",
                 "in_progress",
                 "on_time",
@@ -1142,9 +1131,7 @@ def _save_metrics(
             and raw.get("actual_value") not in (None, "")
         ):
             metric_label = raw.get("metric_name_snapshot") or config.get("label") or code
-            raise ReportError(
-                f"指标“{metric_label}”数值格式无效。"
-            )
+            raise ReportError(f"指标“{metric_label}”数值格式无效。")
         if value_type == "percent" and actual is not None and not 0 <= actual <= 100:
             raise ReportError("百分比指标必须在 0—100 范围内。")
         if value_type in {"number", "amount"} and actual is not None and actual < 0:
@@ -1253,8 +1240,7 @@ def _save_daily_tasks(report: WeeklyReport, value: Any) -> None:
         raise ReportError("仅进行中的周报可以填写日报。")
 
     existing = {
-        int(row.id): row
-        for row in WeeklyReportDailyTask.objects.filter(report_id=report.id)
+        int(row.id): row for row in WeeklyReportDailyTask.objects.filter(report_id=report.id)
     }
     requested_ids: set[int] = set()
     requested_dates: set[date] = set()
@@ -1613,9 +1599,7 @@ def _build_trend(
             if task_history:
                 continue
             created_date = (
-                _as_date(item.get("created_at"))
-                or _as_date(item.get("updated_at"))
-                or start
+                _as_date(item.get("created_at")) or _as_date(item.get("updated_at")) or start
             )
             if created_date <= day:
                 day_values.append(
@@ -1629,9 +1613,7 @@ def _build_trend(
         completion_values = [value[1] for value in day_values if value[1] is not None]
         progress = sum(progress_values) / len(progress_values) if progress_values else Decimal("0")
         completion = (
-            sum(completion_values) / len(completion_values)
-            if completion_values
-            else Decimal("0")
+            sum(completion_values) / len(completion_values) if completion_values else Decimal("0")
         )
         current.append(
             {

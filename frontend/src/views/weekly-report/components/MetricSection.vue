@@ -27,7 +27,7 @@ defineProps<{
       <textarea v-if="!readonly" v-model="metric.note" rows="2" placeholder="补充口径或结果说明" />
       <p v-else class="metric-note">{{ metric.note || '暂无补充说明' }}</p>
     </article>
-    <p v-if="!metrics.length" class="metric-empty">该角色暂无量化指标。</p>
+    <p v-if="!metrics.length" class="metric-empty">该职位暂无量化指标。</p>
   </div>
 </template>
 

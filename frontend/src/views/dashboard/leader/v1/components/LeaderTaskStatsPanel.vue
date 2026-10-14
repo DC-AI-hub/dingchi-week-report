@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue"
+import { computed, ref, watch } from "vue"
 import { useRouter } from "vue-router"
 import { ListChecks, UsersRound } from "lucide-vue-next"
 
@@ -33,17 +33,13 @@ function openMemberReports(member: DashboardMemberStats) {
   })
 }
 
-function openGroupReports(group: DashboardGroupStats) {
-  if (!group.group_id) return
-  void router.push({
-    name: "weekly-reports",
-    query: {
-      group_id: group.group_id,
-      period_start: props.period.start,
-      period_end: props.period.end,
-    },
-  })
-}
+const selectedGroup = ref("")
+function groupKey(group:DashboardGroupStats) { return group.group_id || `name:${group.group_name}` }
+watch(()=>props.groups,groups=>{if(!groups.some(group=>groupKey(group)===selectedGroup.value))selectedGroup.value=groups[0]?groupKey(groups[0]):""},{immediate:true})
+const visibleMembers=computed(()=>{
+ const group=props.groups.find(group=>groupKey(group)===selectedGroup.value)
+ return group?props.members.filter(member=>member.group_id!==undefined ? member.group_id===group.group_id : member.group_name===group.group_name):[]
+})
 </script>
 
 <template>
@@ -61,10 +57,11 @@ function openGroupReports(group: DashboardGroupStats) {
         v-for="group in groups"
         :key="group.group_id || group.group_name"
         class="leader-group-stat"
-        :class="{ 'is-clickable': Boolean(group.group_id) }"
+        :class="{ 'is-selected': selectedGroup===groupKey(group) }"
+        :aria-pressed="selectedGroup===groupKey(group)"
         type="button"
-        :disabled="!group.group_id"
-        @click="openGroupReports(group)"
+        
+        @click="selectedGroup=groupKey(group)"
       >
         <div class="leader-group-stat__title"><strong>{{ group.group_name }}</strong><b>{{ Math.round(group.completion_rate) }}%</b></div>
         <div class="leader-group-stat__meta"><span><UsersRound :size="13" />{{ group.member_count }} 人</span><span><ListChecks :size="13" />{{ group.task_count }} 项任务</span></div>
@@ -73,10 +70,10 @@ function openGroupReports(group: DashboardGroupStats) {
       </button>
     </div>
 
-    <div v-if="members.length" class="leader-member-stats">
+    <div v-if="groups.length" class="leader-member-stats" :key="selectedGroup">
       <div class="leader-member-stats__head"><span>人员</span><span>所属团队</span><span>本周任务</span><span>完成情况</span><span>进度</span></div>
       <button
-        v-for="member in members"
+        v-for="member in visibleMembers"
         :key="member.employee_id"
         class="leader-member-stat"
         :class="{ 'is-clickable': Boolean(member.employee_id) }"
@@ -90,6 +87,7 @@ function openGroupReports(group: DashboardGroupStats) {
         <span class="leader-member-stat__result">完成 {{ member.completed_task_count }} · 风险 {{ member.risk_task_count }}</span>
         <div class="leader-member-stat__progress"><i :style="{ width: `${Math.min(100, Math.max(0, member.completion_rate))}%` }" /><b>{{ Math.round(member.completion_rate) }}%</b></div>
       </button>
+      <div v-if="!visibleMembers.length" class="leader-task-stats-empty">该团队暂无需填写周报的人员</div>
     </div>
     <div v-if="!groups.length && !members.length" class="leader-task-stats-empty">本周暂无团队任务数据</div>
   </section>

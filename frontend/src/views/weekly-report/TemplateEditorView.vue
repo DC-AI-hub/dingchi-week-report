@@ -28,13 +28,13 @@ async function loadTemplateCode() {
       const roleTemplateCode = authStore.activeRole?.report_template_code || ""
       const routeTemplateCode = String(route.query.template_code || "").trim()
       if (routeTemplateCode && routeTemplateCode !== roleTemplateCode) {
-        throw new Error("当前角色绑定的周报模板已发生变化，请返回后重新进入。")
+        throw new Error("当前职位绑定的周报模板已发生变化，请返回后重新进入。")
       }
       templateCode.value = routeTemplateCode || roleTemplateCode
     }
-    if (!templateCode.value) throw new Error("当前角色未配置周报模板。")
+    if (!templateCode.value) throw new Error("当前职位未配置周报模板。")
     if (!resolveTemplateEditor(templateCode.value)) {
-      throw new Error("当前角色绑定的周报模板暂不支持填写。")
+      throw new Error("当前职位绑定的周报模板暂不支持填写。")
     }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "周报模板加载失败。"
@@ -45,7 +45,7 @@ async function loadTemplateCode() {
 
 function closeTemplateError() {
   errorMessage.value = ""
-  void router.replace({ name: "weekly-reports" })
+  void router.replace({ name: "weekly-reports", query: route.query })
 }
 
 onMounted(() => void loadTemplateCode())

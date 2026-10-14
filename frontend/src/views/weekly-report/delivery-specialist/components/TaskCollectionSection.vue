@@ -27,7 +27,7 @@ const props = withDefaults(defineProps<{
   title: string
   mode: "monthly" | "weekly"
   tasks: DeliveryTaskDraft[]
-  ownerName?: string
+  defaultOwnerId?: string; ownerName?: string
   /** 后端按角色返回的列配置；未返回时使用 Excel 顺序的内置配置。 */
   fieldDefinitions?: DeliveryTaskFieldDefinition[]
   /** 客户是交付专员模板专属字段；职能组模板不展示客户列。 */
@@ -335,12 +335,12 @@ onMounted(() => void loadUsers())
     />
   </section>
 
-  <TaskEditorDialog :key="editorKey" :open="editorOpen" :task="editingTask" :mode="mode" :owner-name="ownerName" :users="users" :include-customer="showCustomer" :report-id="reportId" @close="editorOpen = false" @save="saveTask" />
+  <TaskEditorDialog :key="editorKey" :open="editorOpen" :task="editingTask" :mode="mode" :default-owner-id="defaultOwnerId" :owner-name="ownerName" :users="users" :include-customer="showCustomer" :report-id="reportId" @close="editorOpen = false" @save="saveTask" />
   <TaskEditorDialog
     :open="detailOpen"
     :task="detailTask"
     :mode="mode"
-    :owner-name="ownerName"
+    :default-owner-id="defaultOwnerId" :owner-name="ownerName"
     :users="users"
     :include-customer="showCustomer"
     :readonly="true"

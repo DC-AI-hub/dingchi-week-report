@@ -11,6 +11,7 @@ export interface TeamMemberSummary {
 }
 
 export interface TeamReportEntry {
+  updatedAt: string
   id: string
   employeeId: string
   employeeName: string

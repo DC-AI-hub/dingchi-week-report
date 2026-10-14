@@ -23,7 +23,7 @@ import TaskEditorDialog from "./TaskEditorDialog.vue"
 const props = defineProps<{
   title: string
   tasks: InnovationSalesTaskDraft[]
-  ownerName?: string
+  defaultOwnerId?: string; ownerName?: string
   fieldDefinitions?: InnovationSalesTaskFieldDefinition[]
 }>()
 const emit = defineEmits<{ "update:tasks": [tasks: InnovationSalesTaskDraft[]] }>()
@@ -215,11 +215,11 @@ onMounted(() => void loadUsers())
     </div>
     <ReportPagination :page="taskPage" :page-size="pageSize" :total="filteredTaskEntries.length" :total-pages="totalPages" @change="taskPage = $event" />
   </section>
-  <TaskEditorDialog :key="editorKey" :open="editorOpen" :task="editingTask" :owner-name="ownerName" :users="users" @close="editorOpen = false" @save="saveTask" />
+  <TaskEditorDialog :key="editorKey" :open="editorOpen" :task="editingTask" :default-owner-id="defaultOwnerId" :owner-name="ownerName" :users="users" @close="editorOpen = false" @save="saveTask" />
   <TaskEditorDialog
     :open="detailOpen"
     :task="detailTask"
-    :owner-name="ownerName"
+    :default-owner-id="defaultOwnerId" :owner-name="ownerName"
     :users="users"
     :readonly="true"
     @close="detailOpen = false"

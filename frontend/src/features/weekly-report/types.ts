@@ -1,3 +1,5 @@
+import type { MonthlyPlanTask, MonthlyPlanTaskPayload } from "./monthly-plan/types"
+
 export type ReportStatus = "not_started" | "in_progress" | "completed" | string
 
 export interface TemplateItem {
@@ -165,6 +167,8 @@ export interface WeeklyReportDetail {
   /** 周报创建时绑定的版本模板；查看/编辑使用该快照而非当前角色绑定。 */
   template?: ReportTemplate
   monthly_plan: MonthlyPlan | null
+  /** 同一员工、角色、月份共用的独立月度计划任务；兼容旧响应。 */
+  monthly_plan_tasks?: MonthlyPlanTask[]
   items: ReportItem[]
   metrics: ReportMetric[]
   attachments?: ReportAttachment[]
@@ -191,6 +195,8 @@ export interface ReportListFilters {
 }
 
 export interface ReportPayload {
+  /** 完整替换当月计划明细；省略则保留，不能为空；填写客户和工作任务。 */
+  monthly_plan_tasks?: MonthlyPlanTaskPayload[]
   period_start: string
   period_end: string
   as_of_date?: string

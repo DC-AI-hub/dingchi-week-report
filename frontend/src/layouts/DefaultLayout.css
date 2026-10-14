@@ -465,3 +465,18 @@
     padding-top: 0.35rem;
   }
 }
+
+.header-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  margin-left: auto;
+}
+
+@media (max-width: 720px) {
+  .app-header:has(.header-actions:not(:empty)) {
+    flex-wrap: wrap;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+}

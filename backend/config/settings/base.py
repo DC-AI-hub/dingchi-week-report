@@ -39,6 +39,8 @@ INSTALLED_APPS = [
     "apps.accounts.apps.AccountsConfig",
     "apps.dictionary.apps.DictionaryConfig",
     "apps.weekly_report.apps.WeeklyReportConfig",
+    "apps.approvals.apps.ApprovalsConfig",
+    "apps.todos.apps.TodosConfig",
 ]
 
 MIDDLEWARE = [
@@ -77,6 +79,7 @@ DATABASES = {
     "default": {
         "ENGINE": "dj_db_conn_pool.backends.mysql",
         "NAME": env("MYSQL_DATABASE"),
+        "TIME_ZONE": env("MYSQL_TIME_ZONE"),
         "USER": env("MYSQL_USER"),
         "PASSWORD": env("MYSQL_PASSWORD"),
         "HOST": env("MYSQL_HOST"),
