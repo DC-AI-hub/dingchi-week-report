@@ -109,6 +109,7 @@ function currentListState() {
 }
 
 async function loadReports() {
+  if (!authStore.isAuthenticated) return
   await reportList.load(queryFilters())
 }
 

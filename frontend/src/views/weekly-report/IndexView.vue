@@ -18,5 +18,5 @@ const reportPage = computed(() => {
 </script>
 
 <template>
-  <component :is="reportPage" />
+  <component v-if="authStore.isAuthenticated" :is="reportPage" />
 </template>

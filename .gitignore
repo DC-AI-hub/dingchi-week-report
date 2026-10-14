@@ -38,3 +38,4 @@ backend/media/
 /scripts
 /backend/docs/数据库脚本
 /backend/docs
+/.ruff_cache
