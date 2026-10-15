@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { deliveryTaskTemplates } from "@/features/weekly-report/delivery-specialist/task-templates"
+import type { TaskTemplateOption } from "@/features/weekly-report/task-editing"
 
-const props = defineProps<{ open: boolean; anchor: HTMLElement | null; trigger: HTMLElement | null; selected: string }>()
+const props = withDefaults(defineProps<{ open: boolean; anchor: HTMLElement | null; trigger: HTMLElement | null; selected: string; templates?: readonly TaskTemplateOption[] }>(), { templates: () => deliveryTaskTemplates })
 const emit = defineEmits<{ close: []; select: [index: number] }>()
 const panel = ref<HTMLElement | null>(null)
 const style = ref<Record<string, string>>({})
@@ -14,8 +15,8 @@ function position() {
   const adjacent = available >= 280
   const width = adjacent ? Math.min(440, available) : Math.min(440, rect.width, window.innerWidth - 24)
   const left = adjacent ? rect.right : Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12))
-  const top = Math.max(12, rect.top)
-  style.value = { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${Math.min(rect.height, window.innerHeight - top - 12)}px` }
+  const top = 12
+  style.value = { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${Math.max(0, window.innerHeight - 24)}px` }
 }
 function outside(event: PointerEvent) {
   if (!props.open || !(event.target instanceof Node)) return
@@ -49,9 +50,9 @@ onBeforeUnmount(() => {
     <section v-if="open" ref="panel" class="template-popover" :style="style" role="dialog" aria-label="选择任务模板" @keydown.esc.stop.prevent="emit('close')">
       <header class="popover-heading"><strong>选择任务模板</strong><button type="button" class="popover-close" aria-label="关闭模板列表" @click="emit('close')">×</button></header>
       <div class="popover-list" role="radiogroup" aria-label="工作任务模板">
-        <label v-for="(item, index) in deliveryTaskTemplates" :key="index" class="template-choice" :class="{ selected: selected === String(index) }" @click.prevent="emit('select', index)">
+        <label v-for="(item, index) in templates" :key="index" class="template-choice" :class="{ selected: selected === String(index) }" @click.prevent="emit('select', index)">
           <input type="radio" name="delivery-task-template" :value="index" :checked="selected === String(index)" @change="emit('select', index)" />
-          <span class="choice-content"><span class="choice-task"><span class="choice-label">工作任务</span><strong>{{ item.task }}</strong></span><span class="choice-work"><span class="choice-label">主要工作内容</span><span>{{ item.work }}</span></span></span>
+          <span class="choice-content"><span v-if="item.dimension" class="choice-task"><span class="choice-label">维度</span><strong>{{ item.dimension }}</strong></span><span class="choice-task"><span class="choice-label">工作任务</span><strong>{{ item.task }}</strong></span><span class="choice-work"><span class="choice-label">主要工作内容</span><span>{{ item.work }}</span></span></span>
         </label>
       </div>
     </section>

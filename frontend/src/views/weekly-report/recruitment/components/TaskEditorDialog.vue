@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { clearFieldValidity, reportFormValidity } from "@/utils/form-validation"
 import AttachmentDownloadLink from "@/components/file/AttachmentDownloadLink.vue"
-import { computed, reactive, ref, watch } from "vue"
+import { computed, nextTick, reactive, ref, watch } from "vue"
 
 import PersonSelect from "@/features/directory/components/PersonSelect.vue"
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
 import type { DirectoryUserOption } from "@/features/directory/types"
 import { useNoticeStore } from "@/app/stores/notice"
 import { deleteReportAttachment, uploadPendingReportAttachment } from "@/features/weekly-report/api"
+import RecruitmentTemplatePicker from "@/features/weekly-report/recruitment/components/RecruitmentTemplatePicker.vue"
+import { recruitmentTaskTemplates } from "@/features/weekly-report/recruitment/task-templates"
 import {
   emptyRecruitmentTask,
-  recruitmentDimensionOptions,
   type RecruitmentTaskAttachment,
   type RecruitmentTaskDraft,
 } from "@/features/weekly-report/recruitment/types"
@@ -34,6 +35,15 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 const attachmentBusy = ref(false)
 const noticeStore = useNoticeStore()
 const formElement = ref<HTMLFormElement | null>(null)
+async function fillTemplate(index: number) {
+  const template = recruitmentTaskTemplates[index]
+  if (!template) return
+  form.task_name = template.task
+  if (!form.dimension.trim()) form.dimension = template.dimension
+  if (!form.work_content.trim()) form.work_content = template.work
+  await nextTick()
+  formElement.value?.querySelector("textarea")?.dispatchEvent(new Event("input", { bubbles: true }))
+}
 
 const userOptions = computed(() => props.users.map((user) => ({
   value: user.id,
@@ -149,8 +159,8 @@ async function removeAttachment(index: number) {
   <BaseDialog :open="open" :title="readonly ? '任务详情' : (task ? '编辑任务' : '新增任务')" width="1020px" height="88vh" @close="emit('close')">
     <form ref="formElement" novalidate @input.capture="clearFieldValidity" @change.capture="clearFieldValidity" class="task-editor" @submit.prevent="submit('close')">
       <div class="task-editor__row">
-        <label class="task-editor__field"><span class="task-editor__label">维度<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span><select v-model="form.dimension" required :disabled="readonly"><option value="" disabled>请选择维度</option><option v-for="dimension in recruitmentDimensionOptions" :key="dimension" :value="dimension">{{ dimension }}</option></select></label>
-        <label class="task-editor__field"><span class="task-editor__label">工作任务<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span><input v-model.trim="form.task_name" maxlength="255" required :readonly="readonly" /></label>
+        <label class="task-editor__field"><span class="task-editor__label">维度<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span><input v-model.trim="form.dimension" maxlength="64" required :readonly="readonly" placeholder="请输入维度" /></label>
+        <div class="task-editor__field task-editor__field--wide"><div class="task-template-heading"><label for="recruitment-work-task">工作任务<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></label><RecruitmentTemplatePicker v-if="open && !readonly" @select="fillTemplate" /></div><textarea id="recruitment-work-task" v-model="form.task_name" rows="4" maxlength="255" required :readonly="readonly" /></div>
       </div>
 
       <label class="task-editor__field task-editor__field--wide"><span class="task-editor__label">主要工作内容<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span><textarea v-model.trim="form.work_content" rows="5" required :readonly="readonly" /></label>

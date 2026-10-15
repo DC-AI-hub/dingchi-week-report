@@ -80,8 +80,6 @@ export const recruitmentTaskFieldDefinitions: RecruitmentTaskFieldDefinition[] =
   { code: "document_links", label: "相关文档链接或佐证材料", sort_order: 15, default_visible: false },
 ]
 
-export const recruitmentDimensionOptions = ["总体目标", "需求管理", "其他"] as const
-
 export function emptyRecruitmentTask(ownerName = ""): RecruitmentTaskDraft {
   return {
     client_key: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`,

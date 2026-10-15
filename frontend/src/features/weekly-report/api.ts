@@ -78,7 +78,7 @@ export function saveMonthlyPlan(monthKey: string, summary: string): Promise<Mont
  * 只能创建当前或未来周期，周期不能重复。响应 data 为完整周报详情；失败 400/401/409，
  * 统一客户端携带 trace_id，页面不得依赖后端实现细节。
  */
-// 交付专员草稿允许输出成果空文本、计划完成日期 null；提交前服务端校验完整性。
+// 交付专员和招聘模板草稿允许输出成果空文本、计划完成日期 null；提交前服务端校验完整性。
 export function createReport(payload: ReportPayload): Promise<WeeklyReportDetail> {
   return request<WeeklyReportDetail>({ method: "POST", url: "/v1/weekly-reports/", data: payload })
 }
@@ -86,7 +86,8 @@ export function createReport(payload: ReportPayload): Promise<WeeklyReportDetail
 /**
  * 更新本人当前周报。
  * 方法/路径：PATCH /v1/weekly-reports/{id}/；认证：Bearer；幂等：否。
- * 请求体字段同创建（含可选 monthly_plan_tasks），周报周期不可修改且仅本人未完成周报可编辑；
+ * 请求体字段同创建（含可选 monthly_plan_tasks）；交付专员、招聘草稿允许成果空文本及计划日期 null，提交前补齐。
+ * 周报周期不可修改且仅本人未完成周报可编辑；
  * 响应 data 为更新后的详情，月度计划明细按员工、角色、月份共用；
  * 失败 400/401/403/404，统一客户端携带 trace_id。
  */

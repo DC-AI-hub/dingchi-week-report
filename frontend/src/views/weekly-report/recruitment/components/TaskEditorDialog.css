@@ -2,6 +2,7 @@
 .task-editor__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; min-width: 0; }
 .task-editor__field { display: grid; align-content: start; gap: 8px; min-width: 0; color: #17335f; font-weight: 700; line-height: 1.35; }
 .task-editor__field--wide { grid-column: 1 / -1; }
+.task-template-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .task-editor input, .task-editor select, .task-editor textarea { width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid #cfe0f5; border-radius: 12px; background: #f7faff; color: #132e59; font: inherit; font-weight: 400; line-height: 1.45; padding: 11px 13px; }
 .task-editor input:focus, .task-editor select:focus, .task-editor textarea:focus { border-color: #2f80ed; outline: 0; box-shadow: 0 0 0 3px rgba(47,128,237,.12); }
 .task-editor textarea { resize: vertical; }

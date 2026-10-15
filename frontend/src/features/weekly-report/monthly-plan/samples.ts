@@ -5,7 +5,7 @@ import { deliveryWeeklyTaskSampleFields } from "../delivery-specialist/samples"
 import { functionalWeeklyTaskSampleFields } from "../functional-group/samples"
 import { innovationSalesWeeklyTaskSampleFields } from "../innovation-sales/samples"
 import { itoSalesWeeklyTaskSampleFields } from "../ito-sales/samples"
-import { recruitmentWeeklyTaskSampleFields } from "../recruitment/samples"
+import { recruitmentMonthlyTaskSampleFields } from "../recruitment/samples"
 
 interface SampleField {
   label: string
@@ -17,7 +17,7 @@ interface SampleField {
 const samples: Record<string, readonly SampleField[]> = {
   delivery_specialist_v1: deliveryWeeklyTaskSampleFields,
   delivery_assistant_v1: deliveryAssistantWeeklyTaskSampleFields,
-  recruitment_v1: recruitmentWeeklyTaskSampleFields,
+  recruitment_v1: recruitmentMonthlyTaskSampleFields,
   ito_sales_v1: itoSalesWeeklyTaskSampleFields,
   innovation_sales_v1: innovationSalesWeeklyTaskSampleFields,
   functional_group_v1: functionalWeeklyTaskSampleFields,
@@ -36,7 +36,7 @@ export function monthlyPlanSampleFields(templateCode: string): SampleField[] {
         rows: [
           ...(scopeLabel ? [{ label: scopeLabel, value: scopeValue }] : []),
           { label: "工作任务", value: field.rows?.find((row) => row.label === "工作任务")?.value || "" },
-          ...(templateCode === "delivery_specialist_v1" ? [{ label: "主要工作内容", value: field.rows?.find(row => row.label === "主要工作内容")?.value || "" }] : []),
+          ...(["delivery_specialist_v1", "recruitment_v1"].includes(templateCode) ? [{ label: "主要工作内容", value: field.rows?.find(row => row.label === "主要工作内容")?.value || "" }] : []),
         ],
       }
     })

@@ -19,10 +19,11 @@ def make_report(template="delivery_specialist_v1"):
     )
 
 
-def test_quick_fill_draft_can_save_but_requires_completion_before_submit(monkeypatch):
+@pytest.mark.parametrize("template", ["delivery_specialist_v1", "recruitment_v1"])
+def test_quick_fill_draft_can_save_but_requires_completion_before_submit(monkeypatch, template):
     monkeypatch.setattr(reports, "_get_template_fields", lambda code: [])
     monkeypatch.setattr(reports, "_role_scope", lambda role: "self")
-    report = make_report()
+    report = make_report(template)
     reports._save_items(report, [{
         "task_code": "task_1", "task_name_snapshot": "回款目标：？万元",
         "customer_name_snapshot": "客户A", "work_content": "主要障碍：？？",
@@ -55,3 +56,28 @@ def test_other_templates_keep_required_fields_on_save(monkeypatch, template):
     payload["output_description"] = "成果"
     with pytest.raises(reports.ReportError, match="计划完成时间"):
         reports._save_items(report, [payload], [], 42)
+
+
+def test_recruitment_quick_fill_preserves_dimension_order_and_owner(monkeypatch):
+    monkeypatch.setattr(
+        reports, "_get_template_fields", lambda code: [{"field_code": "dimension"}]
+    )
+    report = make_report("recruitment_v1")
+    payload = [
+        {
+            "task_code": f"recruitment_{index}",
+            "section_code": dimension,
+            "task_name_snapshot": f"工作任务{index}\n第二行",
+            "work_content": "工作内容\n第二行",
+            "sort_order": index,
+        }
+        for index, dimension in enumerate(["自定义维度", "需求管理"])
+    ]
+    reports._save_items(report, payload, [], 42)
+    rows = list(WeeklyReportItem.objects.filter(report_id=report.id).order_by("sort_order"))
+    assert [row.section_code for row in rows] == ["自定义维度", "需求管理"]
+    assert [row.sort_order for row in rows] == [0, 1]
+    assert all(row.owner_id == 42 and "\n" in row.task_name_snapshot for row in rows)
+    payload[0]["section_code"] = " "
+    with pytest.raises(reports.ReportError, match="维度不能为空"):
+        reports._save_items(report, payload, [], 42)

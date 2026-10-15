@@ -2,6 +2,7 @@
 .customer-text, .customer-editor { grid-area: 1 / 1; min-width: 0; }
 .customer-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .customer-editor { visibility: hidden; pointer-events: none; width: 100%; }
+.customer-editor > input { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-soft); color: var(--text); font: inherit; }
 .customer-editor :deep(.searchable-select__selected) { flex: 1 1 auto; max-width: none; }
 .customer-editor :deep(.searchable-select__control:has(.searchable-select__selected) .searchable-select__input) { flex: 0 1 24px; min-width: 16px; }
 .customer-editor :deep(.searchable-select__control) { width: 100%; }

@@ -3,14 +3,14 @@ import { computed, nextTick, onMounted, onBeforeUnmount, ref } from "vue"
 import PersonSelect from "@/features/directory/components/PersonSelect.vue"
 import DeliveryCustomerSelect from "@/features/weekly-report/components/DeliveryCustomerSelect.vue"
 import type { DirectoryUserOption } from "@/features/directory/types"
-import type { DeliveryTaskColumn, DeliveryTaskDraft } from "@/features/weekly-report/delivery-specialist/types"
+import type { EditableTaskColumn, EditableTask } from "@/features/weekly-report/task-editing"
 
-const props = defineProps<{ task: DeliveryTaskDraft; field: DeliveryTaskColumn; label: string; users: DirectoryUserOption[] }>()
-const emit = defineEmits<{ patch: [value: Partial<DeliveryTaskDraft>] }>()
+const props = defineProps<{ task: EditableTask; field: EditableTaskColumn; label: string; users: DirectoryUserOption[] }>()
+const emit = defineEmits<{ patch: [value: Partial<EditableTask>] }>()
 const root = ref<HTMLElement | null>(null)
 const menuStyle = ref<Record<string, string>>({})
 const displayText = computed(() => {
-  if (props.field === "progress_percent") return `${props.task.progress_percent ?? 0}%`
+  if (["progress_percent", "quality_percent", "completion_rate"].includes(props.field)) return `${props.task[props.field] ?? 0}%`
   if (props.field === "on_time_status") {
     const labels: Record<string, string> = { pending: "待完成", in_progress: "进行中", on_time: "按时完成", late: "延期完成", overdue: "逾期未完成", completed: "已完成", not_applicable: "不适用" }
     return labels[props.task.on_time_status] || "—"
@@ -32,9 +32,9 @@ function setCollaborators(value: string | string[]) {
 }
 function change(event: Event) {
   const value = (event.target as HTMLInputElement).value
-  if (props.field === "progress_percent") {
+  if (props.field === "progress_percent" || props.field === "quality_percent") {
     const number = Number(value)
-    emit("patch", { progress_percent: Number.isFinite(number) ? Math.min(100, Math.max(0, Math.round(number / 5) * 5)) : 0 })
+    emit("patch", { [props.field]: Number.isFinite(number) ? Math.min(100, Math.max(0, Math.round(number / 5) * 5)) : 0 })
   } else emit("patch", { [props.field]: value })
 }
 async function positionMenu() {
@@ -59,18 +59,18 @@ onMounted(() => { window.addEventListener("scroll", positionMenu, true); window.
 onBeforeUnmount(() => { window.removeEventListener("scroll", positionMenu, true); window.removeEventListener("resize", positionMenu) })
 </script>
 <template>
-  <div ref="root" class="inline-field" :style="menuStyle" tabindex="0" :aria-label="`${label}：${displayText}`" @pointerdown.capture="positionMenu" @focusin.capture="positionMenu" @input.capture="positionMenu">
+  <div ref="root" class="inline-field" :class="{ 'inline-field--readonly': field === 'completion_rate' }" :style="menuStyle" tabindex="0" :aria-label="`${label}：${displayText}`" @pointerdown.capture="positionMenu" @focusin.capture="positionMenu" @input.capture="positionMenu">
     <span class="inline-field__text">{{ displayText }}</span>
-    <div class="inline-field__editor">
-    <DeliveryCustomerSelect v-if="field === 'customer_name'" :model-value="task.customer_name" required @update:model-value="emit('patch', { customer_name: $event })" />
+    <div v-if="field !== 'completion_rate'" class="inline-field__editor">
+    <DeliveryCustomerSelect v-if="field === 'customer_name'" :model-value="task.customer_name || ''" required teleport-menu @update:model-value="emit('patch', { customer_name: $event })" />
     <PersonSelect v-else-if="field === 'owner_name'" :model-value="owner" :users="users" :aria-label="label" placeholder="选择责任人" @update:model-value="setOwner" />
     <PersonSelect v-else-if="field === 'collaborator_names'" :model-value="collaborators" :users="users" multiple :aria-label="label" placeholder="选择协作人" @update:model-value="setCollaborators" />
     <select v-else-if="field === 'on_time_status'" :value="task.on_time_status" :aria-label="label" @change="change">
       <option value="pending">待完成</option><option value="in_progress">进行中</option><option value="on_time">是，按计划完成</option><option value="late">否，已延期完成</option><option value="overdue">否，已逾期未完成</option><option value="completed">已完成</option><option value="not_applicable">不适用</option>
     </select>
-    <input v-else-if="field === 'progress_percent'" :value="task.progress_percent ?? 0" type="number" min="0" max="100" step="5" :aria-label="label" @change="change" />
+    <input v-else-if="field === 'progress_percent' || field === 'quality_percent'" :value="task[field] ?? 0" type="number" min="0" max="100" step="5" :aria-label="label" @change="change" />
     <input v-else-if="field === 'planned_completion_date' || field === 'actual_completion_date'" :value="task[field]" type="date" :aria-label="label" @change="change" />
-    <input v-else :value="task[field]" :aria-label="label" @change="change" />
+    <input v-else :maxlength="field === 'dimension' ? 64 : undefined" :value="task[field]" :aria-label="label" @change="change" />
     </div>
   </div>
 </template>

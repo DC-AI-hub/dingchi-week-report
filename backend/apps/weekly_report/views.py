@@ -137,6 +137,8 @@ def report_list_view(request: HttpRequest) -> JsonResponse:
     （周期范围上下限）、group_id；
     team 角色额外支持 employee_scope=self/team。POST 参数为周报 JSON。
     可选 monthly_plan_tasks 随周报保存当月共用工作任务；详见 docs/monthly-plan-tasks-api.md。
+    交付专员和招聘模板允许草稿 items 的 output_description 为空、planned_completion_date 为 null；
+    正式提交前必须补齐；其他模板保留原必填规则。
     GET 成功响应：data.items、page、page_size、total、total_pages；
     POST 成功响应：201 周报详情；权限按角色作用域过滤。
     失败：400/401/403/404/409；响应带 X-Trace-ID。
@@ -247,6 +249,7 @@ def report_submit_view(request: HttpRequest, report_id: str) -> JsonResponse:
     方法/路径：POST /api/v1/weekly-reports/{id}/submit/；认证：Bearer；参数：路径 report_id。
     只有周报本人可以提交处于进行中状态的周报；提交后周报、任务、日报和附件均只读，
     不会再因周期结束自动变更状态。成功响应为 {id, status, submitted}。
+    交付专员和招聘模板提交前校验输出成果和计划完成日期，缺失返回 400 INVALID_REQUEST。
     """
     try:
         user, role_code = require_request_user(request)

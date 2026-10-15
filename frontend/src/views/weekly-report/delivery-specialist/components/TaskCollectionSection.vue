@@ -19,12 +19,12 @@ import {
   type DeliveryTaskFieldDefinition,
 } from "@/features/weekly-report/delivery-specialist/types"
 import { formatDateTime } from "@/utils/date"
-import DeliveryQuickFillDialog from "@/features/weekly-report/delivery-specialist/components/DeliveryQuickFillDialog.vue"
+import DeliveryQuickFillDialog from "@/features/weekly-report/components/TaskQuickFillDialog.vue"
 import { deliveryTaskTemplates } from "@/features/weekly-report/delivery-specialist/task-templates"
 
 import ReportPagination from "../../components/ReportPagination.vue"
 import TaskEditorDialog from "./TaskEditorDialog.vue"
-import DeliveryEditableTaskTable from "./DeliveryEditableTaskTable.vue"
+import DeliveryEditableTaskTable from "@/features/weekly-report/components/EditableTaskTable.vue"
 
 const props = withDefaults(defineProps<{
   title: string

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue"
+import { computed, nextTick, onMounted, ref, watch } from "vue"
 
 import ExamplePreviewButton from "@/components/feedback/ExamplePreviewButton.vue"
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
@@ -13,7 +13,10 @@ import {
   type RecruitmentTaskDraft,
   type RecruitmentTaskFieldDefinition,
 } from "@/features/weekly-report/recruitment/types"
-import { formatDateTime } from "@/utils/date"
+import EditableTaskTable from "@/features/weekly-report/components/EditableTaskTable.vue"
+import TaskQuickFillDialog from "@/features/weekly-report/components/TaskQuickFillDialog.vue"
+import { recruitmentTaskTemplates } from "@/features/weekly-report/recruitment/task-templates"
+import type { EditableTask } from "@/features/weekly-report/task-editing"
 
 import ReportPagination from "../../components/ReportPagination.vue"
 import TaskEditorDialog from "./TaskEditorDialog.vue"
@@ -27,6 +30,8 @@ const props = defineProps<{
 const emit = defineEmits<{ "update:tasks": [tasks: RecruitmentTaskDraft[]] }>()
 
 const editorOpen = ref(false)
+const quickFillOpen = ref(false)
+const insertedKeys = ref(new Set<string>())
 const editorKey = ref(0)
 const columnsOpen = ref(false)
 const editingIndex = ref(-1)
@@ -44,10 +49,10 @@ const dimensionOptions = computed(() => Array.from(new Set(props.tasks.map((task
 const filteredTaskEntries = computed(() => props.tasks
   .map((task, index) => ({ task, index }))
   .filter(({ task }) =>
-    (!dimensionFilter.value || task.dimension === dimensionFilter.value) &&
-    (!plannedDateFilter.value || task.planned_completion_date === plannedDateFilter.value),
+    insertedKeys.value.has(task.client_key) || ((!dimensionFilter.value || task.dimension === dimensionFilter.value) &&
+    (!plannedDateFilter.value || task.planned_completion_date === plannedDateFilter.value)),
   )
-  .sort((left, right) => left.task.dimension.localeCompare(right.task.dimension, "zh-CN") || left.index - right.index))
+)
 const totalPages = computed(() => Math.ceil(filteredTaskEntries.value.length / pageSize))
 const pagedTaskEntries = computed(() => filteredTaskEntries.value.slice((taskPage.value - 1) * pageSize, taskPage.value * pageSize))
 const availableFields = computed(() => {
@@ -64,7 +69,15 @@ function defaultColumns(fields: RecruitmentTaskFieldDefinition[]) {
   return defaults.length ? defaults : fields.slice(0, 4).map((field) => field.code)
 }
 
-watch(availableFields, (fields) => { selectedColumns.value = defaultColumns(fields) }, { immediate: true, deep: true })
+const storageKey = "weekly-report:visible-columns:recruitment_v1:weekly"
+watch(availableFields, fields => {
+  try {
+    const stored: unknown = JSON.parse(localStorage.getItem(storageKey) || "null")
+    selectedColumns.value = Array.isArray(stored) ? stored.filter((code): code is RecruitmentTaskColumn => fields.some(field => field.code === code)) : defaultColumns(fields)
+  } catch { selectedColumns.value = defaultColumns(fields) }
+}, { immediate: true, deep: true })
+watch(selectedColumns, columns => { try { localStorage.setItem(storageKey, JSON.stringify(columns)) } catch { /* 禁用存储时仍可编辑。 */ } }, { deep: true })
+watch([dimensionFilter, plannedDateFilter], () => { insertedKeys.value = new Set() })
 watch([dimensionFilter, plannedDateFilter, () => props.tasks.length], () => { taskPage.value = 1 })
 watch(dimensionOptions, (options) => { if (dimensionFilter.value && !options.includes(dimensionFilter.value)) dimensionFilter.value = "" })
 watch(totalPages, (total) => { taskPage.value = total ? Math.min(taskPage.value, total) : 1 }, { immediate: true })
@@ -73,7 +86,7 @@ async function loadUsers() {
   try { users.value = (await listUserOptions()).items } catch { users.value = [] }
 }
 
-function addTask() { editingIndex.value = -1; editingTask.value = null; editorOpen.value = true }
+function addTask() { quickFillOpen.value = true }
 function editTask(index: number) { editingIndex.value = index; editingTask.value = { ...props.tasks[index] }; editorOpen.value = true }
 function localTimestamp() { const now = new Date(); const pad = (value: number) => String(value).padStart(2, "0"); return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}` }
 
@@ -104,24 +117,40 @@ function saveTask(task: RecruitmentTaskDraft, action: "close" | "next") {
 
 function openDetail(task: RecruitmentTaskDraft) { detailTask.value = task; detailOpen.value = true }
 function removeTask(index: number) { emit("update:tasks", props.tasks.filter((_, itemIndex) => itemIndex !== index)) }
-function dimensionRowspan(index: number) {
-  const entries = pagedTaskEntries.value
-  const current = entries[index]?.task.dimension || ""
-  if (index > 0 && entries[index - 1]?.task.dimension === current) return 0
-  let rowspan = 1
-  while (entries[index + rowspan]?.task.dimension === current) rowspan += 1
-  return rowspan
+function patchTask(key: string, patch: Partial<EditableTask>) {
+  emit("update:tasks", props.tasks.map(task => {
+    if (task.client_key !== key) return task
+    const next = { ...task, ...patch, updated_at: localTimestamp() }
+    next.completion_rate = Math.round((Number(next.progress_percent || 0) + Number(next.quality_percent || 0)) / 2)
+    return next
+  }))
 }
-
-function displayValue(task: RecruitmentTaskDraft, column: RecruitmentTaskColumn) {
-  if (column === "progress_percent" || column === "quality_percent" || column === "completion_rate") return `${Math.round(Number(task[column] ?? 0))}%`
-  if (column === "on_time_status") return ({ pending: "待完成", in_progress: "进行中", on_time: "按时完成", late: "延期完成", overdue: "逾期未完成", completed: "已完成", not_applicable: "不适用" } as Record<string, string>)[task[column]] || "—"
-  if (column === "planned_completion_date" || column === "actual_completion_date") return task[column] ? formatDateTime(String(task[column])) : "—"
-  return task[column] || "—"
+function newTask() {
+  return { ...emptyRecruitmentTask(props.ownerName), owner_id: props.defaultOwnerId || null, updated_at: localTimestamp() }
 }
-
-function updatedAt(task: RecruitmentTaskDraft) {
-  return task.updated_at ? formatDateTime(task.updated_at) : "—"
+async function showTask(key: string) {
+  await nextTick()
+  const index = filteredTaskEntries.value.findIndex(entry => entry.task.client_key === key)
+  if (index >= 0) taskPage.value = Math.floor(index / pageSize) + 1
+}
+function insertTask(index: number) {
+  const task = newTask()
+  const tasks = [...props.tasks]
+  tasks.splice(index + 1, 0, task)
+  insertedKeys.value.add(task.client_key)
+  emit("update:tasks", tasks)
+  void showTask(task.client_key)
+}
+function addTemplates(_: string, indexes: number[]) {
+  const tasks = [...indexes].sort((a, b) => a - b).map(index => {
+    const template = recruitmentTaskTemplates[index]!
+    const task = { ...newTask(), dimension: template.dimension, task_name: template.task, work_content: template.work }
+    insertedKeys.value.add(task.client_key)
+    return task
+  })
+  emit("update:tasks", [...props.tasks, ...tasks])
+  quickFillOpen.value = false
+  if (tasks.length) void showTask(tasks[tasks.length - 1]!.client_key)
 }
 
 onMounted(() => void loadUsers())
@@ -134,12 +163,10 @@ onMounted(() => void loadUsers())
       <div class="task-section__actions"><ExamplePreviewButton :content="recruitmentWeeklyTaskSample" :fields="recruitmentWeeklyTaskSampleFields" panel-title="本周工作任务填写样例" /><button class="ghost-button" type="button" @click="columnsOpen = true">选择展示字段</button><button class="primary-button" type="button" @click="addTask">新增任务</button></div>
     </header>
     <div class="task-section__filters"><select v-model="dimensionFilter" aria-label="按维度筛选"><option value="">全部维度</option><option v-for="dimension in dimensionOptions" :key="dimension" :value="dimension">{{ dimension }}</option></select><label><span>计划完成时间</span><input v-model="plannedDateFilter" type="date" aria-label="按计划完成时间筛选" /></label></div>
-    <div class="task-table-wrap"><table class="task-table"><thead><tr><th class="fixed-col serial-col">序号</th><th class="fixed-col dimension-col">维度</th><th class="fixed-col task-col">工作任务</th><th v-for="field in selectedFields" :key="field.code" class="dynamic-column">{{ field.label }}</th><th class="fixed-col updated-at-col">更新时间</th><th class="fixed-col actions-col">操作</th></tr></thead><tbody>
-      <tr v-for="(entry, pageIndex) in pagedTaskEntries" :key="entry.task.client_key"><td class="fixed-col serial-col">{{ (taskPage - 1) * pageSize + pageIndex + 1 }}</td><td v-if="dimensionRowspan(pageIndex) > 0" class="fixed-col dimension-col dimension-cell" :rowspan="dimensionRowspan(pageIndex)"><span class="cell-text" :title="entry.task.dimension">{{ entry.task.dimension || "未填写" }}</span></td><td class="fixed-col task-col task-cell"><button class="task-link" type="button" :title="entry.task.task_name" @click="openDetail(entry.task)">{{ entry.task.task_name || "未填写" }}</button></td><td v-for="field in selectedFields" :key="field.code" class="dynamic-column"><span class="cell-text" :title="displayValue(entry.task, field.code)">{{ displayValue(entry.task, field.code) }}</span><small v-if="field.code === 'document_links' && entry.task.attachments.length" class="attachment-count">{{ entry.task.attachments.length }} 个附件</small></td><td class="fixed-col updated-at-col date-cell">{{ updatedAt(entry.task) }}</td><td class="fixed-col actions-col"><button class="link-button" type="button" @click="editTask(entry.index)">编辑</button><button class="link-button danger" type="button" @click="removeTask(entry.index)">删除</button></td></tr>
-      <tr v-if="!filteredTaskEntries.length"><td :colspan="selectedFields.length + 5" class="empty">暂无任务，请新增</td></tr>
-    </tbody></table></div>
+    <EditableTaskTable :entries="pagedTaskEntries" :fields="selectedFields" :users="users" :offset="(taskPage - 1) * pageSize" scope-field="dimension" :templates="recruitmentTaskTemplates" @patch="patchTask" @edit="editTask" @view="openDetail" @remove="removeTask" @insert="insertTask" />
     <ReportPagination :page="taskPage" :page-size="pageSize" :total="filteredTaskEntries.length" :total-pages="totalPages" @change="taskPage = $event" />
   </section>
+  <TaskQuickFillDialog :open="quickFillOpen" recruitment :templates="recruitmentTaskTemplates" @close="quickFillOpen = false" @confirm="addTemplates" />
   <TaskEditorDialog :key="editorKey" :open="editorOpen" :task="editingTask" :default-owner-id="defaultOwnerId" :owner-name="ownerName" :users="users" @close="editorOpen = false" @save="saveTask" />
   <TaskEditorDialog
     :open="detailOpen"
