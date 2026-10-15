@@ -5,7 +5,7 @@ import SearchableSelect from "@/components/form/SearchableSelect.vue"
 import { listDictionaryItems } from "@/features/dictionary/api"
 import type { DictionaryItem } from "@/features/dictionary/types"
 
-const props = defineProps<{ modelValue: string; readonly?: boolean; required?: boolean }>()
+const props = defineProps<{ modelValue: string; readonly?: boolean; required?: boolean; teleportMenu?: boolean }>()
 const emit = defineEmits<{ "update:modelValue": [value: string] }>()
 const originalValue = props.modelValue
 const customers = ref<DictionaryItem[]>([])
@@ -52,6 +52,7 @@ onMounted(() => { if (!props.readonly) void load() })
     <input v-if="readonly" :value="modelValue" readonly aria-label="客户" />
     <template v-else>
       <SearchableSelect
+        :teleport-menu="teleportMenu"
         :model-value="modelValue"
         :options="options"
         :options-disabled="isLoading || Boolean(errorMessage)"

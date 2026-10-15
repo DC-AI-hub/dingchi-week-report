@@ -50,9 +50,10 @@ export function useMonthlyPlanTasks() {
     if (isLoading.value || loadedMonth !== monthKey || errorMessage.value) {
       throw new Error("请等待月度计划加载完成，加载失败时请先重试。")
     }
-    return tasks.value.map(({ scope_name, work_task }) => ({
+    return tasks.value.map(({ scope_name, work_task, work_content }) => ({
       scope_name: (scope_name || "").trim(),
       work_task: work_task.trim(),
+      ...(work_content !== undefined ? { work_content: work_content.trim() } : {}),
     }))
   }
 

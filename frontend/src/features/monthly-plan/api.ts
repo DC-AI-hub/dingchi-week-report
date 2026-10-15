@@ -8,7 +8,7 @@ export function getPlanContext(): Promise<PlanContext> { return request<PlanCont
 export function listMonthlyPlans(params: PlanFilters): Promise<PlanList> { return request({ method: "GET", url: base, params }) }
 /** 读取指定计划、任务、审批快照及变更历史；GET {id}/，ID为字符串；可见范围及审批人鉴权；401/403/404，统一trace。 */
 export function getManagedPlan(id: string): Promise<PlanDetail> { return request({ method: "GET", url: base + id + "/" }) }
-/** 保存本人计划：POST新增、PATCH修改；月份、目标、任务必填，修改携带revision防覆盖；未配置上级/审批中禁止；400/401/403，返回完整详情。 */
+/** 保存本人计划：POST新增、PATCH修改；月份、目标、任务必填；任务可带work_content（最多10000字符，默认空文本）；修改携带revision防覆盖；未配置上级/审批中禁止；400/401/403，返回完整详情。 */
 export function saveManagedPlan(input: PlanInput, id?: string): Promise<PlanDetail> { return request({ method: id ? "PATCH" : "POST", url: base + (id ? id + "/" : ""), data: input }) }
 /** 提交审批：POST {id}/submit/，无请求体；按有序上级创建新审批单及快照；不可重复，驳回需先修改；400/403，返回详情。 */
 export function submitManagedPlan(id: string): Promise<PlanDetail> { return request({ method: "POST", url: base + id + "/submit/" }) }

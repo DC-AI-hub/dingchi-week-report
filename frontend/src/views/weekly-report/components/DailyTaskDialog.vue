@@ -185,7 +185,7 @@ function localDateInput() {
         :disabled="busy || !hasAvailableDate"
         @click="save"
       >
-        保存
+        确认
       </button>
     </template>
   </BaseDialog>

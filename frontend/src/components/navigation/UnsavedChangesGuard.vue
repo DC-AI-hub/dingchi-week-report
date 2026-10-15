@@ -5,9 +5,12 @@ import ConfirmDialog from "@/components/feedback/ConfirmDialog.vue"
 
 const props = defineProps<{ dirty: boolean; enabled: boolean; resetKey: number }>()
 const open = ref(false)
+const confirmationAction = ref<"leave" | "refresh">("leave")
 const drafts = new Map<HTMLFormElement, { initial: string; edited: boolean }>()
 let observer: MutationObserver | null = null
 let resolveLeave: ((leave: boolean) => void) | null = null
+let refreshConfirmationPending = false
+let skipNextBeforeUnload = false
 
 function formSnapshot(form: HTMLFormElement) {
   const fields = [...form.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>("input,textarea,select")]
@@ -44,14 +47,39 @@ function finish(leave: boolean) {
   resolve?.(leave)
 }
 
-function confirmLeave() {
+function requestConfirmation(action: "leave" | "refresh") {
   if (!hasChanges()) return true
   if (resolveLeave) return false
+  confirmationAction.value = action
   open.value = true
   return new Promise<boolean>(resolve => { resolveLeave = resolve })
 }
 
+function confirmLeave() {
+  return requestConfirmation("leave")
+}
+
+async function handleRefreshKey(event: KeyboardEvent) {
+  if (event.key !== "F5" || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return
+  if (!event.cancelable || !hasChanges()) return
+  event.preventDefault()
+  event.stopPropagation()
+  if (event.repeat || refreshConfirmationPending) return
+  refreshConfirmationPending = true
+  try {
+    if (!await requestConfirmation("refresh")) return
+    // 用户已在自定义弹窗确认，仅放行这一次刷新，避免再次弹出原生提示。
+    skipNextBeforeUnload = true
+    window.location.reload()
+  } catch {
+    skipNextBeforeUnload = false
+  } finally {
+    refreshConfirmationPending = false
+  }
+}
+
 function beforeUnload(event: BeforeUnloadEvent) {
+  if (skipNextBeforeUnload) { skipNextBeforeUnload = false; return }
   if (!hasChanges()) return
   event.preventDefault()
   event.returnValue = ""
@@ -65,6 +93,7 @@ watch(() => props.resetKey, () => {
 })
 onMounted(() => {
   window.addEventListener("beforeunload", beforeUnload)
+  window.addEventListener("keydown", handleRefreshKey, true)
   document.addEventListener("focusin", scanDialogs, true)
   document.addEventListener("input", trackInput, true)
   document.addEventListener("change", trackInput, true)
@@ -75,6 +104,7 @@ onMounted(() => {
 })
 onUnmounted(() => {
   window.removeEventListener("beforeunload", beforeUnload)
+  window.removeEventListener("keydown", handleRefreshKey, true)
   document.removeEventListener("focusin", scanDialogs, true)
   document.removeEventListener("input", trackInput, true)
   document.removeEventListener("change", trackInput, true)
@@ -86,5 +116,5 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <ConfirmDialog :open="open" title="有未保存的内容" message="当前填写内容尚未保存，离开后将丢失。确定离开吗？" confirm-label="放弃修改并离开" @close="finish(false)" @confirm="finish(true)" />
+  <ConfirmDialog :open="open" title="有未保存的内容" :message="confirmationAction === 'refresh' ? '当前填写内容尚未保存，刷新后将丢失。确定刷新吗？' : '当前填写内容尚未保存，离开后将丢失。确定离开吗？'" confirm-label="确定" @close="finish(false)" @confirm="finish(true)" />
 </template>

@@ -36,6 +36,7 @@ export function monthlyPlanSampleFields(templateCode: string): SampleField[] {
         rows: [
           ...(scopeLabel ? [{ label: scopeLabel, value: scopeValue }] : []),
           { label: "工作任务", value: field.rows?.find((row) => row.label === "工作任务")?.value || "" },
+          ...(templateCode === "delivery_specialist_v1" ? [{ label: "主要工作内容", value: field.rows?.find(row => row.label === "主要工作内容")?.value || "" }] : []),
         ],
       }
     })

@@ -26,6 +26,30 @@ def effective(people):
     return write.decide(people[2], "manager", plan_id, {"action": "approve"})
 
 
+def test_work_content_roundtrip_approval_and_content_only_change(people):
+    data = create(people)
+    plan_id = int(data["plan"]["id"])
+    tasks = [{**data["tasks"][0], "work_content": "策略：？？"}]
+    data = write.save(people[0], "delivery", {
+        "revision": data["plan"]["revision"], "summary": "原目标", "tasks": tasks,
+    }, plan_id)
+    assert data["tasks"][0]["work_content"] == "策略：？？"
+    write.submit(people[0], "delivery", plan_id)
+    write.decide(people[1], "manager", plan_id, {"action": "approve"})
+    main = write.decide(people[2], "manager", plan_id, {"action": "approve"})
+    assert main["history"][0]["snapshot"]["tasks"][0]["work_content"] == "策略：？？"
+    child = change_write.create(people[0], "delivery", plan_id)
+    change_id = int(child["change"]["id"])
+    tasks = [{**child["snapshot"]["tasks"][0], "work_content": "已补充策略"}]
+    change_write.save(people[0], "delivery", change_id, {
+        "revision": child["change"]["revision"], "summary": "原目标", "tasks": tasks,
+    })
+    change_write.submit(people[0], "delivery", change_id)
+    change_write.decide(people[1], "manager", change_id, {"action": "approve"})
+    change_write.decide(people[2], "manager", change_id, {"action": "approve"})
+    assert read.detail(people[0], "delivery", plan_id)["tasks"][0]["work_content"] == "已补充策略"
+
+
 def test_change_permissions_validation_and_deleted_audit(people):
     main = effective(people)
     plan_id = int(main["plan"]["id"])

@@ -6,6 +6,8 @@ import { monthlyPlanScopeLabel, usesConfiguredCustomers } from "@/features/weekl
 import { clearFieldValidity, reportFormValidity } from "@/utils/form-validation"
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
 import type { MonthlyPlanTask, MonthlyPlanTaskPayload } from "@/features/weekly-report/monthly-plan/types"
+import TaskTemplatePopover from "@/features/weekly-report/delivery-specialist/components/TaskTemplatePopover.vue"
+import { deliveryTaskTemplates } from "@/features/weekly-report/delivery-specialist/task-templates"
 
 const props = defineProps<{ open: boolean; task: MonthlyPlanTask | null; readonly?: boolean; templateCode?: string }>()
 const emit = defineEmits<{ close: []; save: [task: MonthlyPlanTaskPayload, action: "close" | "next"] }>()
@@ -16,8 +18,28 @@ const customerName = ref("")
 const workTask = ref("")
 const input = ref<HTMLTextAreaElement | null>(null)
 const formElement = ref<HTMLFormElement | null>(null)
+const pickerOpen = ref(false)
+const pickerTrigger = ref<HTMLButtonElement | null>(null)
+const anchor = ref<HTMLElement | null>(null)
+const selectedTemplate = ref("")
+function togglePicker() {
+  anchor.value = formElement.value?.closest<HTMLElement>('[role="dialog"]') || null
+  pickerOpen.value = !pickerOpen.value
+}
+async function fillTemplate(index: number) {
+  const template = deliveryTaskTemplates[index]
+  if (!template) return
+  workTask.value = template.task
+  selectedTemplate.value = String(index)
+  pickerOpen.value = false
+  await nextTick()
+  input.value?.dispatchEvent(new Event("input", { bubbles: true }))
+  input.value?.focus()
+}
 
 watch(() => [props.open, props.task] as const, () => {
+  pickerOpen.value = false
+  selectedTemplate.value = ""
   if (!props.open) return
   customerName.value = props.task?.scope_name || ""
   workTask.value = props.task?.work_task || ""
@@ -51,7 +73,7 @@ function save(action: "close" | "next") {
         <DeliveryCustomerSelect v-if="configuredCustomers" ref="customerSelect" v-model="customerName" :readonly="readonly" required />
         <input v-else id="monthly-plan-customer" v-model="customerName" maxlength="255" :readonly="readonly" :required="!readonly" :placeholder="`请输入${scopeLabel}`" />
       </template>
-      <label for="monthly-plan-work-task">工作任务<span v-if="!readonly" class="required"> *</span></label>
+      <div class="monthly-task-field-heading"><label for="monthly-plan-work-task">工作任务<span v-if="!readonly" class="required"> *</span></label><button v-if="!readonly && templateCode === 'delivery_specialist_v1'" ref="pickerTrigger" class="monthly-template-button" type="button" :aria-expanded="pickerOpen" aria-haspopup="dialog" @click="togglePicker">选择模板</button></div>
       <textarea
         id="monthly-plan-work-task"
         ref="input"
@@ -73,6 +95,7 @@ function save(action: "close" | "next") {
       </template>
     </template>
   </BaseDialog>
+  <TaskTemplatePopover :open="open && pickerOpen" :anchor="anchor" :trigger="pickerTrigger" :selected="selectedTemplate" @close="pickerOpen = false" @select="fillTemplate" />
 </template>
 
 <style scoped src="./MonthlyPlanTaskDialog.css"></style>

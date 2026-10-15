@@ -41,7 +41,7 @@ def record_change(plan, user_id, action, before, after):
             for key in old.keys() & new.keys()
             if any(
                 old[key].get(field) != new[key].get(field)
-                for field in ["scope_name", "work_task", "sort_order"]
+                for field in ["scope_name", "work_task", "work_content", "sort_order"]
             )
         ],
     }
@@ -88,9 +88,13 @@ def save(user, role_code, payload, plan_id=None):
         raise ValueError("月度目标不能超过10000字符。")
     validate_report_monthly_data(summary, tasks, plan.template_code)
     current_content = [
-        (task.get("scope_name") or "", task.get("work_task")) for task in before.get("tasks", [])
+        (task.get("scope_name") or "", task.get("work_task"), task.get("work_content", ""))
+        for task in before.get("tasks", [])
     ]
-    next_content = [(task.get("scope_name") or "", task.get("work_task")) for task in tasks]
+    next_content = [
+        (task.get("scope_name") or "", task.get("work_task"), task.get("work_content", ""))
+        for task in tasks
+    ]
     if before and summary == before["summary"] and current_content == next_content:
         if plan.status == "rejected":
             raise ValueError("请先修改驳回的内容，再重新提交。")

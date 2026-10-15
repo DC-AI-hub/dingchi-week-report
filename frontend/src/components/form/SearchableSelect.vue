@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue"
+import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from "vue"
 
 type SearchableOption = {
   value: string
@@ -20,6 +20,7 @@ const props = withDefaults(
     validationMessage?: string
     optionsDisabled?: boolean
     showSelectionOrder?: boolean
+    teleportMenu?: boolean
   }>(),
   {
     multiple: false,
@@ -40,6 +41,28 @@ const rootRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLInputElement | null>(null)
 const isOpen = ref(false)
 const query = ref("")
+const menuRef = ref<HTMLElement | null>(null)
+const floatingStyle = ref<Record<string, string>>({})
+async function positionMenu() {
+  if (!props.teleportMenu || !isOpen.value) return
+  await nextTick()
+  const rect = rootRef.value?.getBoundingClientRect()
+  const menu = menuRef.value
+  if (!rect || !menu) return
+  const width = Math.min(rect.width, window.innerWidth - 24)
+  const below = window.innerHeight - rect.bottom - 16
+  const above = below < 180 && rect.top > below
+  const maxHeight = Math.max(80, Math.min(240, above ? rect.top - 20 : below))
+  const height = Math.min(maxHeight, menu.scrollHeight + 2)
+  floatingStyle.value = {
+    position: "fixed", left: `${Math.max(12, Math.min(rect.left, window.innerWidth - width - 12))}px`,
+    right: "auto", top: `${above ? Math.max(12, rect.top - height - 4) : rect.bottom + 4}px`,
+    bottom: "auto", width: `${width}px`, maxHeight: `${maxHeight}px`, zIndex: "1200",
+  }
+}
+watch([isOpen, query, () => props.options], positionMenu)
+onMounted(() => { window.addEventListener("resize", positionMenu); window.addEventListener("scroll", positionMenu, true) })
+onBeforeUnmount(() => { window.removeEventListener("resize", positionMenu); window.removeEventListener("scroll", positionMenu, true) })
 
 watch(() => props.validationMessage, () => {
   void nextTick(() => inputRef.value?.setCustomValidity(props.validationMessage))
@@ -83,8 +106,12 @@ function openList() {
   nextTick(() => inputRef.value?.focus())
 }
 
-function handleControlMouseDown() {
-  if (!props.disabled) openList()
+function handleControlMouseDown(event: MouseEvent) {
+  if (props.disabled) return
+  // 点击已选名称或控件空白处时，保留输入框焦点，避免浏览器默认聚焦
+  // 外层可聚焦单元格后触发 focusout，将刚打开的候选列表关闭。
+  if (event.target !== inputRef.value) event.preventDefault()
+  openList()
 }
 
 function isSelected(value: string) {
@@ -127,7 +154,7 @@ function clearSingle(event: MouseEvent) {
 
 function handleFocusOut() {
   window.setTimeout(() => {
-    if (!rootRef.value?.contains(document.activeElement)) isOpen.value = false
+    if (!rootRef.value?.contains(document.activeElement) && !menuRef.value?.contains(document.activeElement)) isOpen.value = false
   }, 0)
 }
 </script>
@@ -178,7 +205,8 @@ function handleFocusOut() {
         清除
       </button>
     </div>
-    <div v-if="isOpen" class="searchable-select__menu" role="listbox">
+    <Teleport to="body" :disabled="!teleportMenu">
+    <div v-if="isOpen" ref="menuRef" class="searchable-select__menu" :style="teleportMenu ? floatingStyle : undefined" role="listbox">
       <template v-for="group in optionGroups" :key="group.name">
       <div v-if="group.name" class="searchable-select__group">{{ group.name }}</div>
       <button
@@ -202,6 +230,7 @@ function handleFocusOut() {
       </template>
       <p v-if="!filteredOptions.length" class="searchable-select__empty">暂无匹配项</p>
     </div>
+    </Teleport>
   </div>
 </template>
 

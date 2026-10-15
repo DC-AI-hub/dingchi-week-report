@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue"
+import { computed, nextTick, onMounted, ref, watch } from "vue"
 
 import ExamplePreviewButton, {
   type ExamplePreviewField,
@@ -19,9 +19,12 @@ import {
   type DeliveryTaskFieldDefinition,
 } from "@/features/weekly-report/delivery-specialist/types"
 import { formatDateTime } from "@/utils/date"
+import DeliveryQuickFillDialog from "@/features/weekly-report/delivery-specialist/components/DeliveryQuickFillDialog.vue"
+import { deliveryTaskTemplates } from "@/features/weekly-report/delivery-specialist/task-templates"
 
 import ReportPagination from "../../components/ReportPagination.vue"
 import TaskEditorDialog from "./TaskEditorDialog.vue"
+import DeliveryEditableTaskTable from "./DeliveryEditableTaskTable.vue"
 
 const props = withDefaults(defineProps<{
   title: string
@@ -45,6 +48,7 @@ const props = withDefaults(defineProps<{
 })
 const emit = defineEmits<{ "update:tasks": [tasks: DeliveryTaskDraft[]] }>()
 const editorOpen = ref(false)
+const quickFillOpen = ref(false)
 const editorKey = ref(0)
 const columnsOpen = ref(false)
 const editingIndex = ref(-1)
@@ -56,6 +60,7 @@ const customerFilter = ref("")
 const plannedDateFilter = ref("")
 const taskPage = ref(1)
 const taskPageSize = 10
+const insertedTaskKeys = ref(new Set<string>())
 const monthlyColumns: DeliveryTaskColumn[] = ["customer_name", "task_name", "work_content", "planned_completion_date", "owner_name"]
 const weeklyFallbackColumns: DeliveryTaskColumn[] = [
   "output_description",
@@ -65,6 +70,7 @@ const weeklyFallbackColumns: DeliveryTaskColumn[] = [
 ]
 const selectedColumns = ref<DeliveryTaskColumn[]>([])
 const showCustomer = computed(() => props.includeCustomer)
+const editableDelivery = computed(() => props.includeCustomer && props.columnPreferenceKey === "delivery_specialist_v1" && props.mode === "weekly")
 const columnStorageKey = computed(
   () => `weekly-report:visible-columns:${props.columnPreferenceKey}:${props.mode}`,
 )
@@ -79,12 +85,14 @@ const filteredTaskEntries = computed(() =>
   props.tasks
     .map((task, index) => ({ task, index }))
     .filter(({ task }) =>
-      (!customerFilter.value || task.customer_name === customerFilter.value) &&
-      (!plannedDateFilter.value || task.planned_completion_date === plannedDateFilter.value),
+      insertedTaskKeys.value.has(task.client_key) || (
+        (!customerFilter.value || task.customer_name === customerFilter.value) &&
+        (!plannedDateFilter.value || task.planned_completion_date === plannedDateFilter.value)
+      ),
     )
-    // 列表按客户归组，保证同一客户的连续行可以使用 rowspan 合并展示。
+    // 交付周任务保持保存顺序；其他模板沿用原客户归组方式。
     .sort((left, right) => {
-      if (!showCustomer.value) return left.index - right.index
+      if (editableDelivery.value || !showCustomer.value) return left.index - right.index
       const customerOrder = left.task.customer_name.localeCompare(
         right.task.customer_name,
         "zh-CN",
@@ -163,6 +171,7 @@ watch(selectedColumns, (columns) => {
 watch([customerFilter, plannedDateFilter, () => props.tasks.length], () => {
   taskPage.value = 1
 })
+watch([customerFilter, plannedDateFilter], () => { insertedTaskKeys.value.clear() })
 
 watch(customerOptions, (options) => {
   if (customerFilter.value && !options.includes(customerFilter.value)) {
@@ -184,9 +193,19 @@ async function loadUsers() {
 }
 
 function addTask() {
+  if (props.includeCustomer && props.columnPreferenceKey === "delivery_specialist_v1") { quickFillOpen.value = true; return }
   editingIndex.value = -1
   editingTask.value = null
   editorOpen.value = true
+}
+
+function addTemplates(customer: string, indexes: number[]) {
+  const tasks = indexes.map(index => ({ ...emptyDeliveryTask(props.ownerName), customer_name: customer, task_name: deliveryTaskTemplates[index]!.task, work_content: deliveryTaskTemplates[index]!.work, owner_id: props.defaultOwnerId || null, updated_at: currentLocalTimestamp() }))
+  customerFilter.value = ""
+  plannedDateFilter.value = ""
+  if (availableFields.value.some(field => field.code === "work_content") && !selectedColumns.value.includes("work_content")) selectedColumns.value.push("work_content")
+  emit("update:tasks", [...props.tasks, ...tasks])
+  quickFillOpen.value = false
 }
 
 function editTask(index: number) {
@@ -236,6 +255,22 @@ function removeTask(index: number) {
   emit("update:tasks", props.tasks.filter((_, itemIndex) => itemIndex !== index))
 }
 
+function patchTask(key: string, value: Partial<DeliveryTaskDraft>) {
+  emit("update:tasks", props.tasks.map(task => task.client_key === key ? { ...task, ...value, updated_at: currentLocalTimestamp() } : task))
+}
+
+async function insertTask(index: number) {
+  const tasks = [...props.tasks]
+  const task = { ...emptyDeliveryTask(props.ownerName), owner_id: props.defaultOwnerId || null, updated_at: currentLocalTimestamp() }
+  tasks.splice(index + 1, 0, task)
+  // 新空行暂时保留在筛选结果中，避免因客户或日期尚未填写而立即消失。
+  insertedTaskKeys.value.add(task.client_key)
+  emit("update:tasks", tasks)
+  await nextTick()
+  const position = filteredTaskEntries.value.findIndex(entry => entry.task.client_key === task.client_key)
+  taskPage.value = Math.floor(Math.max(0, position) / taskPageSize) + 1
+}
+
 function customerRowspan(index: number) {
   if (!showCustomer.value) return 1
   const entries = pagedTaskEntries.value
@@ -280,7 +315,8 @@ onMounted(() => void loadUsers())
         <input v-model="plannedDateFilter" type="date" aria-label="按计划完成时间筛选" />
       </label>
     </div>
-    <div class="task-table-wrap">
+    <DeliveryEditableTaskTable v-if="editableDelivery" :entries="pagedTaskEntries" :fields="selectedFields" :users="users" :offset="(taskPage - 1) * taskPageSize" @patch="patchTask" @insert="insertTask" @edit="editTask" @remove="removeTask" @view="openTaskDetail" />
+    <div v-else class="task-table-wrap">
       <table class="task-table">
         <thead>
           <tr>
@@ -336,6 +372,7 @@ onMounted(() => void loadUsers())
   </section>
 
   <TaskEditorDialog :key="editorKey" :open="editorOpen" :task="editingTask" :mode="mode" :default-owner-id="defaultOwnerId" :owner-name="ownerName" :users="users" :include-customer="showCustomer" :report-id="reportId" @close="editorOpen = false" @save="saveTask" />
+  <DeliveryQuickFillDialog :open="quickFillOpen" @close="quickFillOpen = false" @confirm="addTemplates" />
   <TaskEditorDialog
     :open="detailOpen"
     :task="detailTask"

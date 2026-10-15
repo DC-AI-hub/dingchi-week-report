@@ -190,11 +190,11 @@ async function removeAttachment(index: number) {
           <DeliveryCustomerSelect ref="customerSelect" v-model="form.customer_name" :readonly="readonly" required />
         </div>
         <label
-          class="task-editor__field"
-          :class="{ 'task-editor__field--full': !includeCustomer }"
+          class="task-editor__field task-editor__field--full"
         >
           <span class="task-editor__label">工作任务<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span>
-          <input v-model.trim="form.task_name" maxlength="255" required :readonly="readonly" />
+          <textarea v-if="includeCustomer" v-model.trim="form.task_name" rows="4" maxlength="255" required :readonly="readonly" />
+          <input v-else v-model.trim="form.task_name" maxlength="255" required :readonly="readonly" />
         </label>
       </div>
 

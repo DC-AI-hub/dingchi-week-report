@@ -70,9 +70,12 @@ def normalized_proposal(change, payload):
 
 def same_content(first, second):
     return first["summary"] == second["summary"] and [
-        (task.get("id"), task.get("scope_name") or "", task["work_task"]) for task in first["tasks"]
+        (task.get("id"), task.get("scope_name") or "", task["work_task"],
+         task.get("work_content", ""))
+        for task in first["tasks"]
     ] == [
-        (task.get("id"), task.get("scope_name") or "", task["work_task"])
+        (task.get("id"), task.get("scope_name") or "", task["work_task"],
+         task.get("work_content", ""))
         for task in second["tasks"]
     ]
 

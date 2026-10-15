@@ -13,6 +13,13 @@
 .monthly-task-table tbody tr:last-child td { border-bottom: 0; }
 .monthly-task-table .serial { width: 64px; text-align: center; }
 .monthly-task-table .actions { width: 128px; text-align: center; white-space: nowrap; }
+.monthly-task-table:has(.insert-button) .actions { width: 230px; }
+.monthly-task-table td { vertical-align: top; }
+.monthly-task-table.delivery-table { min-width: 960px; }
+.monthly-task-table.delivery-table .customer { width: 200px; }
+.monthly-task-text-cell { display: block; width: 100%; min-height: 42px; padding: 8px; border: 1px solid transparent; border-radius: 8px; color: var(--text); background: transparent; font: inherit; line-height: 1.65; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; cursor: pointer; }
+.monthly-task-text-cell:hover:not(:disabled), .monthly-task-text-cell:focus-visible { border-color: var(--line); background: var(--surface-soft); outline: 2px solid var(--accent); outline-offset: -1px; }
+.insert-button { font-size: 22px; line-height: 1; }
 .monthly-task-link { display: block; width: 100%; padding: 0; border: 0; background: transparent; color: var(--accent-dark); font: inherit; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; cursor: pointer; }
 .monthly-task-link:hover { text-decoration: underline; }
 .link-button { border: 0; padding: 4px 7px; background: transparent; color: var(--accent-dark); cursor: pointer; }

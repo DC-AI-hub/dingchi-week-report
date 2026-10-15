@@ -193,6 +193,7 @@ CREATE TABLE IF NOT EXISTS `monthly_plan_task` (
     `month_key` VARCHAR(7) NOT NULL COMMENT '所属月份YYYY-MM',
     `scope_name` VARCHAR(255) NULL DEFAULT NULL COMMENT '客户或维度，由模板决定显示名称',
     `work_task` TEXT NOT NULL COMMENT '工作任务，接口限制最多2000字符',
+    `work_content` LONGTEXT NOT NULL COMMENT '主要工作内容；可为空文本，接口默认空字符串',
     `sort_order` INT UNSIGNED NOT NULL COMMENT '列表顺序，从0开始',
     `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
     `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',

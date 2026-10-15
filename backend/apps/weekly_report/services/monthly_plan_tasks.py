@@ -31,6 +31,7 @@ def list_monthly_plan_tasks(
         "customer_name": row.scope_name or "",
         "dimension": row.scope_name or "",
         "work_task": row.work_task,
+        "work_content": row.work_content,
         "sort_order": row.sort_order,
         "updated_at": row.updated_at.isoformat(),
     } for row in rows]
@@ -51,7 +52,14 @@ def validate_tasks(value: Any) -> list[dict[str, str]]:
             scope_name = ""
         if not isinstance(scope_name, str) or len(scope_name.strip()) > 255:
             raise ValueError("月度计划客户/维度必须为文字且不能超过 255 个字符。")
-        normalized = {"scope_name": scope_name.strip(), "work_task": work_task}
+        work_content = item.get("work_content", "")
+        if not isinstance(work_content, str) or len(work_content) > 10000:
+            raise ValueError("月度计划主要工作内容必须为文字且不能超过 10000 个字符。")
+        normalized = {
+            "scope_name": scope_name.strip(),
+            "work_task": work_task,
+            "work_content": work_content.strip(),
+        }
         task_id = item.get("id")
         if task_id and str(task_id).isdigit():
             normalized["id"] = str(task_id)

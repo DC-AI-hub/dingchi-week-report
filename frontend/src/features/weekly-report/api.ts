@@ -78,6 +78,7 @@ export function saveMonthlyPlan(monthKey: string, summary: string): Promise<Mont
  * 只能创建当前或未来周期，周期不能重复。响应 data 为完整周报详情；失败 400/401/409，
  * 统一客户端携带 trace_id，页面不得依赖后端实现细节。
  */
+// 交付专员草稿允许输出成果空文本、计划完成日期 null；提交前服务端校验完整性。
 export function createReport(payload: ReportPayload): Promise<WeeklyReportDetail> {
   return request<WeeklyReportDetail>({ method: "POST", url: "/v1/weekly-reports/", data: payload })
 }
@@ -192,6 +193,7 @@ export function deleteReport(reportId: string): Promise<{ id: string; deleted: t
  * 方法/路径：POST /v1/weekly-reports/{id}/submit/；认证：Bearer；幂等：否。
  * 仅进行中状态的本人周报可以提交，提交后周报及其任务、日报、附件只读。
  */
+// 交付专员任务缺少输出成果或计划完成日期时返回 400，周报保持未提交。
 export function submitReport(
   reportId: string,
 ): Promise<{ id: string; status: "completed"; submitted: true }> {

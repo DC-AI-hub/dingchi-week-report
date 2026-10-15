@@ -391,6 +391,16 @@ def submit_report(*, user: UserAccount, role_code: str, report_id: int) -> dict[
         effective_status = _effective_report_status(report.status, report.period_start)
         if effective_status != REPORT_STATUS_IN_PROGRESS:
             raise ReportError("仅进行中的周报可以提交。")
+        if report.template_code == "delivery_specialist_v1":
+            for index, item in enumerate(dao.get_report_items(report.id), 1):
+                if not str(item.get("output_description") or "").strip():
+                    raise ReportError(
+                        f"本周工作第 {index} 条任务输出成果不能为空，请编辑补齐后提交。"
+                    )
+                if not item.get("planned_completion_date"):
+                    raise ReportError(
+                        f"本周工作第 {index} 条任务计划完成时间不能为空，请编辑补齐后提交。"
+                    )
         report.status = REPORT_STATUS_COMPLETED
         report.save(update_fields=["status", "updated_at"])
     return {"id": str(report.id), "status": REPORT_STATUS_COMPLETED, "submitted": True}
@@ -984,13 +994,13 @@ def _save_items(
         output_description = str(raw.get("output_description") or "").strip()
         if not work_content:
             raise ReportError(f"本周工作第 {index + 1} 条任务主要工作内容不能为空。")
-        if not output_description:
+        if not output_description and report.template_code != "delivery_specialist_v1":
             raise ReportError(f"本周工作第 {index + 1} 条任务输出成果不能为空。")
         progress = _percent(raw.get("progress_percent"))
         quality = _percent(raw.get("quality_percent"))
         completion = _completion_rate(progress, quality)
         planned = _parse_optional_date(raw.get("planned_completion_date"))
-        if planned is None:
+        if planned is None and report.template_code != "delivery_specialist_v1":
             raise ReportError(f"本周工作第 {index + 1} 条任务计划完成时间不能为空。")
         actual = _parse_optional_date(raw.get("actual_completion_date"))
         expected = _parse_optional_date(raw.get("expected_completion_date"))
