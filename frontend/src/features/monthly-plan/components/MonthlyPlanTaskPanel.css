@@ -34,3 +34,9 @@
 
 .monthly-task-table .customer { width: 160px; }
 .monthly-task-table .customer-name { overflow-wrap: anywhere; }
+
+.monthly-customer-tabs { margin-bottom: 16px; border-bottom: 1px solid var(--line); }
+.monthly-task-plain { display: block; padding: 8px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 2; }
+
+.monthly-task-table.delivery-monthly-table { min-width: 640px; }
+.monthly-task-table.delivery-monthly-table .actions { width: 128px; }

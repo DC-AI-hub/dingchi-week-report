@@ -78,7 +78,14 @@ export function saveMonthlyPlan(monthKey: string, summary: string): Promise<Mont
  * 只能创建当前或未来周期，周期不能重复。响应 data 为完整周报详情；失败 400/401/409，
  * 统一客户端携带 trace_id，页面不得依赖后端实现细节。
  */
-// 交付专员和招聘模板草稿允许输出成果空文本、计划完成日期 null；提交前服务端校验完整性。
+// 所有模板允许不完整草稿；业务必填项和模板占位值统一在提交时校验。
+/**
+ * 任务正文兼容契约：task_name_snapshot/work_content 继续返回字符串。
+ * 新增 task_text_id/work_content_text_id（字符串逻辑ID）、task_group_key/work_content_group_key（草稿分组）。
+ * 共享同一引用/分组的行必须传一致正文。任务来源 task_source=custom/template；
+ * task_template 保留模板原文，task_values 是每个问号对应的字符串数组。交付模板来源任务仅可改占位值。
+ * 缺省来源按 custom 处理；引用跨周报、类型不匹配或共享文本冲突返回400，仍统一携带 trace_id。
+ */
 export function createReport(payload: ReportPayload): Promise<WeeklyReportDetail> {
   return request<WeeklyReportDetail>({ method: "POST", url: "/v1/weekly-reports/", data: payload })
 }
@@ -86,10 +93,10 @@ export function createReport(payload: ReportPayload): Promise<WeeklyReportDetail
 /**
  * 更新本人当前周报。
  * 方法/路径：PATCH /v1/weekly-reports/{id}/；认证：Bearer；幂等：否。
- * 请求体字段同创建（含可选 monthly_plan_tasks）；交付专员、招聘草稿允许成果空文本及计划日期 null，提交前补齐。
+ * 请求体字段同创建；所有模板草稿允许必填项为空，提交前统一检查。
  * 周报周期不可修改且仅本人未完成周报可编辑；
  * 响应 data 为更新后的详情，月度计划明细按员工、角色、月份共用；
- * 失败 400/401/403/404，统一客户端携带 trace_id。
+ * 失败 400/401/403/404/409，统一客户端携带 trace_id。
  */
 export function updateReport(reportId: string, payload: ReportPayload): Promise<WeeklyReportDetail> {
   return request<WeeklyReportDetail>({
@@ -259,4 +266,21 @@ export async function downloadReportAttachment(
   anchor.click()
   anchor.remove()
   URL.revokeObjectURL(objectUrl)
+}
+
+
+/**
+ * 将本人当前职位已完成周报复制到紧邻下一周期。
+ * POST /v1/weekly-reports/{reportId}/copy/；Bearer 认证；无请求体。
+ * 响应 ID 为字符串，日期 YYYY-MM-DD，新周报及明细、共享正文使用全新 ID；不生成日报。
+ * 400 状态或月度审批校验失败，403 无权限，404 不存在，409 目标周期已有周报；
+ * 错误经统一客户端保留 trace_id；新增接口兼容旧契约，重复调用不重复创建。
+ */
+export function copyReport(reportId: string): Promise<{
+  id: string
+  status: string
+  period_start: string
+  period_end: string
+}> {
+  return request({ method: "POST", url: `/v1/weekly-reports/${reportId}/copy/` })
 }

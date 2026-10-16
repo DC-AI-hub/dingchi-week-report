@@ -14,6 +14,7 @@ from ..monthly_plan_tasks import (
     validate_month_key,
     validate_report_monthly_data,
 )
+from ..monthly_task_metadata import snapshot_with_metadata, task_content_key
 from .policy import editable_plan, readable_plan, require_managers
 from .read import detail
 
@@ -41,7 +42,15 @@ def record_change(plan, user_id, action, before, after):
             for key in old.keys() & new.keys()
             if any(
                 old[key].get(field) != new[key].get(field)
-                for field in ["scope_name", "work_task", "work_content", "sort_order"]
+                for field in [
+                    "scope_name",
+                    "work_task",
+                    "work_content",
+                    "sort_order",
+                    "task_source",
+                    "task_template",
+                    "task_values",
+                ]
             )
         ],
     }
@@ -87,14 +96,8 @@ def save(user, role_code, payload, plan_id=None):
     if len(summary) > 10000:
         raise ValueError("月度目标不能超过10000字符。")
     validate_report_monthly_data(summary, tasks, plan.template_code)
-    current_content = [
-        (task.get("scope_name") or "", task.get("work_task"), task.get("work_content", ""))
-        for task in before.get("tasks", [])
-    ]
-    next_content = [
-        (task.get("scope_name") or "", task.get("work_task"), task.get("work_content", ""))
-        for task in tasks
-    ]
+    current_content = [task_content_key(task) for task in before.get("tasks", [])]
+    next_content = [task_content_key(task) for task in tasks]
     if before and summary == before["summary"] and current_content == next_content:
         if plan.status == "rejected":
             raise ValueError("请先修改驳回的内容，再重新提交。")
@@ -108,7 +111,13 @@ def save(user, role_code, payload, plan_id=None):
         month_key=plan.month_key,
         value=tasks,
     )
-    record_change(plan, user.id, "update" if before else "create", before, snapshot(plan))
+    record_change(
+        plan,
+        user.id,
+        "update" if before else "create",
+        before,
+        snapshot_with_metadata(snapshot(plan), tasks),
+    )
     return detail(user, role_code, plan.id)
 
 

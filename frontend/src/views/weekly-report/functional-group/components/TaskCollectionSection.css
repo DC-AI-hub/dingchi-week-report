@@ -82,3 +82,7 @@
   .task-section__filters select { min-width: 0; width: min(260px, 100%); }
   .column-options { grid-template-columns: 1fr; }
 }
+
+.customer-tabs { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
+.customer-tabs button { flex-shrink: 0; padding: 10px 16px; border: 0; border-bottom: 3px solid transparent; color: var(--muted); background: transparent; font: inherit; cursor: pointer; }
+.customer-tabs button.active { color: var(--accent-dark); border-bottom-color: var(--accent); font-weight: 600; }

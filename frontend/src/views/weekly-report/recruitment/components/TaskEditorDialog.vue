@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { clearFieldValidity, reportFormValidity } from "@/utils/form-validation"
+import { clearFieldValidity, reportDraftValidity } from "@/utils/form-validation"
 import AttachmentDownloadLink from "@/components/file/AttachmentDownloadLink.vue"
 import { computed, nextTick, reactive, ref, watch } from "vue"
 
@@ -98,7 +98,7 @@ function localTimestamp() {
 }
 
 function submit(action: "close" | "next") {
-  if (!reportFormValidity(formElement.value)) return
+  if (!reportDraftValidity(formElement.value)) return
   const dimension = form.dimension.trim()
   const task = form.task_name.trim()
   const workContent = form.work_content.trim()
@@ -160,7 +160,7 @@ async function removeAttachment(index: number) {
     <form ref="formElement" novalidate @input.capture="clearFieldValidity" @change.capture="clearFieldValidity" class="task-editor" @submit.prevent="submit('close')">
       <div class="task-editor__row">
         <label class="task-editor__field"><span class="task-editor__label">维度<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span><input v-model.trim="form.dimension" maxlength="64" required :readonly="readonly" placeholder="请输入维度" /></label>
-        <div class="task-editor__field task-editor__field--wide"><div class="task-template-heading"><label for="recruitment-work-task">工作任务<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></label><RecruitmentTemplatePicker v-if="open && !readonly" @select="fillTemplate" /></div><textarea id="recruitment-work-task" v-model="form.task_name" rows="4" maxlength="255" required :readonly="readonly" /></div>
+        <div class="task-editor__field task-editor__field--wide"><div class="task-template-heading"><label for="recruitment-work-task">工作任务<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></label><RecruitmentTemplatePicker v-if="open && !readonly" @select="fillTemplate" /></div><textarea id="recruitment-work-task" v-model="form.task_name" rows="4" required :readonly="readonly" /></div>
       </div>
 
       <label class="task-editor__field task-editor__field--wide"><span class="task-editor__label">主要工作内容<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span><textarea v-model.trim="form.work_content" rows="5" required :readonly="readonly" /></label>

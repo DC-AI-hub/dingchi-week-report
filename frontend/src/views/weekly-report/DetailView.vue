@@ -2,6 +2,8 @@
 import { computed, onMounted, ref } from "vue"
 import { RouterLink, useRoute } from "vue-router"
 
+import ScrollableTabs from "@/components/navigation/ScrollableTabs.vue"
+import FullscreenPanel from "@/components/layout/FullscreenPanel.vue"
 import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import { useAuthStore } from "@/features/auth/store"
 import { getReportDetail, getReportTemplate } from "@/features/weekly-report/api"
@@ -103,20 +105,25 @@ onMounted(() => void load())
         :month-key="detail.report.month_key"
         readonly
       />
-      <section class="dashboard-card detail-card">
-        <div class="section-heading section-heading--tasks">
-          <h2>本周工作任务</h2>
+      <FullscreenPanel title="本周工作任务" class="dashboard-card detail-card">
+        <template #tabs>
+          <ScrollableTabs v-if="taskTableRef?.deliveryMode" :items="taskTableRef.customers"
+            :model-value="taskTableRef.activeCustomer" @update:model-value="taskTableRef && (taskTableRef.activeCustomer = $event)" />
+        </template>
+        <template #actions>
           <button class="ghost-button" type="button" @click="openTaskColumns">选择展示字段</button>
-        </div>
+        </template>
         <ReportTaskTable
           ref="taskTableRef"
           :items="detail.items"
+          :template-code="detail.report.template_code"
           :fields="template?.fields"
           :attachments="detail.attachments"
           :preference-key="taskColumnPreferenceKey"
           :show-columns-button="false"
+          :show-customer-tabs="false"
         />
-      </section>
+      </FullscreenPanel>
       <section class="dashboard-card detail-card">
         <div class="section-heading"><h2>本周总结</h2></div>
         <p class="summary-text">{{ detail.report.summary || "暂无总结" }}</p>

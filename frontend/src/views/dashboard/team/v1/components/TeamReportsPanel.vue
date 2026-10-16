@@ -45,7 +45,7 @@ function openAllReports() {
           <div class="team-table-head"><span>成员</span><span>重点任务</span><span>输出成果</span><span>完成进度</span><span>状态</span></div>
           <button v-for="entry in focusTasks" :key="`${entry.member.employee_id}-${entry.task.id}`" class="team-table-row" type="button" @click="openMemberReports(entry.member.employee_id)">
             <span>{{ entry.member.employee_name }}</span><span :title="entry.task.task_name">{{ entry.task.task_name }}</span><span :title="entry.detail?.output_description || '—'">{{ entry.detail?.output_description || "—" }}</span>
-            <span class="focus-progress"><i><b :style="{ width: `${Math.min(100, Math.max(0, entry.task.completion_rate))}%` }" /></i><strong>{{ Math.round(entry.task.completion_rate) }}%</strong></span><span class="team-status" :class="entry.task.completion_rate >= 100 ? 'is-done' : 'is-progress'">{{ entry.task.completion_rate >= 100 ? "已完成" : "进行中" }}</span>
+            <span class="focus-progress"><i><b :style="{ width: `${Math.min(100, Math.max(0, entry.task.progress_percent))}%` }" /></i><strong>{{ Math.round(entry.task.progress_percent) }}%</strong></span><span class="team-status" :class="entry.task.status === '已完成' ? 'is-done' : 'is-progress'">{{ entry.task.status }}<small v-if="entry.task.detail_count">{{ entry.task.completed_detail_count }}/{{ entry.task.detail_count }}</small></span>
           </button>
           <div v-if="!focusTasks.length" class="team-panel-empty">暂无本周重点任务</div>
         </div>

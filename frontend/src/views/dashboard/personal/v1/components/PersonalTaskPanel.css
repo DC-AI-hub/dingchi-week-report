@@ -116,7 +116,7 @@
 .personal-task-table-head,
 .personal-task-row {
   display: grid;
-  grid-template-columns: 120px minmax(190px, 1.25fr) minmax(110px, 0.8fr) 46px 55px 60px;
+  grid-template-columns: 120px minmax(190px, 1.25fr) minmax(110px, 0.8fr) 46px 110px 60px;
   gap: 10px;
   align-items: center;
 }

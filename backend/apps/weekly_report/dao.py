@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -184,22 +185,33 @@ def get_report_header(report_id: int) -> dict[str, Any] | None:
 
 
 def get_report_items(report_id: int) -> list[dict[str, Any]]:
-    return _fetch(
+    rows = _fetch(
         """
-        SELECT id, report_id, scope_type, customer_id, customer_name_snapshot,
-               section_code, task_code, task_name_snapshot, guidance_snapshot,
-               work_content, output_description, planned_completion_date, progress_text,
-               progress_percent, quality_percent, completion_rate, on_time_status,
-               actual_completion_date, delay_reason, next_action,
-               expected_completion_date, owner_id, owner_name_snapshot,
-               collaborator_names, document_links, sort_order,
-               created_at, updated_at
-        FROM weekly_report_item
-        WHERE report_id = %s
-        ORDER BY sort_order, id
+        SELECT i.id, i.report_id, i.scope_type, i.customer_id, i.customer_name_snapshot,
+               i.section_code, i.task_code, i.guidance_snapshot, i.output_description,
+               i.planned_completion_date, i.progress_text, i.progress_percent,
+               i.quality_percent, i.completion_rate, i.on_time_status, i.actual_completion_date,
+               i.delay_reason, i.next_action, i.expected_completion_date, i.owner_id,
+               i.owner_name_snapshot, i.collaborator_names, i.document_links,
+               i.sort_order, i.created_at, i.updated_at, i.task_text_id, i.work_content_text_id,
+               COALESCE(t.content, i.task_name_snapshot) AS resolved_task,
+               COALESCE(w.content, i.work_content) AS resolved_work,
+               COALESCE(t.source, 'custom') AS task_source,
+               COALESCE(t.template_text, '') AS task_template,
+               COALESCE(t.values_json, '[]') AS task_values_json
+        FROM weekly_report_item i
+        LEFT JOIN weekly_task_text t ON t.id = i.task_text_id AND t.report_id = i.report_id
+        LEFT JOIN weekly_task_text w ON w.id = i.work_content_text_id AND w.report_id = i.report_id
+        WHERE i.report_id = %s
+        ORDER BY i.sort_order, i.id
         """,
         [report_id],
     )
+    for row in rows:
+        row["task_name_snapshot"] = row.pop("resolved_task")
+        row["work_content"] = row.pop("resolved_work")
+        row["task_values"] = json.loads(row.pop("task_values_json"))
+    return rows
 
 
 def list_monthly_plans(
@@ -288,3 +300,25 @@ def get_report_attachments(report_id: int) -> list[dict[str, Any]]:
         """,
         [report_id],
     )
+
+
+def report_period_exists(employee_id, role_code, start, exclude_id):
+    from .models import WeeklyReport
+
+    return (
+        WeeklyReport.objects.filter(
+            employee_id=employee_id,
+            role_code=role_code,
+            period_start=start,
+        )
+        .exclude(id=exclude_id)
+        .exists()
+    )
+
+
+def move_daily_task_dates(report_id, offset):
+    from .models import WeeklyReportDailyTask
+
+    for row in WeeklyReportDailyTask.objects.filter(report_id=report_id):
+        row.work_date += offset
+        row.save(update_fields=["work_date", "updated_at"])

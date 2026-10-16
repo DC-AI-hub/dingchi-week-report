@@ -1,3 +1,4 @@
+import { previewTaskTemplate } from "./task-texts"
 import { formatDateTime } from "@/utils/date"
 import type { ReportItem, ReportTemplateField } from "./types"
 
@@ -88,7 +89,12 @@ export function formatReportTaskField(item: ReportItem, fieldCode: string): stri
     }
     return dimensionLabels[item.section_code] || item.section_name_snapshot || item.section_code || "—"
   }
-  if (fieldCode === "task_name") return item.task_name_snapshot || "—"
+  if (fieldCode === "task_name") {
+    if (item.task_source === "template" && item.task_template) {
+      return previewTaskTemplate(item.task_template, item.task_values || [])
+    }
+    return item.task_name_snapshot || "—"
+  }
   // API uses the persisted snapshot name while editable drafts call it owner_name.
   if (fieldCode === "owner_name") return item.owner_name_snapshot || "—"
   if (fieldCode === "on_time_status") {

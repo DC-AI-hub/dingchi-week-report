@@ -93,7 +93,6 @@ function localTimestamp() { const now = new Date(); const pad = (value: number) 
 function saveTask(task: RecruitmentTaskDraft, action: "close" | "next") {
   const dimension = task.dimension.trim()
   const taskName = task.task_name.trim()
-  if (!dimension || !taskName) return
   const progress = Math.round(Number(task.progress_percent || 0) / 5) * 5
   const quality = Math.round(Number(task.quality_percent || 0) / 5) * 5
   const normalized = {

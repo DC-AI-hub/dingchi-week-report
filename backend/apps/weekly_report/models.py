@@ -174,6 +174,22 @@ class MonthlyPlanTask(SnowflakeIdModel):
         ordering = ["sort_order", "id"]
 
 
+class WeeklyTaskText(SnowflakeIdModel):
+    """周报内共享的长文本；逻辑关联，不创建数据库外键。"""
+
+    report_id = models.BigIntegerField()
+    content_type = models.CharField(max_length=24)
+    content = models.TextField(blank=True, default="")
+    source = models.CharField(max_length=16, default="custom")
+    template_text = models.TextField(blank=True, default="")
+    values_json = models.TextField(blank=True, default="[]")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "weekly_task_text"
+
+
 class WeeklyReportItem(SnowflakeIdModel):
     report_id = models.BigIntegerField()
     scope_type = models.CharField(max_length=16, default="overall")
@@ -181,7 +197,9 @@ class WeeklyReportItem(SnowflakeIdModel):
     customer_name_snapshot = models.CharField(max_length=255, blank=True, default="")
     section_code = models.CharField(max_length=64)
     task_code = models.CharField(max_length=64)
-    task_name_snapshot = models.CharField(max_length=255)
+    task_name_snapshot = models.TextField(blank=True, default="")
+    task_text_id = models.BigIntegerField(null=True, blank=True)
+    work_content_text_id = models.BigIntegerField(null=True, blank=True)
     guidance_snapshot = models.CharField(max_length=500, blank=True, default="")
     work_content = models.TextField(blank=True, default="")
     output_description = models.TextField(blank=True, default="")

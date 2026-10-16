@@ -48,7 +48,7 @@ const secondaryBackLocation = computed(() => {
 const watermarkText = computed(() => {
   const user = authStore.user
   if (!user) return ""
-  return `${user.username} · ${user.display_name}`
+  return `${user.display_name || user.username} · ${authStore.activeRole?.role_name || "暂无职位"}`
 })
 const headerDate = formatDateTime(new Date())
 // 不同数据范围仍由当前角色和路由权限控制，导航统一使用"周报"作为用户可见名称。

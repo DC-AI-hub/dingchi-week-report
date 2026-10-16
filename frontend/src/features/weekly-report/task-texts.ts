@@ -1,0 +1,29 @@
+import type { ReportItem } from "./types"
+export interface TaskTextMetadata {
+  task_text_id?: string | null
+  work_content_text_id?: string | null
+  task_group_key?: string
+  work_content_group_key?: string
+  task_source?: "custom" | "template"
+  task_template?: string
+  task_values?: string[]
+}
+export function taskTextMetadata(item: TaskTextMetadata): TaskTextMetadata {
+  return { task_text_id: item.task_text_id, work_content_text_id: item.work_content_text_id,
+    task_group_key: item.task_group_key || item.task_text_id || undefined,
+    work_content_group_key: item.work_content_group_key || item.work_content_text_id || undefined,
+    task_source: item.task_source || "custom", task_template: item.task_template || "", task_values: [...(item.task_values || [])] }
+}
+export function loadedTaskTextMetadata(item: ReportItem): TaskTextMetadata { return taskTextMetadata(item) }
+export function renderTaskTemplate(template: string, values: string[]): string {
+  return template.split(/[?？]/).map((part, index) => part + (values[index] || "")).join("")
+}
+
+/** 展示模板任务时保留未填写的问号，不改变实际保存的占位值。 */
+export function previewTaskTemplate(template: string, values: string[]): string {
+  let index = 0
+  return template.replace(/[?？]/g, (placeholder) => {
+    const value = values[index++]
+    return value?.trim() ? value : placeholder
+  })
+}

@@ -4,7 +4,9 @@ import { useRoute, useRouter } from "vue-router"
 
 import { useAuthStore } from "@/features/auth/store"
 import AlertDialog from "@/components/feedback/AlertDialog.vue"
-import { getReportDetail } from "@/features/weekly-report/api"
+import { ApiError } from "@/shared/api/errors"
+import { TEMPLATE_UNAVAILABLE_MESSAGE } from "@/features/weekly-report/template-support"
+import { getReportDetail, getReportTemplate } from "@/features/weekly-report/api"
 import { resolveTemplateEditor } from "@/features/weekly-report/template-registry"
 
 const route = useRoute()
@@ -13,7 +15,7 @@ const authStore = useAuthStore()
 const templateCode = ref("")
 const isLoading = ref(true)
 const errorMessage = ref("")
-const editor = computed(() => (templateCode.value ? resolveTemplateEditor(templateCode.value) : null))
+const editor = computed(() => (!errorMessage.value && templateCode.value ? resolveTemplateEditor(templateCode.value) : null))
 const reportId = computed(() => String(route.params.reportId || ""))
 
 async function loadTemplateCode() {
@@ -28,16 +30,19 @@ async function loadTemplateCode() {
       const roleTemplateCode = authStore.activeRole?.report_template_code || ""
       const routeTemplateCode = String(route.query.template_code || "").trim()
       if (routeTemplateCode && routeTemplateCode !== roleTemplateCode) {
-        throw new Error("当前职位绑定的周报模板已发生变化，请返回后重新进入。")
+        throw new Error(TEMPLATE_UNAVAILABLE_MESSAGE)
       }
       templateCode.value = routeTemplateCode || roleTemplateCode
     }
-    if (!templateCode.value) throw new Error("当前职位未配置周报模板。")
+    if (!templateCode.value) throw new Error(TEMPLATE_UNAVAILABLE_MESSAGE)
     if (!resolveTemplateEditor(templateCode.value)) {
-      throw new Error("当前职位绑定的周报模板暂不支持填写。")
+      throw new Error(TEMPLATE_UNAVAILABLE_MESSAGE)
     }
+    await getReportTemplate(templateCode.value)
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : "周报模板加载失败。"
+    errorMessage.value = error instanceof ApiError && Boolean(templateCode.value) && ["REPORT_NOT_FOUND", "REPORT_INVALID"].includes(error.code)
+      ? TEMPLATE_UNAVAILABLE_MESSAGE : error instanceof Error ? error.message : "周报模板加载失败。"
+    templateCode.value = ""
   } finally {
     isLoading.value = false
   }

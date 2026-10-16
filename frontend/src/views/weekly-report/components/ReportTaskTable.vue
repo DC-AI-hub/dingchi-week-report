@@ -1,178 +1,25 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue"
-
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
-import {
-  formatReportTaskField,
-  normalizeReportTaskFields,
-  reportTaskStatusLabel,
-  reportTaskUpdatedAt,
-} from "@/features/weekly-report/task-fields"
-import type {
-  ReportAttachment,
-  ReportItem,
-  ReportTemplateField,
-} from "@/features/weekly-report/types"
-
+import { useReportTaskTable, type ReportTaskTableProps } from "../composables/useReportTaskTable"
 import ReportPagination from "./ReportPagination.vue"
 import ReportTaskDetailDialog from "./ReportTaskDetailDialog.vue"
-
-const props = withDefaults(
-  defineProps<{
-    items: ReportItem[]
-    fields?: ReportTemplateField[] | null
-    attachments?: ReportAttachment[]
-    showColumnsButton?: boolean
-    preferenceKey?: string
-  }>(),
-  { showColumnsButton: true },
-)
-
-const columnsOpen = ref(false)
-const selectedCodes = ref<string[]>([])
-const detailOpen = ref(false)
-const detailItem = ref<ReportItem | null>(null)
-const page = ref(1)
-const pageSize = 10
-
-const availableFields = computed(() => normalizeReportTaskFields(props.fields))
-const columnStorageKey = computed(
-  () => `weekly-report:detail-visible-columns:${props.preferenceKey || "default"}`,
-)
-const primaryField = computed<ReportTemplateField | null>(() => {
-  const source = props.fields || []
-  const dimension = source.find((field) => field.field_code === "dimension")
-  const customer = source.find((field) => field.field_code === "customer_name")
-
-  // 模板字段配置是列表布局的唯一依据。职能组模板不配置客户/维度时，
-  // 不再渲染一个空的主字段列；否则表格会留下与客户列同宽的空白区域。
-  if (source.length) return dimension || customer || null
-
-  // 兼容接口暂未返回字段配置的旧数据：招聘报告仍使用维度，其他报告
-  // 根据任务数据判断是否存在客户主字段。
-  const looksLikeRecruitment = !dimension
-    && props.items.length > 0
-    && props.items.every((item) => !item.customer_name_snapshot)
-    && props.items.some((item) =>
-      /recruitment|recruit|招聘/i.test(
-        `${item.section_code || ""} ${item.section_name_snapshot || ""}`,
-      ),
-    )
-  if (looksLikeRecruitment) {
-    return { field_code: "dimension", label: "维度", sort_order: 1, default_visible: true }
-  }
-  if (props.items.some((item) => Boolean(item.customer_name_snapshot))) {
-    return { field_code: "customer_name", label: "客户", sort_order: 1, default_visible: true }
-  }
-  return null
-})
-const displayItems = computed(() =>
-  props.items
-    .map((item, index) => ({ item, index }))
-    .sort(
-      (left, right) =>
-        primaryValue(left.item).localeCompare(
-          primaryValue(right.item),
-          "zh-CN",
-        ) ||
-        left.item.sort_order - right.item.sort_order ||
-        left.index - right.index,
-    )
-    .map(({ item }) => item),
-)
-const totalPages = computed(() => Math.max(1, Math.ceil(displayItems.value.length / pageSize)))
-const pagedItems = computed(() => {
-  const start = (page.value - 1) * pageSize
-  return displayItems.value.slice(start, start + pageSize)
-})
-const selectedFields = computed(() => {
-  const selected = new Set(selectedCodes.value)
-  return availableFields.value.filter((field) => selected.has(field.field_code))
-})
-
-watch(
-  [availableFields, columnStorageKey],
-  ([fields, storageKey]) => {
-    const available = new Set(fields.map((field) => field.field_code))
-    try {
-      const stored = localStorage.getItem(storageKey)
-      if (stored !== null) {
-        const parsed: unknown = JSON.parse(stored)
-        if (Array.isArray(parsed)) {
-          selectedCodes.value = parsed.filter(
-            (code): code is string => typeof code === "string" && available.has(code),
-          )
-          return
-        }
-      }
-    } catch {
-      try { localStorage.removeItem(storageKey) } catch { /* storage may be unavailable */ }
-    }
-    selectedCodes.value = fields
-      .filter((field) => field.default_visible)
-      .map((field) => field.field_code)
-  },
-  { immediate: true, deep: true },
-)
-
-watch(selectedCodes, (codes) => {
-  try { localStorage.setItem(columnStorageKey.value, JSON.stringify(codes)) }
-  catch { /* keep the table usable when browser storage is unavailable */ }
-})
-
-watch(totalPages, (value) => {
-  if (page.value > value) page.value = value
-}, { immediate: true })
-
-function customerRowspan(index: number): number {
-  if (!primaryField.value) return 1
-  const current = primaryValue(pagedItems.value[index])
-  if (index > 0 && primaryValue(pagedItems.value[index - 1]) === current) return 0
-
-  let rowspan = 1
-  while (
-    index + rowspan < pagedItems.value.length
-    && primaryValue(pagedItems.value[index + rowspan]) === current
-  ) {
-    rowspan += 1
-  }
-  return rowspan
-}
-
-function primaryValue(item: ReportItem | undefined): string {
-  if (!item || !primaryField.value) return ""
-  if (primaryField.value.field_code === "dimension") {
-    return formatReportTaskField(item, "dimension")
-  }
-  return item.customer_name_snapshot || "—"
-}
-
-function statusClass(value: string | null | undefined): string {
-  return value || "unknown"
-}
-
-function taskStatus(item: ReportItem): string {
-  return item.on_time_status || "unknown"
-}
-
-function openTask(item: ReportItem) {
-  detailItem.value = item
-  detailOpen.value = true
-}
-
-function itemAttachments(item: ReportItem): ReportAttachment[] {
-  return (props.attachments || []).filter((attachment) => attachment.relation_sub_id === item.id)
-}
-
-function openColumns() {
-  columnsOpen.value = true
-}
-
-defineExpose({ openColumns })
+const props = withDefaults(defineProps<ReportTaskTableProps>(), { showColumnsButton: true, showCustomerTabs: true })
+const {
+  deliveryMode, customers, activeCustomer, columnsOpen, selectedCodes, detailOpen, detailItem,
+  page, pageSize, availableFields, primaryField, displayItems, totalPages, pagedItems, selectedFields,
+  customerRowspan, primaryValue, statusClass, taskStatus, openTask, itemAttachments, openColumns,
+  sharedRowspan, formatReportTaskField, reportTaskStatusLabel, reportTaskUpdatedAt,
+} = useReportTaskTable(props)
+defineExpose({ openColumns, customers, activeCustomer, deliveryMode })
 </script>
 
 <template>
-  <div class="report-task-table">
+  <div class="report-task-table" :class="{ 'report-task-table--delivery': deliveryMode }">
+    <div v-if="showCustomerTabs !== false && deliveryMode && customers.length" class="customer-tabs" role="tablist" aria-label="客户">
+      <button v-for="customer in customers" :key="customer.id" type="button" role="tab"
+        :aria-selected="activeCustomer === customer.id" :class="{ active: activeCustomer === customer.id }"
+        @click="activeCustomer = customer.id">{{ customer.name }}</button>
+    </div>
     <div v-if="showColumnsButton" class="report-task-table__toolbar">
       <button class="ghost-button" type="button" @click="columnsOpen = true">选择展示字段</button>
     </div>
@@ -187,7 +34,8 @@ defineExpose({ openColumns })
               class="fixed-col task-col"
               :class="{ 'task-col--without-primary': !primaryField }"
             >工作任务</th>
-            <th v-for="field in selectedFields" :key="field.field_code" class="dynamic-col">
+            <th v-for="field in selectedFields" :key="field.field_code" class="dynamic-col"
+              :class="{ 'multiline-col': ['work_content', 'output_description'].includes(field.field_code) }">
               {{ field.label }}
             </th>
             <th class="fixed-col status-col">状态</th>
@@ -208,10 +56,12 @@ defineExpose({ openColumns })
                 </span>
               </td>
               <td
+                v-if="sharedRowspan(index) > 0" :rowspan="sharedRowspan(index)"
                 class="fixed-col task-col task-cell"
                 :class="{ 'task-col--without-primary': !primaryField }"
               >
-                <button
+                <span v-if="deliveryMode" class="cell-text">{{ formatReportTaskField(item, "task_name") }}</span>
+                <button v-else
                   class="task-link"
                   type="button"
                   :title="item.task_name_snapshot || item.task_code"
@@ -220,14 +70,20 @@ defineExpose({ openColumns })
                   {{ item.task_name_snapshot || item.task_code || "—" }}
                 </button>
               </td>
-              <td v-for="field in selectedFields" :key="field.field_code" class="dynamic-col">
-                <span
-                  class="cell-text"
-                  :title="formatReportTaskField(item, field.field_code)"
-                >
-                  {{ formatReportTaskField(item, field.field_code) }}
-                </span>
-              </td>
+              <template v-for="field in selectedFields" :key="field.field_code">
+                <td v-if="field.field_code !== 'work_content' || sharedRowspan(index, true) > 0"
+                  :rowspan="field.field_code === 'work_content' ? sharedRowspan(index, true) : 1"
+                  class="dynamic-col" :class="{ 'multiline-col': ['work_content', 'output_description'].includes(field.field_code) }">
+                  <span
+                    class="cell-text"
+                    :title="formatReportTaskField(item, field.field_code)"
+                  >
+                    {{ formatReportTaskField(item, field.field_code) }}
+                  </span>
+                  <button v-if="deliveryMode && field.field_code === 'document_links' && itemAttachments(item).length"
+                    class="task-link attachment-link" type="button" @click="openTask(item)">查看附件（{{ itemAttachments(item).length }}）</button>
+                </td>
+              </template>
               <td class="fixed-col status-col">
                 <span
                   class="status-pill"

@@ -29,7 +29,7 @@ onMounted(() => void form.load())
     <div v-if="form.isLoading.value" class="dashboard-card loading-card">正在加载周报</div>
     <template v-else>
       <ReportSaveButton :busy="form.isSaving.value" :disabled="!form.monthlyTasksState.approved.value || form.monthlyTasksState.isLoading.value" @save="save" />
-      <ReportBasics :period-start="form.report.period_start" :period-end="form.report.period_end" :month-key="form.monthKey.value" :is-new="form.isNew.value" :min-period-start="currentPeriodStart" @update:period-start="form.setPeriodStart" />
+      <ReportBasics :period-start="form.report.period_start" :period-end="form.report.period_end" :month-key="form.monthKey.value" :min-period-start="currentPeriodStart" @update:period-start="form.setPeriodStart" />
       <NoticeBridge :warning-message="form.errorMessage.value" />
       <WeeklyPlanGate v-if="!form.monthlyTasksState.approved.value"
         :month="form.monthKey.value" :loading="form.monthlyTasksState.isLoading.value"

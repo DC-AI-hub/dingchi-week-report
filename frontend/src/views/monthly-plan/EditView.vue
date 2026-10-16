@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted } from "vue"
 import { RouterLink, useRoute, useRouter } from "vue-router"
+import AlertDialog from "@/components/feedback/AlertDialog.vue"
+import { TEMPLATE_UNAVAILABLE_MESSAGE } from "@/features/weekly-report/template-support"
 import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import UnsavedChangesGuard from "@/components/navigation/UnsavedChangesGuard.vue"
 import MonthlyPlanTaskPanel from "@/features/monthly-plan/components/MonthlyPlanTaskPanel.vue"
@@ -30,6 +32,8 @@ onMounted(()=>void editor.load(id.value,isChange.value))
     </Teleport>
     <UnsavedChangesGuard :dirty="editor.unsavedChanges.hasChanges.value" :enabled="!editor.loading.value" :reset-key="editor.unsavedChanges.resetKey.value" />
     <div v-if="editor.loading.value" class="dashboard-card loading">正在加载月度计划…</div>
+    <AlertDialog v-else-if="editor.templateUnavailable.value" open title="月度计划模板不可用"
+      :message="TEMPLATE_UNAVAILABLE_MESSAGE" @close="router.replace({name:'monthly-plans',query:{tab:route.query.tab}})" />
     <template v-else>
       <NoticeBridge :warning-message="editor.error.value" />
       <section v-if="!editor.canEdit.value" class="dashboard-card loading" role="alert">{{editor.context.value?.warning || '当前计划不可编辑，请查看详情和审批状态。'}} <RouterLink :to="{name:'monthly-plans',query:{tab:route.query.tab}}">返回月度计划</RouterLink></section>

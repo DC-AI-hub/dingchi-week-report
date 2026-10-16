@@ -3,6 +3,7 @@ import { computed } from "vue"
 import { ListTodo, ArrowUpRight } from "lucide-vue-next"
 import { RouterLink } from "vue-router"
 
+import { taskCompletionText } from "@/features/dashboard/task-metrics"
 import type { DashboardItem } from "@/features/dashboard/types"
 
 const props = defineProps<{
@@ -15,7 +16,7 @@ const sortedTasks = computed(() => {
     const leftDate = left.planned_completion_date?.slice(0, 10) || "9999-12-31"
     const rightDate = right.planned_completion_date?.slice(0, 10) || "9999-12-31"
     return leftDate.localeCompare(rightDate)
-  })
+  }).slice(0, 8)
 })
 
 function percent(value: number | null) {
@@ -55,7 +56,7 @@ function statusLabel(status: string) {
     <div v-if="!tasks.length" class="content-empty">暂无任务数据</div>
     <div v-else class="personal-task-table">
       <div class="personal-task-table-head" aria-hidden="true">
-        <span>客户</span><span>工作任务</span><span>进展</span><span>进度</span><span>完成率</span><span>状态</span>
+        <span>客户</span><span>工作任务</span><span>进展</span><span>进度</span><span>完成情况</span><span>状态</span>
       </div>
       <div v-for="task in sortedTasks" :key="task.id" class="personal-task-row">
         <span class="task-customer" :title="task.customer_name_snapshot || '内部事项'">{{ task.customer_name_snapshot || "内部事项" }}</span>
@@ -64,7 +65,7 @@ function statusLabel(status: string) {
         </div>
         <div class="task-progress-track" aria-hidden="true"><span :style="{ width: `${task.progress_percent || 0}%` }" /></div>
         <span class="task-number">{{ percent(task.progress_percent) }}</span>
-        <span class="task-number task-number--green">{{ percent(task.completion_rate) }}</span>
+        <span class="task-number task-number--green">{{ taskCompletionText(task) }}</span>
         <span class="task-status" :class="`task-status--${task.on_time_status}`">{{ statusLabel(task.on_time_status) }}</span>
       </div>
     </div>

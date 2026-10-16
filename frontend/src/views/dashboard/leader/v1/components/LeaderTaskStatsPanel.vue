@@ -16,7 +16,9 @@ const router = useRouter()
 const taskTotal = computed(() => props.members.reduce((sum, member) => sum + member.task_count, 0))
 
 function taskPreview(member: DashboardMemberStats) {
-  const names = member.tasks.map((task) => task.task_name).filter(Boolean)
+  const names = member.tasks.map(task => task.detail_count
+    ? `${task.task_name}（${task.completed_detail_count || 0}/${task.detail_count}，${Math.round(task.detail_completion_rate || 0)}%）`
+    : task.task_name).filter(Boolean)
   if (!names.length) return "暂无任务名称"
   return names.slice(0, 3).join("、") + (names.length < member.task_count ? ` 等${member.task_count}项` : "")
 }
@@ -85,7 +87,7 @@ const visibleMembers=computed(()=>{
         <span class="leader-member-stat__group">{{ member.group_name }}</span>
         <div class="leader-member-stat__tasks" :title="taskPreview(member)"><b>{{ member.task_count }} 项</b><small>{{ taskPreview(member) }}</small></div>
         <span class="leader-member-stat__result">完成 {{ member.completed_task_count }} · 风险 {{ member.risk_task_count }}</span>
-        <div class="leader-member-stat__progress"><i :style="{ width: `${Math.min(100, Math.max(0, member.completion_rate))}%` }" /><b>{{ Math.round(member.completion_rate) }}%</b></div>
+        <div class="leader-member-stat__progress"><i :style="{ width: `${Math.min(100, Math.max(0, (member.progress_percent ?? member.completion_rate)))}%` }" /><b>{{ Math.round(member.progress_percent ?? member.completion_rate) }}%</b></div>
       </button>
       <div v-if="!visibleMembers.length" class="leader-task-stats-empty">该团队暂无需填写周报的人员</div>
     </div>

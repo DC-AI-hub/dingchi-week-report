@@ -12,7 +12,7 @@ import ReportSaveButton from "@/views/weekly-report/components/ReportSaveButton.
 import MonthlyPlanTaskPanel from "@/features/monthly-plan/components/MonthlyPlanTaskPanel.vue"
 
 import ReportBasics from "./components/ReportBasics.vue"
-import TaskCollectionSection from "./components/TaskCollectionSection.vue"
+import TaskCollectionSection from "@/features/weekly-report/components/DeliveryTaskCollectionSection.vue"
 
 const route = useRoute()
 const router = useRouter()
@@ -45,7 +45,7 @@ onMounted(() => void form.load())
         :period-start="form.report.period_start"
         :period-end="form.report.period_end"
         :month-key="form.monthKey.value"
-        :is-new="form.isNew.value"
+
         :min-period-start="currentPeriodStart"
         @update:period-start="form.setPeriodStart"
       />

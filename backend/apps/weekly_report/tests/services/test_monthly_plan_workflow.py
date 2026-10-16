@@ -285,3 +285,87 @@ def test_personal_members_and_assigned_approval_tabs(people):
         write.decide(
             first, "manager", plan_id, {"action": "approve", "approval_id": first_submission["id"]}
         )
+
+
+@pytest.mark.parametrize("template", ["delivery_specialist_v1", "delivery_assistant_v1"])
+def test_template_metadata_survives_save_approval_and_change_without_task_columns(
+    people, monkeypatch, template
+):
+    monkeypatch.setattr(reports, "resolve_role_template", lambda role: {"template_code": template})
+    task = {
+        "scope_name": "客户",
+        "work_task": "入职？人",
+        "task_source": "template",
+        "task_template": "入职？人",
+        "task_values": [""],
+    }
+    main = write.save(
+        people[0],
+        "delivery",
+        {
+            "month_key": "2026-10",
+            "summary": "目标",
+            "tasks": [task],
+        },
+    )
+    plan_id = int(main["plan"]["id"])
+    assert main["tasks"][0]["task_source"] == "template"
+    assert main["tasks"][0]["task_values"] == [""]
+    write.submit(people[0], "delivery", plan_id)
+    write.decide(people[1], "manager", plan_id, {"action": "approve"})
+    write.decide(people[2], "manager", plan_id, {"action": "approve"})
+    child = change_write.create(people[0], "delivery", plan_id)
+    change_id = int(child["change"]["id"])
+    changed = {**child["snapshot"]["tasks"][0], "work_task": "入职10人", "task_values": ["10"]}
+    change_write.save(
+        people[0],
+        "delivery",
+        change_id,
+        {
+            "revision": child["change"]["revision"],
+            "summary": "目标",
+            "tasks": [changed],
+        },
+    )
+    change_write.submit(people[0], "delivery", change_id)
+    change_write.decide(people[1], "manager", change_id, {"action": "approve"})
+    change_write.decide(people[2], "manager", change_id, {"action": "approve"})
+    result = read.detail(people[0], "delivery", plan_id)["tasks"][0]
+    assert result["work_task"] == "入职10人"
+    assert result["task_source"] == "template"
+    assert result["task_template"] == "入职？人"
+    assert result["task_values"] == ["10"]
+    assert read.gate(people[0], "delivery", "2026-10")["tasks"][0]["task_values"] == ["10"]
+
+
+def test_identical_custom_text_is_not_inferred_as_template_and_source_only_changes_save(people):
+    main = write.save(
+        people[0],
+        "delivery",
+        {
+            "month_key": "2026-10",
+            "summary": "目标",
+            "tasks": [{"scope_name": "客户", "work_task": "入职？人"}],
+        },
+    )
+    assert main["tasks"][0]["task_source"] == "custom"
+    original = main["tasks"][0]
+    updated = write.save(
+        people[0],
+        "delivery",
+        {
+            "revision": main["plan"]["revision"],
+            "summary": "目标",
+            "tasks": [
+                {
+                    **original,
+                    "task_source": "template",
+                    "task_template": "入职？人",
+                    "task_values": [""],
+                }
+            ],
+        },
+        int(main["plan"]["id"]),
+    )
+    assert updated["tasks"][0]["task_source"] == "template"
+    assert updated["plan"]["revision"] == main["plan"]["revision"] + 1

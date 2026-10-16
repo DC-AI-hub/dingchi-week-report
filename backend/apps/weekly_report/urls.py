@@ -90,5 +90,6 @@ urlpatterns = [
         views.report_submit_view,
         name="submit",
     ),
+    path("weekly-reports/<str:report_id>/copy/", views.report_copy_view, name="copy"),
     path("weekly-reports/<str:report_id>/", views.report_detail_view, name="detail"),
 ]

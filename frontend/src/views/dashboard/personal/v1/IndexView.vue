@@ -16,7 +16,8 @@ import PersonalTaskPanel from "./components/PersonalTaskPanel.vue"
 const authStore = useAuthStore()
 const dashboardStore = useDashboardStore()
 const summary = computed(() => dashboardStore.summary)
-const plans = computed(() => (dashboardStore.nextWeek.my_plans || []).slice(0, 3))
+const workTasks = computed(() => summary.value.my_work_tasks ?? summary.value.my_tasks)
+const plans = computed(() => (dashboardStore.nextWeek.my_work_plans ?? dashboardStore.nextWeek.my_plans ?? []).slice(0, 3))
 const currentReportId = computed(() => {
   const periodStart = summary.value.period.start?.slice(0, 10)
   if (!periodStart) return null
@@ -30,7 +31,7 @@ const currentReportId = computed(() => {
 })
 const customerDistribution = computed<DashboardDistribution[]>(() => {
   const grouped = new Map<string, number>()
-  for (const task of summary.value.my_tasks) {
+  for (const task of workTasks.value) {
     const customer = task.customer_name_snapshot?.trim() || "内部事项"
     grouped.set(customer, (grouped.get(customer) || 0) + 1)
   }
@@ -88,8 +89,8 @@ function handlePeriodChange(periodStart: string) {
       />
 
       <div class="personal-lower-grid">
-        <PersonalTaskPanel :tasks="summary.my_tasks" :report-id="currentReportId" />
-        <PersonalResultsPanel :tasks="summary.my_tasks" :report-id="currentReportId" />
+        <PersonalTaskPanel :tasks="workTasks" :report-id="currentReportId" />
+        <PersonalResultsPanel :tasks="workTasks" :report-id="currentReportId" />
       </div>
 
       <PersonalPlansPanel :plans="plans" :period="summary.period" />

@@ -12,6 +12,7 @@ from ..monthly_plan_tasks import (
     validate_report_monthly_data,
     validate_tasks,
 )
+from ..monthly_task_metadata import snapshot_with_metadata
 from . import change_read
 from .policy import PlanNotFound, editable_plan, readable_plan, require_managers
 from .versions import live_snapshot
@@ -70,12 +71,26 @@ def normalized_proposal(change, payload):
 
 def same_content(first, second):
     return first["summary"] == second["summary"] and [
-        (task.get("id"), task.get("scope_name") or "", task["work_task"],
-         task.get("work_content", ""))
+        (
+            task.get("id"),
+            task.get("scope_name") or "",
+            task["work_task"],
+            task.get("work_content", ""),
+            task.get("task_source", "custom"),
+            task.get("task_template", ""),
+            tuple(task.get("task_values", [])),
+        )
         for task in first["tasks"]
     ] == [
-        (task.get("id"), task.get("scope_name") or "", task["work_task"],
-         task.get("work_content", ""))
+        (
+            task.get("id"),
+            task.get("scope_name") or "",
+            task["work_task"],
+            task.get("work_content", ""),
+            task.get("task_source", "custom"),
+            task.get("task_template", ""),
+            tuple(task.get("task_values", [])),
+        )
         for task in second["tasks"]
     ]
 
@@ -143,7 +158,9 @@ def publish(plan, change):
     plan.revision += 1
     plans.save_plan(plan)
     change.effective_revision = plan.revision
-    change.published_snapshot_json = json.dumps(live_snapshot(plan), ensure_ascii=False)
+    change.published_snapshot_json = json.dumps(
+        snapshot_with_metadata(live_snapshot(plan), tasks), ensure_ascii=False
+    )
 
 
 @transaction.atomic

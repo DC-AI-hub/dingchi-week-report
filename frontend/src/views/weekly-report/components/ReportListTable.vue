@@ -18,6 +18,8 @@ const props = withDefaults(
     canEdit?: (report: WeeklyReport) => boolean
     canSubmit?: (report: WeeklyReport) => boolean
     canDelete?: (report: WeeklyReport) => boolean
+    canCopy?: (report: WeeklyReport) => boolean
+    copyBusy?: boolean
     canFillDaily?: (report: WeeklyReport) => boolean
     returnQuery?: LocationQueryRaw
   }>(),
@@ -32,6 +34,7 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
+  copy: [report: WeeklyReport]
   submit: [report: WeeklyReport]
   delete: [report: WeeklyReport]
   dailyTask: [report: WeeklyReport]
@@ -98,6 +101,13 @@ function editRoute(report: WeeklyReport) {
           <td><ReportStatusTag :status="report.status" /></td>
           <td class="date-cell">{{ formatDateTime(report.updated_at) }}</td>
           <td v-if="hasActions()" class="action-cell">
+            <button
+              v-if="report.status === 'completed' && canCopy?.(report)"
+              class="table-action"
+              type="button"
+              :disabled="copyBusy"
+              @click="emit('copy', report)"
+            >复制</button>
             <button
               v-if="scope === 'self' && canFillDailyReport(report)"
               class="table-action"

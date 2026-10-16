@@ -1,4 +1,5 @@
 import { computed, reactive, ref } from "vue"
+import { isSupportedTemplate } from "@/features/weekly-report/template-support"
 import { useUnsavedChanges } from "@/shared/forms/useUnsavedChanges"
 import { getManagedPlan, getPlanContext, saveManagedPlan, submitManagedPlan, getPlanChange,savePlanChange,submitPlanChange } from "./api"
 import type { ChangeDetail, PlanContext, PlanDetail, PlanInput } from "./types"
@@ -14,8 +15,10 @@ export function useMonthlyPlanEditor() {
   const busy=ref(false)
   const loading=ref(true)
   const error=ref("")
+  const templateUnavailable=ref(false)
+  const loadFailed=ref(false)
   const unsavedChanges=useUnsavedChanges(()=>input,()=>!loading.value)
-  const canEdit=computed(()=>Boolean(context.value?.can_create && (!detail.value || detail.value.can_edit)))
+  const canEdit=computed(()=>Boolean(!loading.value && !loadFailed.value && !templateUnavailable.value && isSupportedTemplate(templateCode.value) && context.value?.can_create && (!detail.value || detail.value.can_edit)))
   const templateCode=computed(()=>detail.value?.plan.template_code || context.value?.template_code || "")
   function setChange(data:ChangeDetail) {
     changeDetail.value=data
@@ -23,15 +26,17 @@ export function useMonthlyPlanEditor() {
     Object.assign(input,{month_key:data.plan.month_key,summary:data.snapshot.summary,tasks:data.snapshot.tasks.map(task=>({...task})),revision:data.change.revision})
   }
   async function load(id: string, isChange=false) {
-    loading.value=true;error.value=""
+    loading.value=true;error.value="";templateUnavailable.value=false;loadFailed.value=false
     try {
       context.value=await getPlanContext()
+      if (!isSupportedTemplate(context.value.template_code)) { templateUnavailable.value=true;return }
       if(isChange) {setChange(await getPlanChange(id))}
       else if(id) {
         detail.value=await getManagedPlan(id)
         Object.assign(input,{month_key:detail.value.plan.month_key,summary:detail.value.plan.summary,tasks:detail.value.tasks.map(task=>({...task})),revision:detail.value.plan.revision})
       }
-    } catch(cause) {error.value=cause instanceof Error?cause.message:"计划加载失败。"}
+      if (!isSupportedTemplate(templateCode.value)) templateUnavailable.value=true
+    } catch(cause) {loadFailed.value=true;error.value=cause instanceof Error?cause.message:"计划加载失败。"}
     finally {loading.value=false}
   }
   async function save(submit: boolean) {
@@ -53,5 +58,5 @@ export function useMonthlyPlanEditor() {
     } catch(cause) {error.value=cause instanceof Error?cause.message:"计划保存失败。";return ""}
     finally {busy.value=false}
   }
-  return {context,detail,changeDetail,flowPlan,input,busy,loading,error,canEdit,templateCode,load,save,unsavedChanges}
+  return {context,detail,changeDetail,flowPlan,input,busy,loading,error,templateUnavailable,canEdit,templateCode,load,save,unsavedChanges}
 }

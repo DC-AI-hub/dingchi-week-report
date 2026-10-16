@@ -3,6 +3,7 @@ import { computed } from "vue"
 import { Award, ChevronRight, FileText, Star, TrendingUp } from "lucide-vue-next"
 import { RouterLink } from "vue-router"
 
+import { isWorkTaskCompleted } from "@/features/dashboard/task-metrics"
 import type { DashboardItem } from "@/features/dashboard/types"
 
 const props = defineProps<{
@@ -11,7 +12,7 @@ const props = defineProps<{
 }>()
 
 const resultItems = computed(() => {
-  const completed = props.tasks.filter((task) => (task.progress_percent || 0) >= 100).length
+  const completed = props.tasks.filter(isWorkTaskCompleted).length
   const progressing = props.tasks.filter((task) => (task.progress_percent || 0) > 0).length
   const customers = new Set(
     props.tasks

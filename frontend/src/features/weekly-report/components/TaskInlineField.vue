@@ -30,11 +30,19 @@ function setCollaborators(value: string | string[]) {
   const unknown = collaboratorNames.value.filter(name => !props.users.some(user => user.display_name === name))
   emit("patch", { collaborator_names: [...unknown, ...props.users.filter(user => ids.includes(user.id)).map(user => user.display_name)].join("、") })
 }
+function normalizeNumberInput(event: Event) {
+  const input = event.target as HTMLInputElement
+  const normalized = input.value.replace(/^(-?)0+(?=\d)/, "$1")
+  if (normalized !== input.value) input.value = normalized
+}
 function change(event: Event) {
-  const value = (event.target as HTMLInputElement).value
+  const input = event.target as HTMLInputElement
+  const value = input.value
   if (props.field === "progress_percent" || props.field === "quality_percent") {
     const number = Number(value)
-    emit("patch", { [props.field]: Number.isFinite(number) ? Math.min(100, Math.max(0, Math.round(number / 5) * 5)) : 0 })
+    const normalized = Number.isFinite(number) ? Math.min(100, Math.max(0, Math.round(number / 5) * 5)) : 0
+    input.value = String(normalized)
+    emit("patch", { [props.field]: normalized })
   } else emit("patch", { [props.field]: value })
 }
 async function positionMenu() {
@@ -68,7 +76,7 @@ onBeforeUnmount(() => { window.removeEventListener("scroll", positionMenu, true)
     <select v-else-if="field === 'on_time_status'" :value="task.on_time_status" :aria-label="label" @change="change">
       <option value="pending">待完成</option><option value="in_progress">进行中</option><option value="on_time">是，按计划完成</option><option value="late">否，已延期完成</option><option value="overdue">否，已逾期未完成</option><option value="completed">已完成</option><option value="not_applicable">不适用</option>
     </select>
-    <input v-else-if="field === 'progress_percent' || field === 'quality_percent'" :value="task[field] ?? 0" type="number" min="0" max="100" step="5" :aria-label="label" @change="change" />
+    <input v-else-if="field === 'progress_percent' || field === 'quality_percent'" :value="task[field] ?? 0" type="number" min="0" max="100" step="5" :aria-label="label" @input="normalizeNumberInput" @change="change" />
     <input v-else-if="field === 'planned_completion_date' || field === 'actual_completion_date'" :value="task[field]" type="date" :aria-label="label" @change="change" />
     <input v-else :maxlength="field === 'dimension' ? 64 : undefined" :value="task[field]" :aria-label="label" @change="change" />
     </div>

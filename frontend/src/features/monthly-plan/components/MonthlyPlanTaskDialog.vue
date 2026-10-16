@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue"
+import { isSupportedTemplate } from "@/features/weekly-report/template-support"
 
 import DeliveryCustomerSelect from "@/features/weekly-report/components/DeliveryCustomerSelect.vue"
 import { monthlyPlanScopeLabel, usesConfiguredCustomers } from "@/features/weekly-report/monthly-plan/template-fields"
@@ -65,7 +66,7 @@ function save(action: "close" | "next") {
 
 <template>
   <BaseDialog
-    :open="open"
+    :open="open && (readonly || isSupportedTemplate(templateCode))"
     :title="readonly ? '月度计划详情' : task ? '编辑月度计划' : '新增月度计划'"
     width="680px"
     @close="emit('close')"
@@ -82,7 +83,6 @@ function save(action: "close" | "next") {
         ref="input"
         v-model="workTask"
         rows="6"
-        maxlength="2000"
         :readonly="readonly"
         :required="!readonly"
         placeholder="请输入本月计划开展的工作任务"

@@ -9,6 +9,7 @@ from typing import Any
 from django.db import transaction
 
 from .. import monthly_plan_task_dao as dao
+from .monthly_task_metadata import restore_metadata, task_metadata
 
 
 def validate_month_key(month_key: str) -> str:
@@ -24,20 +25,27 @@ def list_monthly_plan_tasks(
     rows = dao.list_tasks(
         employee_id=employee_id, role_code=role_code, month_key=validate_month_key(month_key)
     )
-    return [{
-        "id": str(row.id),
-        "scope_name": row.scope_name or "",
-        # 旧客户端的输入输出兼容别名，不对应独立数据库字段。
-        "customer_name": row.scope_name or "",
-        "dimension": row.scope_name or "",
-        "work_task": row.work_task,
-        "work_content": row.work_content,
-        "sort_order": row.sort_order,
-        "updated_at": row.updated_at.isoformat(),
-    } for row in rows]
+    items = [
+        {
+            "id": str(row.id),
+            "scope_name": row.scope_name or "",
+            # 旧客户端的输入输出兼容别名，不对应独立数据库字段。
+            "customer_name": row.scope_name or "",
+            "dimension": row.scope_name or "",
+            "work_task": row.work_task,
+            "work_content": row.work_content,
+            "sort_order": row.sort_order,
+            "updated_at": row.updated_at.isoformat(),
+        }
+        for row in rows
+    ]
+    return restore_metadata(
+        items,
+        dao.latest_task_snapshot(employee_id=employee_id, role_code=role_code, month_key=month_key),
+    )
 
 
-def validate_tasks(value: Any) -> list[dict[str, str]]:
+def validate_tasks(value: Any) -> list[dict[str, Any]]:
     if not isinstance(value, list) or len(value) > 200:
         raise ValueError("月度计划必须为任务数组，最多 200 条。")
     work_tasks = []
@@ -45,8 +53,8 @@ def validate_tasks(value: Any) -> list[dict[str, str]]:
         if not isinstance(item, Mapping) or not isinstance(item.get("work_task"), str):
             raise ValueError("月度计划中的工作任务必须为文字。")
         work_task = item["work_task"].strip()
-        if not work_task or len(work_task) > 2000:
-            raise ValueError("月度计划工作任务不能为空且不能超过 2000 个字符。")
+        if not work_task:
+            raise ValueError("月度计划工作任务不能为空。")
         scope_name = item.get("scope_name", item.get("dimension") or item.get("customer_name", ""))
         if scope_name is None:
             scope_name = ""
@@ -60,6 +68,7 @@ def validate_tasks(value: Any) -> list[dict[str, str]]:
             "work_task": work_task,
             "work_content": work_content.strip(),
         }
+        normalized.update(task_metadata(item))
         task_id = item.get("id")
         if task_id and str(task_id).isdigit():
             normalized["id"] = str(task_id)

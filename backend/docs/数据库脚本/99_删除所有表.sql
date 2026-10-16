@@ -33,3 +33,5 @@ SET FOREIGN_KEY_CHECKS = 1;
 DROP TABLE IF EXISTS `monthly_plan_change`;
 
 DROP TABLE IF EXISTS `todo_item`;
+
+DROP TABLE IF EXISTS `weekly_task_text`;

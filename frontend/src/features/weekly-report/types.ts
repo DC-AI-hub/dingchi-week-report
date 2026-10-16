@@ -1,3 +1,4 @@
+import type { TaskTextMetadata } from "./task-texts"
 import type { MonthlyPlanTask, MonthlyPlanTaskPayload } from "./monthly-plan/types"
 
 export type ReportStatus = "not_started" | "in_progress" | "completed" | string
@@ -44,7 +45,7 @@ export interface ReportTemplate {
   fields?: ReportTemplateField[]
 }
 
-export interface ReportItem {
+export interface ReportItem extends TaskTextMetadata {
   id: string
   report_id: string
   created_at?: string

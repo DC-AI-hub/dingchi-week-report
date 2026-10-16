@@ -5,7 +5,6 @@ defineProps<{
   periodStart: string
   periodEnd: string
   monthKey: string
-  isNew: boolean
   minPeriodStart: string
 }>()
 const emit = defineEmits<{
@@ -16,7 +15,7 @@ const emit = defineEmits<{
 <template>
   <section class="dashboard-card basics-card">
     <div class="basics-grid">
-      <label class="period-field">周报周期<WeekRangePicker :start="periodStart" :end="periodEnd" :disabled="!isNew" :min="minPeriodStart" @update:start="emit('update:periodStart', $event)" /></label>
+      <label class="period-field">周报周期<WeekRangePicker :start="periodStart" :end="periodEnd" :min="minPeriodStart" @update:start="emit('update:periodStart', $event)" /></label>
       <label>所属月度<input :value="monthKey" disabled /></label>
     </div>
   </section>

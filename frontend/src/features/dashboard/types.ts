@@ -35,6 +35,13 @@ export interface DashboardReport {
 }
 
 export interface DashboardItem {
+  /** 逻辑工作任务聚合元数据；输出成果明细不带这些字段。 */
+  detail_count?: number
+  completed_detail_count?: number
+  detail_completion_rate?: number
+  planned_detail_count?: number
+  output_detail_count?: number
+  detail_ids?: string[]
   id: string
   report_id: string
   customer_name_snapshot: string
@@ -67,6 +74,9 @@ export interface DashboardTeamTask extends DashboardItem {
 }
 
 export interface DashboardMemberTaskPreview {
+  detail_count?: number
+  completed_detail_count?: number
+  detail_completion_rate?: number
   id: string
   task_name: string
   customer_name: string
@@ -77,6 +87,7 @@ export interface DashboardMemberTaskPreview {
 }
 
 export interface DashboardMemberStats {
+  progress_percent?: number
   group_id?: string | null
   employee_id: string
   employee_name: string
@@ -94,6 +105,7 @@ export interface DashboardMemberStats {
 }
 
 export interface DashboardGroupStats {
+  progress_percent?: number
   group_id: string | null
   group_name: string
   member_count: number
@@ -112,6 +124,11 @@ export interface DashboardSummary {
   trend: DashboardTrendPoint[]
   status_distribution: DashboardDistribution[]
   my_tasks: DashboardItem[]
+  my_work_tasks?: DashboardItem[]
+  team_work_tasks?: DashboardTeamTask[]
+  team_output_items?: DashboardTeamTask[]
+  output_count?: number
+  output_distribution?: { section_code: string; value: number }[]
   my_plans: DashboardItem[]
   member_reports?: DashboardReport[]
   reports: DashboardReport[]
@@ -121,6 +138,8 @@ export interface DashboardSummary {
 }
 
 export interface DashboardNextWeek {
+  my_work_plans?: DashboardItem[]
+  team_work_tasks?: DashboardTeamTask[]
   period: { start: string; end: string }
   my_plans: DashboardItem[]
   team_tasks: DashboardTeamTask[]

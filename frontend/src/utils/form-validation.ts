@@ -33,3 +33,19 @@ export function reportFormValidity(form: HTMLFormElement | null): boolean {
   }
   return form.reportValidity()
 }
+
+/** 草稿仅检查长度、范围和格式，必填非空在周报提交时由服务端统一检查。 */
+export function reportDraftValidity(form: HTMLFormElement | null): boolean {
+  if (!form) return false
+  const fields = Array.from(form.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>("input, textarea, select"))
+  for (const field of fields) {
+    const maxLength = field instanceof HTMLSelectElement ? -1 : field.maxLength
+    const tooLong = maxLength >= 0 && field.value.length > maxLength
+    field.setCustomValidity(tooLong ? `最多填写 ${maxLength} 个字符。` : "")
+    const validity = field.validity
+    if (tooLong || validity.badInput || validity.typeMismatch || validity.rangeOverflow || validity.rangeUnderflow || validity.stepMismatch) {
+      field.scrollIntoView({ block: "nearest" }); field.focus(); field.reportValidity(); return false
+    }
+  }
+  return true
+}

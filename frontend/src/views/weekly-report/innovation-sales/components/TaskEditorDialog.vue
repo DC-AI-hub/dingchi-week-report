@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { clearFieldValidity, reportFormValidity } from "@/utils/form-validation"
+import { clearFieldValidity, reportDraftValidity } from "@/utils/form-validation"
 import AttachmentDownloadLink from "@/components/file/AttachmentDownloadLink.vue"
 import { computed, reactive, ref, watch } from "vue"
 
@@ -92,7 +92,7 @@ function localTimestamp() {
 }
 
 function submit(action: "close" | "next") {
-  if (!reportFormValidity(formElement.value)) return
+  if (!reportDraftValidity(formElement.value)) return
   const customer = form.customer_name.trim()
   const task = form.task_name.trim()
   const workContent = form.work_content.trim()
@@ -167,7 +167,7 @@ async function removeAttachment(index: number) {
             </div>
           </div>
         </div>
-        <label class="task-editor__field"><span class="task-editor__label">工作任务<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span><input v-model.trim="form.task_name" maxlength="255" required :readonly="readonly" /></label>
+        <label class="task-editor__field"><span class="task-editor__label">工作任务<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span><input v-model.trim="form.task_name" required :readonly="readonly" /></label>
       </div>
       <label class="task-editor__field task-editor__field--wide"><span class="task-editor__label">主要工作内容<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span><textarea v-model.trim="form.work_content" rows="5" required :readonly="readonly" /></label>
       <label class="task-editor__field task-editor__field--wide"><span class="task-editor__label">输出成果<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span><textarea v-model.trim="form.output_description" rows="5" required :readonly="readonly" /></label>

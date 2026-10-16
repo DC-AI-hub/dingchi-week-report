@@ -37,8 +37,10 @@ def require_managers(user_id):
     return managers
 
 
-def ensure_approved(user, role_code, month_key):
+def ensure_approved(user, role_code, month_key, *, missing_message=None):
     plan = dao.find_plan(employee_id=user.id, role_code=role_code, month_key=month_key, lock=True)
+    if missing_message and (plan is None or plan.status == "deleted"):
+        raise ValueError(missing_message)
     if plan is None or plan.status != "approved":
         raise ValueError(f"{month_key} 尚无审批通过的月度计划，请先填写并完成审批后再填写周报。")
     return plan

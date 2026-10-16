@@ -1,5 +1,6 @@
+import type { TaskTextMetadata } from "@/features/weekly-report/task-texts"
 /** 创新业务销售 v1 周报任务；字段顺序与《创新业务销售周报模板》一致。 */
-export interface InnovationSalesTaskDraft {
+export interface InnovationSalesTaskDraft extends TaskTextMetadata {
   client_key: string
   task_code?: string
   updated_at?: string

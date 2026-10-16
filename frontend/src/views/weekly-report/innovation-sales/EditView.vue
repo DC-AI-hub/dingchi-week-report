@@ -42,7 +42,7 @@ onMounted(() => void form.load())
         :period-start="form.report.period_start"
         :period-end="form.report.period_end"
         :month-key="form.monthKey.value"
-        :is-new="form.isNew.value"
+
         :min-period-start="currentPeriodStart"
         @update:period-start="form.setPeriodStart"
       />

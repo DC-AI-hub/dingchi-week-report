@@ -260,3 +260,41 @@
     grid-template-columns: 1fr;
   }
 }
+.report-task-table--delivery .customer-tabs {
+  display: flex;
+  gap: 1.25rem;
+  overflow-x: auto;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+.customer-tabs button {
+  flex-shrink: 0;
+  padding: 0.65rem 0.25rem;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.customer-tabs button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 700;
+}
+.report-task-table--delivery .task-col,
+.report-task-table--delivery .multiline-col {
+  width: 320px;
+  min-width: 320px;
+  max-width: 320px;
+}
+.report-task-table--delivery .report-task-table__grid td { vertical-align: top; }
+.report-task-table--delivery .cell-text {
+  overflow: visible;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+  text-align: left;
+}
+.report-task-table--delivery .task-cell { overflow: visible; }
+.report-task-table--delivery .attachment-link { margin-top: 0.5rem; text-align: left; }

@@ -192,7 +192,7 @@ CREATE TABLE IF NOT EXISTS `monthly_plan_task` (
     `role_code` VARCHAR(64) NOT NULL COMMENT '计划所属角色编码',
     `month_key` VARCHAR(7) NOT NULL COMMENT '所属月份YYYY-MM',
     `scope_name` VARCHAR(255) NULL DEFAULT NULL COMMENT '客户或维度，由模板决定显示名称',
-    `work_task` TEXT NOT NULL COMMENT '工作任务，接口限制最多2000字符',
+    `work_task` LONGTEXT NOT NULL COMMENT '工作任务长文本',
     `work_content` LONGTEXT NOT NULL COMMENT '主要工作内容；可为空文本，接口默认空字符串',
     `sort_order` INT UNSIGNED NOT NULL COMMENT '列表顺序，从0开始',
     `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
@@ -209,7 +209,9 @@ CREATE TABLE IF NOT EXISTS `weekly_report_item` (
     `customer_name_snapshot` VARCHAR(255) NOT NULL COMMENT '客户名称快照',
     `section_code` VARCHAR(64) NOT NULL COMMENT '模板分区编码快照',
     `task_code` VARCHAR(64) NOT NULL COMMENT '模板任务项编码快照',
-    `task_name_snapshot` VARCHAR(255) NOT NULL COMMENT '任务名称快照',
+    `task_text_id` BIGINT NULL COMMENT '工作任务文本逻辑ID',
+    `work_content_text_id` BIGINT NULL COMMENT '工作内容文本逻辑ID',
+    `task_name_snapshot` LONGTEXT NOT NULL COMMENT '任务名称快照',
     `guidance_snapshot` VARCHAR(500) NOT NULL COMMENT '填写指引快照',
     `work_content` LONGTEXT NOT NULL COMMENT '主要工作内容',
     `output_description` LONGTEXT NOT NULL COMMENT '本周产出描述',
@@ -512,3 +514,11 @@ CREATE TABLE IF NOT EXISTS `todo_item` (
  UNIQUE KEY `uq_todo_recipient_key` (`recipient_id`, `role_code`, `dedupe_key`),
  KEY `idx_todo_recipient_status` (`recipient_id`, `role_code`, `status`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通用待办及独立未读提醒';
+
+-- 周报正文共用表；主键由应用雪花算法生成，不使用数据库外键。
+CREATE TABLE IF NOT EXISTS weekly_task_text (
+ id BIGINT NOT NULL PRIMARY KEY, report_id BIGINT NOT NULL,
+ content_type VARCHAR(24) NOT NULL, content LONGTEXT NOT NULL,
+ source VARCHAR(16) NOT NULL DEFAULT 'custom', template_text LONGTEXT NOT NULL,
+ values_json LONGTEXT NOT NULL, created_at DATETIME(6) NOT NULL, updated_at DATETIME(6) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

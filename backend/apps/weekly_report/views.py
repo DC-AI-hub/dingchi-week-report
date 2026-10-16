@@ -19,6 +19,7 @@ from .services.daily_tasks import (
     list_daily_tasks,
     update_daily_task,
 )
+from .services.report_copy import copy_report
 from .services.reports import (
     ReportConflictError,
     ReportError,
@@ -75,6 +76,9 @@ def dashboard_view(request: HttpRequest) -> JsonResponse:
     方法/路径：GET /api/v1/dashboard/summary/；认证：Bearer；幂等：是。
     参数：period_start（可选，YYYY-MM-DD，必须为周一）。
     权限：个人仅自己，经理含下属，总裁/系统管理员含全部；成功响应为 dashboard JSON。
+    my_work_tasks/team_work_tasks、KPI、趋势和人员/团队汇总按工作任务文本引用归组，
+    detail_count/completed_detail_count/detail_completion_rate 表示明细总数、完成数及占比。
+    my_tasks/team_tasks/team_output_items 保留明细实际值；成果数量/分布按明细全量统计。
     失败：401 AUTHENTICATION_FAILED；追踪：响应带 X-Trace-ID；字段只增不改。
     """
     try:
@@ -137,8 +141,8 @@ def report_list_view(request: HttpRequest) -> JsonResponse:
     （周期范围上下限）、group_id；
     team 角色额外支持 employee_scope=self/team。POST 参数为周报 JSON。
     可选 monthly_plan_tasks 随周报保存当月共用工作任务；详见 docs/monthly-plan-tasks-api.md。
-    交付专员和招聘模板允许草稿 items 的 output_description 为空、planned_completion_date 为 null；
-    正式提交前必须补齐；其他模板保留原必填规则。
+    所有模板允许草稿 items 必填文本为空、planned_completion_date 为 null；
+    正式提交时全量检查必填项；共享正文及来源契约见 docs/weekly-task-texts.md。
     GET 成功响应：data.items、page、page_size、total、total_pages；
     POST 成功响应：201 周报详情；权限按角色作用域过滤。
     失败：400/401/403/404/409；响应带 X-Trace-ID。
@@ -214,6 +218,8 @@ def report_detail_view(request: HttpRequest, report_id: str) -> JsonResponse:
 
     方法/路径：GET/PATCH/DELETE /api/v1/weekly-reports/{id}/；认证：Bearer；参数：路径 report_id。
     PATCH/DELETE 仅允许操作本人且未完成的周报；提交请调用独立的 submit 接口。
+    PATCH 调整周期时须选择当前或未来周，校验目标周期不重复、目标月份计划审批通过；
+    日报按星期平移到新周期，校验失败则全部回滚；所有来源周报统一处理。
     成功响应：report/template/monthly_plan/monthly_plan_tasks/items/metrics/attachments/daily_tasks，
     monthly_plan_tasks 随周报保存本人当前角色当月计划；详见 docs/monthly-plan-tasks-api.md，
     或 id/deleted=true；
@@ -249,7 +255,7 @@ def report_submit_view(request: HttpRequest, report_id: str) -> JsonResponse:
     方法/路径：POST /api/v1/weekly-reports/{id}/submit/；认证：Bearer；参数：路径 report_id。
     只有周报本人可以提交处于进行中状态的周报；提交后周报、任务、日报和附件均只读，
     不会再因周期结束自动变更状态。成功响应为 {id, status, submitted}。
-    交付专员和招聘模板提交前校验输出成果和计划完成日期，缺失返回 400 INVALID_REQUEST。
+    所有模板提交前全量校验业务必填字段及模板占位值，缺失返回400 INVALID_REQUEST。
     """
     try:
         user, role_code = require_request_user(request)
@@ -404,6 +410,27 @@ def attachment_delete_view(request: HttpRequest, attachment_id: str) -> JsonResp
                 role_code=role_code,
                 attachment_id=int(attachment_id),
             )
+        )
+    except Exception as exc:
+        return _error(exc)
+
+
+@csrf_exempt
+@require_POST
+def report_copy_view(request: HttpRequest, report_id: str) -> JsonResponse:
+    """复制本人当前职位已完成周报至下一周。
+
+    POST /api/v1/weekly-reports/{report_id}/copy/；Bearer 认证，无请求体。
+    校验目标周期不存在、目标月份计划已审批通过；原内容保留，所有业务记录生成新 ID，
+    内部共享文本关系重新映射；不生成日报，历史进度快照不复制。
+    返回 201 data={id:字符串,status,period_start,period_end:YYYY-MM-DD}。
+    失败 400 校验失败、401 未登录、403 无权限、404 不存在、409 周期冲突；
+    统一 JSON 包络与 X-Trace-ID；新增接口向后兼容，重复调用返回 409。
+    """
+    try:
+        user, role_code = require_request_user(request)
+        return api_success(
+            copy_report(user=user, role_code=role_code, report_id=int(report_id)), status=201,
         )
     except Exception as exc:
         return _error(exc)

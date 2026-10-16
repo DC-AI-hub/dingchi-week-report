@@ -87,7 +87,6 @@ def test_monthly_tasks_are_shared_and_isolated_by_employee_role_month():
         [None],
         [{"work_task": 1}],
         [{"work_task": " "}],
-        [{"work_task": "客" * 2001}],
         [{"work_task": "任务"}] * 201,
     ],
 )
@@ -101,7 +100,7 @@ def test_invalid_tasks_do_not_remove_previous_data(value):
 
 
 def test_maximum_task_length_and_count_are_accepted():
-    save_tasks(tasks=[{"work_task": "客" * 2000}] * 200)
+    save_tasks(tasks=[{"work_task": "客" * 10000}] * 200)
     assert MonthlyPlanTask.objects.count() == 200
 
 

@@ -1,3 +1,5 @@
+import { moveDailyTasks } from "@/features/weekly-report/period"
+import { taskTextMetadata, loadedTaskTextMetadata } from "@/features/weekly-report/task-texts"
 import { useUnsavedChanges } from "@/shared/forms/useUnsavedChanges"
 import { computed, reactive, ref, watch } from "vue"
 
@@ -52,6 +54,7 @@ function fromReportItem(item: ReportItem, attachments: ReportAttachment[] = []) 
     client_key: item.id || item.task_code,
     updated_at: item.updated_at,
     customer_name: item.customer_name_snapshot,
+    ...loadedTaskTextMetadata(item),
     task_name: item.task_name_snapshot,
     work_content: item.work_content,
     output_description: item.output_description,
@@ -117,6 +120,7 @@ export function useDeliveryAssistantReportForm(reportId: () => string) {
   let initialized = false
 
   function setPeriodStart(value: string) {
+    dailyTasks.value = moveDailyTasks(dailyTasks.value, report.period_start, value)
     report.month_key = value.slice(0, 7)
     report.period_start = value
     report.period_end = endOfWeek(value)
@@ -175,6 +179,7 @@ export function useDeliveryAssistantReportForm(reportId: () => string) {
         section_code: "weekly_tasks",
         scope_type: "customer",
         customer_name_snapshot: item.customer_name.trim(),
+        ...taskTextMetadata(item),
         task_name_snapshot: item.task_name.trim(),
         work_content: item.work_content,
         output_description: item.output_description,

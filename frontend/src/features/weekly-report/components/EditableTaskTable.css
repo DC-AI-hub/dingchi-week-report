@@ -24,3 +24,10 @@
 .attachment-button { font-size: 0.8rem; }
 .empty { padding: 28px !important; text-align: center !important; color: var(--muted); }
 .blank-row td { background: var(--surface-soft); }
+
+.shared-cell { position: relative; padding-bottom: 36px !important; }
+.cell-insert { position: absolute; right: 6px; bottom: 6px; display: inline-grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-soft); color: var(--accent-dark); opacity: 0; pointer-events: none; cursor: pointer; }
+.shared-cell:hover .cell-insert, .shared-cell:focus-within .cell-insert { opacity: 1; pointer-events: auto; }
+@media (hover: none) { .cell-insert { opacity: 1; pointer-events: auto; } }
+
+.delivery-mode .actions-col { width: 110px; }

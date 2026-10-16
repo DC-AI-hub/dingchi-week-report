@@ -1,4 +1,5 @@
 import { defineAsyncComponent, type Component } from "vue"
+import { isSupportedTemplate, type SupportedTemplateCode } from "./template-support"
 
 /**
  * 周报模板页面注册表。
@@ -6,7 +7,7 @@ import { defineAsyncComponent, type Component } from "vue"
  * key 必须使用完整 template_code（包含版本号）。角色只负责绑定模板，
  * 因此这里不能按 role_code 分流；新增模板版本时新增独立目录和注册项。
  */
-const templateEditors: Record<string, Component> = {
+const templateEditors: Record<SupportedTemplateCode, Component> = {
   delivery_specialist_v1: defineAsyncComponent(
     () => import("@/views/weekly-report/templates/delivery-specialist/v1/EditView.vue"),
   ),
@@ -29,5 +30,5 @@ const templateEditors: Record<string, Component> = {
 
 export function resolveTemplateEditor(templateCode: string): Component | null {
   // 模板编码必须精确匹配已注册的版本页面；未知编码不能回退到默认页面。
-  return templateEditors[templateCode] || null
+  return isSupportedTemplate(templateCode) ? templateEditors[templateCode] : null
 }

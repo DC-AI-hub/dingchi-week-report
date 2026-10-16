@@ -1,5 +1,6 @@
+import type { TaskTextMetadata } from "@/features/weekly-report/task-texts"
 /** 招聘周报任务；招聘专员与招聘经理共用 recruitment_v1 模板。 */
-export interface RecruitmentTaskDraft {
+export interface RecruitmentTaskDraft extends TaskTextMetadata {
   client_key: string
   /** 已保存任务沿用后端 task_code；新增任务保存前为空。 */
   task_code?: string

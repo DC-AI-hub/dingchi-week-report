@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .models import MonthlyPlanTask
+from .models import MonthlyPlan, MonthlyPlanChange, MonthlyPlanRevision, MonthlyPlanTask
 
 
 def list_tasks(*, employee_id: int, role_code: str, month_key: str) -> list[MonthlyPlanTask]:
@@ -44,3 +44,26 @@ def replace_tasks(
         task.work_content = fields.get("work_content", "")
         task.sort_order = index
         task.save()
+
+
+def latest_task_snapshot(*, employee_id, role_code, month_key):
+    """复用现有版本/变更快照保存模板元数据，不扩展任务表结构。"""
+    plan = MonthlyPlan.objects.filter(
+        employee_id=employee_id, role_code=role_code, month_key=month_key
+    ).first()
+    if not plan:
+        return ""
+    revision = (
+        MonthlyPlanRevision.objects.filter(monthly_plan_id=plan.id)
+        .order_by("-revision", "-id")
+        .first()
+    )
+    change = (
+        MonthlyPlanChange.objects.filter(monthly_plan_id=plan.id, status="approved")
+        .exclude(published_snapshot_json="")
+        .order_by("-effective_revision", "-id")
+        .first()
+    )
+    if change and (not revision or change.effective_revision >= revision.revision):
+        return change.published_snapshot_json
+    return revision.snapshot_json if revision else ""
