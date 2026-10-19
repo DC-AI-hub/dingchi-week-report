@@ -22,6 +22,7 @@ const props = withDefaults(defineProps<{
   deliveryMode?: boolean
   recruitmentMode?: boolean
   salesMode?: boolean
+  scopeLabel?: string
   scopeField?: "customer_name" | "dimension"
   templates?: readonly TaskTemplateOption[]
 }>(), { scopeField: "customer_name", templates: () => deliveryTaskTemplates })
@@ -33,10 +34,11 @@ const emit = defineEmits<{
   remove: [index: number]
   view: [task: T]
 }>()
+const displayScopeLabel = computed(() => props.scopeLabel || (props.scopeField === "dimension" ? "维度" : "客户"))
 const textFields: EditableTaskColumn[] = ["task_name", "work_content", "output_description", "progress_text", "delay_reason", "document_links"]
 const editing = ref<{ key: string; field: EditableTaskColumn; value: string } | null>(null)
 const evidence = ref<{ key: string; links: string; attachments: DeliveryTaskAttachment[] } | null>(null)
-const editingTitle = computed(() => editing.value ? (editing.value.field === "customer_name" ? "客户" : editing.value.field === "dimension" ? "维度" : editing.value.field === "task_name" ? "工作任务" : props.fields.find(field => field.code === editing.value?.field)?.label || "内容") : "")
+const editingTitle = computed(() => editing.value ? (editing.value.field === "customer_name" ? displayScopeLabel.value : editing.value.field === "dimension" ? "维度" : editing.value.field === "task_name" ? "工作任务" : props.fields.find(field => field.code === editing.value?.field)?.label || "内容") : "")
 const templateField = computed(() => {
   const field = editing.value?.field
   return field === "customer_name" || field === "dimension" || field === "task_name" || field === "work_content" ? field : undefined
@@ -95,11 +97,11 @@ function spanRows(index: number, field: "customer_name" | "dimension" | "task_na
 <template>
   <div class="editable-table-wrap">
     <table class="editable-task-table" :class="{ 'delivery-mode': deliveryMode || recruitmentMode || salesMode }">
-      <thead><tr><th class="serial-col">序号</th><th v-if="!deliveryMode" class="customer-col">{{ scopeField === "dimension" ? "维度" : "客户" }}</th><th class="task-col">工作任务</th><th v-for="field in fields" :key="field.code" class="value-col" :class="{ 'multiline-col': textFields.includes(field.code) }">{{ field.label }}</th><th class="date-col">更新时间</th><th class="actions-col">操作</th></tr></thead>
+      <thead><tr><th class="serial-col">序号</th><th v-if="!deliveryMode" class="customer-col">{{ displayScopeLabel }}</th><th class="task-col">工作任务</th><th v-for="field in fields" :key="field.code" class="value-col" :class="{ 'multiline-col': textFields.includes(field.code) }">{{ field.label }}</th><th class="date-col">更新时间</th><th class="actions-col">操作</th></tr></thead>
       <tbody>
         <tr v-for="(entry, index) in entries" :key="entry.task.client_key" :class="{ 'blank-row': !entry.task.task_name }">
           <td class="serial-col">{{ offset + index + 1 }}</td>
-          <td v-if="!deliveryMode && (!(recruitmentMode || salesMode) || spanRows(index, salesMode ? 'customer_name' : 'dimension'))" class="customer-col" :class="{ 'shared-cell': recruitmentMode || salesMode }" :rowspan="recruitmentMode || salesMode ? spanRows(index, salesMode ? 'customer_name' : 'dimension') : 1"><TemplateCustomerCell v-if="salesMode && entry.task.customer_source === 'template'" :task="entry.task" @patch="emit('patch', entry.task.client_key, $event)" /><button v-else-if="salesMode" class="text-cell" type="button" :aria-label="`编辑第 ${offset + index + 1} 行客户`" @click="editText(entry.task, 'customer_name')">{{ entry.task.customer_name || '点击填写客户' }}</button><TemplateDimensionCell v-else-if="recruitmentMode && entry.task.dimension_source === 'template'" :task="entry.task" @patch="emit('patch', entry.task.client_key, $event)" /><button v-else-if="scopeField === 'dimension'" class="text-cell" type="button" :aria-label="`编辑第 ${offset + index + 1} 行维度`" @click="editText(entry.task, 'dimension')">{{ entry.task.dimension || '点击填写维度' }}</button><TaskInlineField v-else :task="entry.task" field="customer_name" label="客户" :users="users" @patch="emit('patch', entry.task.client_key, $event)" /><button v-if="recruitmentMode || salesMode" class="cell-insert" type="button" :aria-label="salesMode ? '新增共用客户的工作任务' : '新增共用维度的工作任务'" :title="salesMode ? '新增共用客户的工作任务' : '新增共用维度的工作任务'" @click.stop="emit('insert', entry.index, salesMode ? 'customer_name' : 'dimension')"><Plus :size="16" /></button></td>
+          <td v-if="!deliveryMode && (!(recruitmentMode || salesMode) || spanRows(index, salesMode ? 'customer_name' : 'dimension'))" class="customer-col" :class="{ 'shared-cell': recruitmentMode || salesMode }" :rowspan="recruitmentMode || salesMode ? spanRows(index, salesMode ? 'customer_name' : 'dimension') : 1"><TemplateCustomerCell v-if="salesMode && entry.task.customer_source === 'template'" :task="entry.task" :label="displayScopeLabel" @patch="emit('patch', entry.task.client_key, $event)" /><button v-else-if="salesMode" class="text-cell" type="button" :aria-label="`编辑第 ${offset + index + 1} 行${displayScopeLabel}`" @click="editText(entry.task, 'customer_name')">{{ entry.task.customer_name || `点击填写${displayScopeLabel}` }}</button><TemplateDimensionCell v-else-if="recruitmentMode && entry.task.dimension_source === 'template'" :task="entry.task" @patch="emit('patch', entry.task.client_key, $event)" /><button v-else-if="scopeField === 'dimension'" class="text-cell" type="button" :aria-label="`编辑第 ${offset + index + 1} 行维度`" @click="editText(entry.task, 'dimension')">{{ entry.task.dimension || '点击填写维度' }}</button><TaskInlineField v-else :task="entry.task" field="customer_name" label="客户" :users="users" @patch="emit('patch', entry.task.client_key, $event)" /><button v-if="recruitmentMode || salesMode" class="cell-insert" type="button" :aria-label="`新增共用${displayScopeLabel}的工作任务`" :title="`新增共用${displayScopeLabel}的工作任务`" @click.stop="emit('insert', entry.index, salesMode ? 'customer_name' : 'dimension')"><Plus :size="16" /></button></td>
           <td v-if="spanRows(index, 'task_name')" class="task-col" :class="{ 'shared-cell': deliveryMode || recruitmentMode || salesMode }" :rowspan="spanRows(index, 'task_name')">
             <TemplateTaskCell v-if="(deliveryMode || recruitmentMode || salesMode) && entry.task.task_source === 'template'" :task="entry.task" @patch="emit('patch', entry.task.client_key, $event)" />
             <button v-else class="text-cell" type="button" :aria-label="`编辑第 ${offset + index + 1} 行工作任务`" @click="editText(entry.task, 'task_name')">{{ entry.task.task_name || '点击填写工作任务' }}</button>
@@ -123,7 +125,7 @@ function spanRows(index: number, field: "customer_name" | "dimension" | "task_na
       </tbody>
     </table>
   </div>
-  <TaskTextFieldDialog :open="Boolean(editing)" :title="editingTitle" :value="editing?.value || ''" :template-field="templateField" :templates="templates" :max-length="editing?.field === 'dimension' ? 64 : undefined" @close="editing = null" @save="saveText" />
+  <TaskTextFieldDialog :open="Boolean(editing)" :title="editingTitle" :value="editing?.value || ''" :template-field="templateField" :templates="templates" :customer-label="displayScopeLabel" :max-length="editing?.field === 'dimension' ? 64 : undefined" @close="editing = null" @save="saveText" />
   <TaskEvidenceDialog :open="Boolean(evidence)" :links="evidence?.links || ''" :attachments="evidence?.attachments || []" @close="evidence = null" @save="saveEvidence" />
 </template>
 <style scoped src="./EditableTaskTable.css"></style>

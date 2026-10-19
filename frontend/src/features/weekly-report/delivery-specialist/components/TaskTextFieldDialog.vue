@@ -4,7 +4,7 @@ import BaseDialog from "@/components/overlay/BaseDialog.vue"
 import { deliveryTaskTemplates } from "@/features/weekly-report/delivery-specialist/task-templates"
 import TaskTemplatePopover from "./TaskTemplatePopover.vue"
 import type { TaskTemplateOption } from "@/features/weekly-report/task-editing"
-const props = withDefaults(defineProps<{ open: boolean; title: string; value: string; maxLength?: number; templateField?: "task_name" | "work_content" | "dimension" | "customer_name"; templates?: readonly TaskTemplateOption[] }>(), { templates: () => deliveryTaskTemplates })
+const props = withDefaults(defineProps<{ open: boolean; title: string; value: string; customerLabel?: string; maxLength?: number; templateField?: "task_name" | "work_content" | "dimension" | "customer_name"; templates?: readonly TaskTemplateOption[] }>(), { templates: () => deliveryTaskTemplates })
 const emit = defineEmits<{ close: []; save: [value: string, templateIndex?: number] }>()
 const draft = ref("")
 const selectedTemplate = ref("")
@@ -42,6 +42,6 @@ function save() {
     </form>
     <template #actions><button class="ghost-button" type="button" @click="emit('close')">取消</button><button class="primary-button" type="submit" form="delivery-task-text-form">确定</button></template>
   </BaseDialog>
-  <TaskTemplatePopover :open="open && pickerOpen" :anchor="anchor" :trigger="pickerTrigger" :selected="selectedTemplate" :templates="templates" @close="pickerOpen = false" @select="fillTemplate" />
+  <TaskTemplatePopover :open="open && pickerOpen" :anchor="anchor" :trigger="pickerTrigger" :selected="selectedTemplate" :templates="templates" :customer-label="customerLabel" @close="pickerOpen = false" @select="fillTemplate" />
 </template>
 <style scoped src="./TaskTextFieldDialog.css"></style>

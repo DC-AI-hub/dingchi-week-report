@@ -4,7 +4,7 @@ import { deliveryAssistantWeeklyTaskSampleFields } from "../delivery-assistant/s
 import { deliveryWeeklyTaskSampleFields } from "../delivery-specialist/samples"
 import { functionalWeeklyTaskSampleFields } from "../functional-group/samples"
 import { innovationSalesWeeklyTaskSampleFields } from "../innovation-sales/samples"
-import { itoSalesWeeklyTaskSampleFields } from "../ito-sales/samples"
+import { itoSalesMonthlyTaskSampleFields } from "../ito-sales/samples"
 import { recruitmentMonthlyTaskSampleFields } from "../recruitment/samples"
 
 interface SampleField {
@@ -13,12 +13,12 @@ interface SampleField {
   rows?: ReadonlyArray<{ label: string; value: string }>
 }
 
-// 当前填写样例仍由前端模板常量维护；复用周任务原文，仅展示月度计划需要的字段。
+// 当前填写样例仍由前端模板常量维护；按各模板周期选用原文，仅展示月度计划需要的字段。
 const samples: Record<string, readonly SampleField[]> = {
   delivery_specialist_v1: deliveryWeeklyTaskSampleFields,
   delivery_assistant_v1: deliveryAssistantWeeklyTaskSampleFields,
   recruitment_v1: recruitmentMonthlyTaskSampleFields,
-  ito_sales_v1: itoSalesWeeklyTaskSampleFields,
+  ito_sales_v1: itoSalesMonthlyTaskSampleFields,
   innovation_sales_v1: innovationSalesWeeklyTaskSampleFields,
   functional_group_v1: functionalWeeklyTaskSampleFields,
 }

@@ -13,6 +13,7 @@ import { useSalesTaskCollection, type SalesCollectionProps } from "@/features/we
 const props = defineProps<SalesCollectionProps>()
 const emit = defineEmits<{ "update:tasks": [tasks: ItoSalesTaskDraft[]] }>()
 const { templates, quickFillOpen, columnsOpen, users, customerFilter, plannedDateFilter, taskPage, pageSize, selectedColumns, customerOptions, filteredTaskEntries, totalPages, pagedTaskEntries, availableFields, selectedFields, addTemplates, insertTask, patchTask, removeTask } = useSalesTaskCollection(props, emit)
+const scopeLabel = computed(() => props.templateCode === "ito_sales_v1" ? "维度" : "客户")
 const sampleContent = computed(() => props.templateCode === "innovation_sales_v1" ? innovationSalesWeeklyTaskSample : itoSalesWeeklyTaskSample)
 const sampleFields = computed(() => props.templateCode === "innovation_sales_v1" ? innovationSalesWeeklyTaskSampleFields : itoSalesWeeklyTaskSampleFields)
 </script>
@@ -24,13 +25,13 @@ const sampleFields = computed(() => props.templateCode === "innovation_sales_v1"
       <button class="primary-button" type="button" @click="quickFillOpen = true">新增任务</button>
     </template>
     <div class="task-section__filters">
-      <select v-model="customerFilter" aria-label="按客户筛选"><option value="">全部客户</option><option v-for="dimension in customerOptions" :key="dimension" :value="dimension">{{ dimension }}</option></select>
+      <select v-model="customerFilter" :aria-label="`按${scopeLabel}筛选`"><option value="">全部{{ scopeLabel }}</option><option v-for="dimension in customerOptions" :key="dimension" :value="dimension">{{ dimension }}</option></select>
       <label><span>计划完成时间</span><input v-model="plannedDateFilter" type="date" aria-label="按计划完成时间筛选" /></label>
     </div>
-    <EditableTaskTable sales-mode scope-field="customer_name" :total-tasks="tasks.length" @add-blank="insertTask(-1)" :entries="pagedTaskEntries" :fields="selectedFields" :users="users" :offset="(taskPage - 1) * pageSize" :templates="templates" @patch="patchTask" @remove="removeTask" @insert="insertTask" />
+    <EditableTaskTable sales-mode scope-field="customer_name" :scope-label="scopeLabel" :total-tasks="tasks.length" @add-blank="insertTask(-1)" :entries="pagedTaskEntries" :fields="selectedFields" :users="users" :offset="(taskPage - 1) * pageSize" :templates="templates" @patch="patchTask" @remove="removeTask" @insert="insertTask" />
     <PaginationBar :page="taskPage" :page-size="pageSize" :total="filteredTaskEntries.length" :total-pages="totalPages" @change="taskPage = $event" />
   </FullscreenPanel>
-  <TaskQuickFillDialog :open="quickFillOpen" sales :templates="templates" @close="quickFillOpen = false" @confirm="addTemplates" />
+  <TaskQuickFillDialog :open="quickFillOpen" :customer-label="scopeLabel" sales :templates="templates" @close="quickFillOpen = false" @confirm="addTemplates" />
   <BaseDialog :open="columnsOpen" title="选择展示字段" width="640px" @close="columnsOpen = false">
     <div class="column-options"><label v-for="field in availableFields" :key="field.code"><input v-model="selectedColumns" :value="field.code" type="checkbox" />{{ field.label }}</label></div>
     <template #actions><button class="primary-button" type="button" @click="columnsOpen = false">确定</button></template>

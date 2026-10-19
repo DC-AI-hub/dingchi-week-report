@@ -159,7 +159,7 @@ async function removeAttachment(index: number) {
     <form ref="formElement" novalidate @input.capture="clearFieldValidity" @change.capture="clearFieldValidity" class="task-editor" @submit.prevent="submit('close')">
       <div class="task-editor__row">
         <div class="task-editor__field task-editor__customer-field">
-          <label for="ito-task-customer"><span class="task-editor__label">客户<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span></label>
+          <label for="ito-task-customer"><span class="task-editor__label">维度<span v-if="!readonly" class="required-mark" aria-hidden="true">*</span></span></label>
           <div class="customer-input-wrap">
             <input id="ito-task-customer" v-model.trim="form.customer_name" maxlength="255" required autocomplete="off" aria-autocomplete="list" aria-controls="ito-customer-history" :readonly="readonly" :aria-expanded="customerHistoryOpen" @focus="!readonly && openCustomerHistory()" @click="!readonly && openCustomerHistory()" @blur="scheduleCustomerHistoryClose" />
             <div v-if="customerHistoryOpen && filteredCustomerHistory.length" id="ito-customer-history" class="customer-history" role="listbox">

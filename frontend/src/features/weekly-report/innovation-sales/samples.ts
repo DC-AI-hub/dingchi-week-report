@@ -9,7 +9,7 @@ const monthlyGoal = `1.1 目标客户签约？？家
 1）新签合同需求数？个
 2）项目交付里程碑达成率？%
 1.3 回款额？？万元
-3、客户关系：新增教练？名、新增内线？名`
+3、客户关系：新增教练 ？名、新增内线？名`
 
 export const innovationSalesMonthlyPlanSample = monthlyGoal
 export const innovationSalesMonthlyPlanSampleFields = [

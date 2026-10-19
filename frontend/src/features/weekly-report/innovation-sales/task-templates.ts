@@ -1,7 +1,7 @@
-/** 销售月度计划、周任务选择和填写样例共用；客户为文本，不读取系统配置。 */
+/** 来源：docs/销售类本月（周）工作计划模板-2025年V1.xlsx「创新业务」。客户为文本，不读取系统配置。 */
 export const innovationSalesTaskTemplates = [
   {
-    customer: "市场开拓",
+    customer: `市场开拓`,
     task: `目标客户签约？家
 1）新增机会点？家，新增机会额？万元
 2）中标率？%
@@ -12,7 +12,7 @@ export const innovationSalesTaskTemplates = [
 2）存量项目采购进度推进
 3）存量项目成本控制？%
 
-2.2 新项目机会管理
+2.2  新项目机会管理
 1）全量市场机会扫描
 2）构建客户朋友圈
 3）新客户历年招投标信息分析
@@ -25,7 +25,7 @@ export const innovationSalesTaskTemplates = [
 2）协同商务专员开展投标文件撰写`,
   },
   {
-    customer: "客户关系管理（其中新客户可根据目标客户数量进行增减）",
+    customer: `客户关系管理（其中新客户可根据目标客户数量进行增减）`,
     task: `新客户A关系管理
 1）客户教练？名，内线？名
 2）客户关系建立？%`,
@@ -37,8 +37,8 @@ export const innovationSalesTaskTemplates = [
 4）完善客户画像`,
   },
   {
-    customer: "应收款管理",
-    task: "应收款回款率？%",
+    customer: `应收款管理`,
+    task: `应收款回款率？%`,
     work: `4.1应收款管理
 1）应收款回款率？%
 2）制定并实施超期应收款策略`,

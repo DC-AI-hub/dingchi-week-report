@@ -28,6 +28,19 @@ export function templateTask(template: TaskTemplateOption, scope: "dimension" | 
     task_values: Array(template.task.split(/[?？]/).length - 1).fill(""), work_content: template.work,
   }
 }
+/** 模板工作内容按空行生成子行；普通换行保留，上级字段共用分组。 */
+export function expandTemplateTasks<T extends EditableTask>(createTask: () => T): T[] {
+  const first = createTask()
+  const blocks = first.work_content.replace(/\r\n?/g, "\n").split(/\n[^\S\n]*\n(?:[^\S\n]*\n)*/)
+    .map(block => block.trim()).filter(Boolean)
+  if (blocks.length <= 1) return [first]
+  return blocks.map((work_content, index) => ({
+    ...(index === 0 ? first : createTask()), work_content,
+    customer_group_key: groupKey(first, "customer_name"),
+    dimension_group_key: groupKey(first, "dimension"),
+    task_group_key: groupKey(first, "task_name"),
+  }))
+}
 export function patchSharedTasks<T extends EditableTask>(tasks: T[], key: string, value: Partial<EditableTask>) {
   const original = tasks.find(task => task.client_key === key)
   if (!original) return tasks

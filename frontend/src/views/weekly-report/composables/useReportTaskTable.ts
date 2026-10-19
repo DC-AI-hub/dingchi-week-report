@@ -47,7 +47,7 @@ export function useReportTaskTable(props: ReportTaskTableProps) {
   const page = ref(1)
   const pageSize = 10
 
-  const availableFields = computed(() => normalizeReportTaskFields(props.fields))
+  const availableFields = computed(() => normalizeReportTaskFields(props.fields).map(field => props.templateCode === "ito_sales_v1" && field.field_code === "customer_name" ? { ...field, label: "维度" } : field))
   const columnStorageKey = computed(
     () => `weekly-report:detail-visible-columns:${sharedMode.value ? "shared-v3:" : ""}${props.preferenceKey || "default"}`,
   )
@@ -55,7 +55,8 @@ export function useReportTaskTable(props: ReportTaskTableProps) {
     if (deliveryMode.value || functionalMode.value) return null
     const source = props.fields || []
     const dimension = source.find((field) => field.field_code === "dimension")
-    const customer = source.find((field) => field.field_code === "customer_name")
+    const customerField = source.find((field) => field.field_code === "customer_name")
+    const customer = customerField && props.templateCode === "ito_sales_v1" ? { ...customerField, label: "维度" } : customerField
 
     // 模板字段配置是列表布局的唯一依据。职能组模板不配置客户/维度时，
     // 不再渲染一个空的主字段列；否则表格会留下与客户列同宽的空白区域。
@@ -75,7 +76,7 @@ export function useReportTaskTable(props: ReportTaskTableProps) {
       return { field_code: "dimension", label: "维度", sort_order: 1, default_visible: true }
     }
     if (props.items.some((item) => Boolean(item.customer_name_snapshot))) {
-      return { field_code: "customer_name", label: "客户", sort_order: 1, default_visible: true }
+      return { field_code: "customer_name", label: props.templateCode === "ito_sales_v1" ? "维度" : "客户", sort_order: 1, default_visible: true }
     }
     return null
   })

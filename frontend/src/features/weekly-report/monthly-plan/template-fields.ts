@@ -1,6 +1,6 @@
 export function monthlyPlanScopeLabel(templateCode: string): string {
   if (templateCode === "functional_group_v1") return ""
-  return templateCode === "recruitment_v1" ? "维度" : "客户"
+  return ["recruitment_v1", "ito_sales_v1"].includes(templateCode) ? "维度" : "客户"
 }
 
 export function usesConfiguredCustomers(templateCode: string): boolean {

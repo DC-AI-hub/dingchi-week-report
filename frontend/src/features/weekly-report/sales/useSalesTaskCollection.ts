@@ -2,6 +2,7 @@ import { computed, nextTick, onMounted, ref, watch } from "vue"
 import { listUserOptions } from "@/features/directory/api"
 import type { DirectoryUserOption } from "@/features/directory/types"
 import type { EditableTask } from "../task-editing"
+import { expandTemplateTasks } from "../task-groups"
 import { itoSalesTaskTemplates } from "../ito-sales/task-templates"
 import { innovationSalesTaskTemplates } from "../innovation-sales/task-templates"
 import { emptyItoSalesTask, itoSalesTaskFieldDefinitions, type ItoSalesTaskDraft, type ItoSalesTaskFieldDefinition, type ItoSalesTaskColumn } from "../ito-sales/types"
@@ -52,7 +53,7 @@ export function useSalesTaskCollection(props: SalesCollectionProps, emit: (event
     taskPage.value = Math.floor(Math.max(0, filteredTaskEntries.value.findIndex(entry => entry.task.client_key === key)) / pageSize) + 1
   }
   function addTemplates(_: string, indexes: number[]) {
-    const tasks = [...indexes].sort((a, b) => a - b).map(index => ({ ...newTask(), ...templateTask(templates.value[index]!, "customer_name") }))
+    const tasks = [...indexes].sort((a, b) => a - b).flatMap(index => expandTemplateTasks(() => ({ ...newTask(), ...templateTask(templates.value[index]!, "customer_name") })))
     for (const task of tasks) insertedKeys.value.add(task.client_key)
     emit("update:tasks", [...props.tasks, ...tasks])
     quickFillOpen.value = false

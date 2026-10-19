@@ -1,14 +1,13 @@
-import { itoSalesTaskTemplates as taskExamples } from "./task-templates"
+import { itoSalesMonthlyTaskTemplates, itoSalesTaskTemplates as taskExamples } from "./task-templates"
 
 /** ITO 销售 Excel 中“月度目标”行的完整填写样例。 */
-const monthlyGoal = `1.1 目标客户签约？？家
-1）新增机会？家
-2）中标率？率
-3）合同签订数？家
-1.2 新签合同销售收入？？万元
-1）新签合同需求数？个
-2）有效入职人数？个
-3、客户关系：新增教练？名、新增内线？名`
+const monthlyGoal = `1、本月签约目标：万元
+2、目标客户签约数
+1）新增商机数：
+2）新合同签订数：
+3）老合同续签数：
+3、本月回款目标：万元
+4、新客户开发：`
 
 export const itoSalesMonthlyPlanSample = monthlyGoal
 export const itoSalesMonthlyPlanSampleFields = [
@@ -17,20 +16,33 @@ export const itoSalesMonthlyPlanSampleFields = [
 
 
 
+/** 月度与周度指引分开维护，分别对应 Excel 第 3–7 行和第 10–14 行。 */
+export const itoSalesMonthlyTaskSampleFields = itoSalesMonthlyTaskTemplates.map((task, index) => ({
+  label: `任务 ${index + 1}`,
+  rows: [
+    { label: "维度", value: task.customer },
+    { label: "工作任务", value: task.task || "（暂无填写）" },
+    { label: "主要工作指引", value: task.work || "（暂无填写）" },
+    ...(task.work === "拜访对象/层级" ? [{ label: "输出成果", value: "拜访目的与预期成果" }] : []),
+  ],
+}))
+
 export const itoSalesWeeklyTaskSampleFields = taskExamples.map((task, index) => ({
   label: `任务 ${index + 1}`,
   rows: [
-    { label: "客户", value: task.customer },
+    { label: "维度", value: task.customer },
     { label: "工作任务", value: task.task },
     { label: "主要工作指引", value: task.work || "（暂无填写）" },
+    ...(task.work === "拜访对象/层级" ? [{ label: "输出成果", value: "拜访目的与预期成果" }] : []),
   ],
 }))
 
 export const itoSalesWeeklyTaskSample = taskExamples
   .map((task, index) => [
     `任务 ${index + 1}`,
-    `客户：${task.customer}`,
-    `工作任务：${task.task}`,
+    `维度：${task.customer}`,
+    `工作任务：${task.task || "（暂无填写）"}`,
     `主要工作指引：${task.work || "（暂无填写）"}`,
+    ...(task.work === "拜访对象/层级" ? ["输出成果：拜访目的与预期成果"] : []),
   ].join("\n"))
   .join("\n\n")

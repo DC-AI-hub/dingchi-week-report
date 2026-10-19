@@ -7,7 +7,7 @@ import { deliveryTaskTemplates } from "@/features/weekly-report/delivery-special
 
 import type { TaskTemplateOption } from "@/features/weekly-report/task-editing"
 
-const props = withDefaults(defineProps<{ open: boolean; monthly?: boolean; recruitment?: boolean; sales?: boolean; scopeLess?: boolean; templates?: readonly TaskTemplateOption[] }>(), { templates: () => deliveryTaskTemplates })
+const props = withDefaults(defineProps<{ open: boolean; monthly?: boolean; recruitment?: boolean; sales?: boolean; scopeLess?: boolean; customerLabel?: string; templates?: readonly TaskTemplateOption[] }>(), { templates: () => deliveryTaskTemplates, customerLabel: "客户" })
 const emit = defineEmits<{ close: []; confirm: [customer: string, indexes: number[]] }>()
 const customer = ref("")
 const selected = ref<number[]>([])
@@ -41,7 +41,7 @@ function confirm() {
         <input ref="taskInputs" v-model="selected" type="checkbox" :value="index" :aria-label="`选择任务 ${index + 1}`" @change="clearTaskValidity" />
         <strong v-if="recruitment" class="dimension-title">{{ item.dimension }}</strong>
         <span class="template-content">
-          <span v-if="sales" class="template-section"><span class="section-label">客户</span><strong class="section-text">{{ item.customer }}</strong></span>
+          <span v-if="sales" class="template-section"><span class="section-label">{{ customerLabel }}</span><strong class="section-text">{{ item.customer }}</strong></span>
           <span v-if="item.dimension && !recruitment" class="template-section"><span class="section-label">维度</span><strong class="section-text">{{ item.dimension }}</strong></span>
           <span class="template-section task-section"><span class="section-label">工作任务</span><strong class="section-text">{{ item.task }}</strong></span>
           <span class="template-section work-section"><span class="section-label">主要工作内容<span v-if="monthly" class="reference-label">仅供参考</span></span><span class="section-text">{{ item.work }}</span></span>

@@ -12,6 +12,7 @@ import {
 } from "@/features/weekly-report/delivery-specialist/types"
 import type { TaskTemplateOption } from "@/features/weekly-report/task-editing"
 import { deliveryTaskTemplates } from "@/features/weekly-report/delivery-specialist/task-templates"
+import { expandTemplateTasks } from "../task-groups"
 
 export interface DeliveryTaskCollectionProps {
 
@@ -177,7 +178,7 @@ export function useTaskCollection(props: DeliveryTaskCollectionProps, emit: (eve
   function addTask() { quickFillOpen.value = true }
 
   function addTemplates(customer: string, indexes: number[]) {
-    const tasks = indexes.map(index => ({ ...createTask(props.ownerName), customer_name: customer, task_source: "template" as const, task_template: templates.value[index]!.task, task_values: Array(templates.value[index]!.task.split(/[?？]/).length - 1).fill(""), task_name: templates.value[index]!.task, work_content: templates.value[index]!.work, owner_id: props.defaultOwnerId || null, updated_at: currentLocalTimestamp() }))
+    const tasks = indexes.flatMap(index => expandTemplateTasks(() => ({ ...createTask(props.ownerName), customer_name: customer, task_source: "template" as const, task_template: templates.value[index]!.task, task_values: Array(templates.value[index]!.task.split(/[?？]/).length - 1).fill(""), task_name: templates.value[index]!.task, work_content: templates.value[index]!.work, owner_id: props.defaultOwnerId || null, updated_at: currentLocalTimestamp() })))
     customerFilter.value = customer
     plannedDateFilter.value = ""
     if (availableFields.value.some(field => field.code === "work_content") && !selectedColumns.value.includes("work_content")) selectedColumns.value.push("work_content")

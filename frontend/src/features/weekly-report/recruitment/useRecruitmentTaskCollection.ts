@@ -2,6 +2,7 @@ import { computed, nextTick, onMounted, ref, watch } from "vue"
 import { listUserOptions } from "@/features/directory/api"
 import type { DirectoryUserOption } from "@/features/directory/types"
 import type { EditableTask } from "../task-editing"
+import { expandTemplateTasks } from "../task-groups"
 import { recruitmentTaskTemplates } from "./task-templates"
 import { emptyRecruitmentTask, recruitmentTaskFieldDefinitions, type RecruitmentTaskDraft, type RecruitmentTaskFieldDefinition, type RecruitmentTaskColumn } from "./types"
 import { insertChild, patchSharedTasks, templateTask, type RecruitmentSharedField } from "./task-groups"
@@ -49,7 +50,7 @@ export function useRecruitmentTaskCollection(props: RecruitmentCollectionProps, 
     taskPage.value = Math.floor(Math.max(0, filteredTaskEntries.value.findIndex(entry => entry.task.client_key === key)) / pageSize) + 1
   }
   function addTemplates(_: string, indexes: number[]) {
-    const tasks = [...indexes].sort((a, b) => a - b).map(index => ({ ...newTask(), ...templateTask(recruitmentTaskTemplates[index]!) }))
+    const tasks = [...indexes].sort((a, b) => a - b).flatMap(index => expandTemplateTasks(() => ({ ...newTask(), ...templateTask(recruitmentTaskTemplates[index]!) })))
     for (const task of tasks) insertedKeys.value.add(task.client_key)
     emit("update:tasks", [...props.tasks, ...tasks])
     quickFillOpen.value = false

@@ -63,7 +63,7 @@ export interface ItoSalesTaskFieldDefinition {
 
 /** 列定义来自 Excel；列表展示顺序还可由 system_dictionary 覆盖。 */
 export const itoSalesTaskFieldDefinitions: ItoSalesTaskFieldDefinition[] = [
-  { code: "customer_name", label: "客户", sort_order: 1, default_visible: true },
+  { code: "customer_name", label: "维度", sort_order: 1, default_visible: true },
   { code: "task_name", label: "工作任务", sort_order: 2, default_visible: true },
   { code: "work_content", label: "主要工作指引", sort_order: 3, default_visible: true },
   { code: "output_description", label: "输出成果", sort_order: 4, default_visible: true },
