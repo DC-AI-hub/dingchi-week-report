@@ -86,7 +86,11 @@ def test_recruitment_quick_fill_preserves_dimension_order_and_owner(monkeypatch)
     ]
     reports._save_items(report, payload, [], 42)
     rows = list(WeeklyReportItem.objects.filter(report_id=report.id).order_by("sort_order"))
-    assert [row.section_code for row in rows] == ["自定义维度", "需求管理"]
+    assert [row["section_code"] for row in reports.dao.get_report_items(report.id)] == [
+        "自定义维度",
+        "需求管理",
+    ]
+    assert all(row.dimension_text_id is not None for row in rows)
     assert [row.sort_order for row in rows] == [0, 1]
     assert all(row.owner_id == 42 and row.task_name_snapshot == "" for row in rows)
     assert all("\n" in row["task_name_snapshot"] for row in reports.dao.get_report_items(report.id))

@@ -1050,8 +1050,10 @@ def _save_items(
             scope_type=str(raw.get("scope_type") or config.get("scope_type") or "overall"),
             customer_id=_optional_int(raw.get("customer_id")),
             customer_name_snapshot=customer_name,
-            section_code=str(
-                dimension or raw.get("section_code") or config.get("section_code") or ""
+            section_code=(
+                ""
+                if text_refs[index].get("dimension_text_id")
+                else str(dimension or raw.get("section_code") or config.get("section_code") or "")
             ),
             task_code=task_code,
             task_name_snapshot="",

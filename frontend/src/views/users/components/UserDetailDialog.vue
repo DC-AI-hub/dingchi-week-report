@@ -20,6 +20,7 @@ const managerDisplayName = computed(() => {
 
 const emit = defineEmits<{
   close: []
+  edit: [user: DirectoryUser]
 }>()
 </script>
 
@@ -28,10 +29,11 @@ const emit = defineEmits<{
     <div v-if="user" class="user-detail">
       <div class="detail-profile">
         <span class="detail-avatar" :style="{ background: user.avatar_color || '#2f80ed' }">{{ user.display_name.slice(0, 1) }}</span>
-        <div>
+        <div class="detail-identity">
           <h3>{{ user.display_name }}</h3>
           <p>{{ user.employee_no }} · {{ user.status === "active" ? "在职" : "停用" }}</p>
         </div>
+        <button class="secondary-button detail-edit" type="button" @click="emit('edit', user)">编辑</button>
       </div>
       <dl class="detail-grid">
         <div><dt>登录账号</dt><dd>{{ user.username }}</dd></div>

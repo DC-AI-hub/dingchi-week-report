@@ -15,6 +15,7 @@
 
 .detail-avatar {
   display: grid;
+  flex-shrink: 0;
   width: 3.1rem;
   height: 3.1rem;
   border-radius: 50%;
@@ -86,4 +87,14 @@
   .detail-grid__wide {
     grid-column: auto;
   }
+}
+
+.detail-identity {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.detail-edit {
+  flex-shrink: 0;
+  margin-left: auto;
 }

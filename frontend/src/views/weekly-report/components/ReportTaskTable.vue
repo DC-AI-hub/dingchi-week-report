@@ -5,7 +5,7 @@ import ReportPagination from "./ReportPagination.vue"
 import ReportTaskDetailDialog from "./ReportTaskDetailDialog.vue"
 const props = withDefaults(defineProps<ReportTaskTableProps>(), { showColumnsButton: true, showCustomerTabs: true })
 const {
-  deliveryMode, customers, activeCustomer, columnsOpen, selectedCodes, detailOpen, detailItem,
+  sharedMode, deliveryMode, customers, activeCustomer, columnsOpen, selectedCodes, detailOpen, detailItem,
   page, pageSize, availableFields, primaryField, displayItems, totalPages, pagedItems, selectedFields,
   customerRowspan, primaryValue, statusClass, taskStatus, openTask, itemAttachments, openColumns,
   sharedRowspan, formatReportTaskField, reportTaskStatusLabel, reportTaskUpdatedAt,
@@ -14,7 +14,7 @@ defineExpose({ openColumns, customers, activeCustomer, deliveryMode })
 </script>
 
 <template>
-  <div class="report-task-table" :class="{ 'report-task-table--delivery': deliveryMode }">
+  <div class="report-task-table" :class="{ 'report-task-table--delivery': sharedMode }">
     <div v-if="showCustomerTabs !== false && deliveryMode && customers.length" class="customer-tabs" role="tablist" aria-label="客户">
       <button v-for="customer in customers" :key="customer.id" type="button" role="tab"
         :aria-selected="activeCustomer === customer.id" :class="{ active: activeCustomer === customer.id }"
@@ -60,7 +60,7 @@ defineExpose({ openColumns, customers, activeCustomer, deliveryMode })
                 class="fixed-col task-col task-cell"
                 :class="{ 'task-col--without-primary': !primaryField }"
               >
-                <span v-if="deliveryMode" class="cell-text">{{ formatReportTaskField(item, "task_name") }}</span>
+                <span v-if="sharedMode" class="cell-text">{{ formatReportTaskField(item, "task_name") }}</span>
                 <button v-else
                   class="task-link"
                   type="button"
@@ -80,7 +80,7 @@ defineExpose({ openColumns, customers, activeCustomer, deliveryMode })
                   >
                     {{ formatReportTaskField(item, field.field_code) }}
                   </span>
-                  <button v-if="deliveryMode && field.field_code === 'document_links' && itemAttachments(item).length"
+                  <button v-if="sharedMode && field.field_code === 'document_links' && itemAttachments(item).length"
                     class="task-link attachment-link" type="button" @click="openTask(item)">查看附件（{{ itemAttachments(item).length }}）</button>
                 </td>
               </template>

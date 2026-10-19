@@ -443,3 +443,6 @@
     grid-template-columns: 1fr;
   }
 }
+
+.organization-role { cursor: pointer; }
+.organization-role:focus-visible { outline: 2px solid var(--primary, #2f80ed); outline-offset: 2px; }

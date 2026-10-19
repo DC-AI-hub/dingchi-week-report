@@ -7,12 +7,16 @@ from apps.weekly_report.models import WeeklyReportItem, WeeklyTaskText
 
 
 def _text_state(raw, kind):
-    content = str(raw.get("task_name_snapshot" if kind == "task" else "work_content") or "").strip()
-    source = str(raw.get("task_source") or "custom") if kind == "task" else "custom"
+    prefix = "dimension" if kind == "dimension" else "task"
+    field = {"task": "task_name_snapshot", "work": "work_content", "dimension": "dimension"}[kind]
+    content = str(
+        raw.get(field, raw.get("section_code", "") if kind == "dimension" else "") or ""
+    ).strip()
+    source = str(raw.get(f"{prefix}_source") or "custom") if kind != "work" else "custom"
     if source not in {"custom", "template"}:
         raise ValueError("任务数据来源无效。")
-    template = str(raw.get("task_template") or "") if source == "template" else ""
-    values = raw.get("task_values", []) if source == "template" else []
+    template = str(raw.get(f"{prefix}_template") or "") if source == "template" else ""
+    values = raw.get(f"{prefix}_values", []) if source == "template" else []
     if not isinstance(values, list) or any(not isinstance(v, str) or len(v) > 256 for v in values):
         raise ValueError("模板占位值格式无效，每项最多256字符。")
     if source == "template":
@@ -26,11 +30,11 @@ def _text_state(raw, kind):
 
 
 def _resolve_text(report, raw, index, kind, existing, groups):
-    id_key, group_key = (
-        ("task_text_id", "task_group_key")
-        if kind == "task"
-        else ("work_content_text_id", "work_content_group_key")
-    )
+    id_key, group_key = {
+        "task": ("task_text_id", "task_group_key"),
+        "work": ("work_content_text_id", "work_content_group_key"),
+        "dimension": ("dimension_text_id", "dimension_group_key"),
+    }[kind]
     state = _text_state(raw, kind)
     text_id = str(raw.get(id_key) or "")
     if text_id and text_id not in existing:
@@ -39,7 +43,8 @@ def _resolve_text(report, raw, index, kind, existing, groups):
     if (
         previous
         and previous.source == "template"
-        and report.template_code in {"delivery_specialist_v1", "delivery_assistant_v1"}
+        and report.template_code
+        in {"delivery_specialist_v1", "delivery_assistant_v1", "recruitment_v1"}
         and (state[1] != "template" or state[2] != previous.template_text)
     ):
         raise ValueError("模板任务仅允许修改占位值，不能修改描述文字。")
@@ -64,16 +69,21 @@ def save_task_texts(report, submitted):
         for row in WeeklyTaskText.objects.select_for_update().filter(report_id=report.id)
     }
     groups = {}
+    kinds = (
+        ("dimension", "task", "work")
+        if report.template_code == "recruitment_v1"
+        else ("task", "work")
+    )
     return [
-        dict(_resolve_text(report, raw, index, kind, existing, groups) for kind in ("task", "work"))
+        dict(_resolve_text(report, raw, index, kind, existing, groups) for kind in kinds)
         for index, raw in enumerate(submitted)
     ]
 
 
 def remove_unused_texts(report_id):
     refs = set()
-    for task_id, work_id in WeeklyReportItem.objects.filter(report_id=report_id).values_list(
-        "task_text_id", "work_content_text_id"
-    ):
-        refs.update(value for value in (task_id, work_id) if value is not None)
+    for task_id, work_id, dimension_id in WeeklyReportItem.objects.filter(
+        report_id=report_id
+    ).values_list("task_text_id", "work_content_text_id", "dimension_text_id"):
+        refs.update(value for value in (task_id, work_id, dimension_id) if value is not None)
     WeeklyTaskText.objects.filter(report_id=report_id).exclude(id__in=refs).delete()

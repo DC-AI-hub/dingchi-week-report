@@ -25,6 +25,8 @@ export interface ReportTaskTableProps {
 
 export function useReportTaskTable(props: ReportTaskTableProps) {
   const deliveryMode = computed(() => ["delivery_specialist_v1", "delivery_assistant_v1"].includes(props.templateCode || ""))
+  const recruitmentMode = computed(() => props.templateCode === "recruitment_v1")
+  const sharedMode = computed(() => deliveryMode.value || recruitmentMode.value)
   const activeCustomer = ref("")
   const customerKey = (item: ReportItem) => item.customer_id || item.customer_name_snapshot || "unassigned"
   const customers = computed(() => {
@@ -45,7 +47,7 @@ export function useReportTaskTable(props: ReportTaskTableProps) {
 
   const availableFields = computed(() => normalizeReportTaskFields(props.fields))
   const columnStorageKey = computed(
-    () => `weekly-report:detail-visible-columns:${deliveryMode.value ? "delivery-v2:" : ""}${props.preferenceKey || "default"}`,
+    () => `weekly-report:detail-visible-columns:${sharedMode.value ? "shared-v3:" : ""}${props.preferenceKey || "default"}`,
   )
   const primaryField = computed<ReportTemplateField | null>(() => {
     if (deliveryMode.value) return null
@@ -119,7 +121,7 @@ export function useReportTaskTable(props: ReportTaskTableProps) {
         try { localStorage.removeItem(storageKey) } catch { /* storage may be unavailable */ }
       }
       selectedCodes.value = fields
-        .filter((field) => deliveryMode.value || field.default_visible)
+        .filter((field) => sharedMode.value || field.default_visible)
         .map((field) => field.field_code)
     },
     { immediate: true, deep: true },
@@ -135,6 +137,14 @@ export function useReportTaskTable(props: ReportTaskTableProps) {
   }, { immediate: true })
 
   function customerRowspan(index: number): number {
+    if (recruitmentMode.value) {
+      const rows = pagedItems.value
+      const key = (row: ReportItem) => row.dimension_text_id || row.id
+      if (index > 0 && key(rows[index - 1]!) === key(rows[index]!)) return 0
+      let count = 1
+      while (index + count < rows.length && key(rows[index + count]!) === key(rows[index]!)) count++
+      return count
+    }
     if (!primaryField.value) return 1
     const current = primaryValue(pagedItems.value[index])
     if (index > 0 && primaryValue(pagedItems.value[index - 1]) === current) return 0
@@ -181,11 +191,11 @@ export function useReportTaskTable(props: ReportTaskTableProps) {
 
 
   function sharedKey(item: ReportItem, work: boolean): string {
-    const task = item.task_text_id || item.id
+    const task = `${recruitmentMode.value ? item.dimension_text_id || item.id : ""}:${item.task_text_id || item.id}`
     return work ? `${task}:${item.work_content_text_id || item.id}` : task
   }
   function sharedRowspan(index: number, work = false): number {
-    if (!deliveryMode.value) return 1
+    if (!sharedMode.value) return 1
     const rows = pagedItems.value
     const key = sharedKey(rows[index]!, work)
     if (index > 0 && sharedKey(rows[index - 1]!, work) === key) return 0
@@ -194,5 +204,5 @@ export function useReportTaskTable(props: ReportTaskTableProps) {
     return count
   }
 
-  return { deliveryMode, customers, activeCustomer, columnsOpen, selectedCodes, detailOpen, detailItem, page, pageSize, availableFields, primaryField, displayItems, totalPages, pagedItems, selectedFields, customerRowspan, primaryValue, statusClass, taskStatus, openTask, itemAttachments, openColumns, sharedRowspan, formatReportTaskField, reportTaskStatusLabel, reportTaskUpdatedAt }
+  return { sharedMode, recruitmentMode, deliveryMode, customers, activeCustomer, columnsOpen, selectedCodes, detailOpen, detailItem, page, pageSize, availableFields, primaryField, displayItems, totalPages, pagedItems, selectedFields, customerRowspan, primaryValue, statusClass, taskStatus, openTask, itemAttachments, openColumns, sharedRowspan, formatReportTaskField, reportTaskStatusLabel, reportTaskUpdatedAt }
 }

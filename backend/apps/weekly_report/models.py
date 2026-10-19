@@ -198,6 +198,7 @@ class WeeklyReportItem(SnowflakeIdModel):
     section_code = models.CharField(max_length=64)
     task_code = models.CharField(max_length=64)
     task_name_snapshot = models.TextField(blank=True, default="")
+    dimension_text_id = models.BigIntegerField(null=True, blank=True)
     task_text_id = models.BigIntegerField(null=True, blank=True)
     work_content_text_id = models.BigIntegerField(null=True, blank=True)
     guidance_snapshot = models.CharField(max_length=500, blank=True, default="")

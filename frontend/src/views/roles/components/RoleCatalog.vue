@@ -24,6 +24,7 @@ const props = withDefaults(
 )
 
 defineEmits<{
+  view: [role: DirectoryRole]
   edit: [role: DirectoryRole]
   delete: [role: DirectoryRole]
 }>()
@@ -69,20 +70,25 @@ function deleteDisabledReason(role: DirectoryRole): string {
           class="organization-roles"
           @click.stop
         >
-          <article v-for="role in rolesByGroup.get(group.group_code)" :key="role.id" class="organization-role">
+          <article v-for="role in rolesByGroup.get(group.group_code)" :key="role.id" class="organization-role"
+            role="button" tabindex="0" :aria-label="`查看职位：${role.role_name}`"
+            @click="$emit('view', role)"
+            @keydown.enter.self.prevent="$emit('view', role)"
+            @keydown.space.self.prevent="$emit('view', role)"
+          >
             <span class="role-mark" aria-hidden="true">{{ role.role_name.slice(0, 1) }}</span>
             <span class="organization-role__content">
               <strong>{{ role.role_name }}</strong>
               <small>{{ templateLabel(role.report_template_code) }} · {{ scopeLabel(role.scope) }}</small>
             </span>
             <span class="organization-role__actions">
-              <button type="button" @click="$emit('edit', role)">编辑</button>
+              <button type="button" @click.stop="$emit('edit', role)">编辑</button>
               <button
                 class="is-danger"
                 type="button"
                 :disabled="Boolean(deleteDisabledReason(role))"
                 :title="deleteDisabledReason(role)"
-                @click="$emit('delete', role)"
+                @click.stop="$emit('delete', role)"
               >删除</button>
             </span>
           </article>
@@ -91,7 +97,7 @@ function deleteDisabledReason(role: DirectoryRole): string {
     </OrganizationChart>
     <section v-if="ungroupedRoles.length" class="ungrouped-roles">
       <strong>未分组职位</strong>
-      <button v-for="role in ungroupedRoles" :key="role.id" type="button" @click="$emit('edit', role)">
+      <button v-for="role in ungroupedRoles" :key="role.id" type="button" @click="$emit('view', role)">
         {{ role.role_name }}
       </button>
     </section>

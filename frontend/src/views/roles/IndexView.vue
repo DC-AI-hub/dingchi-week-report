@@ -7,6 +7,7 @@ import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 
 import RoleCatalog from "./components/RoleCatalog.vue"
 import RoleDeleteDialog from "./components/RoleDeleteDialog.vue"
+import RoleDetailDialog from "./components/RoleDetailDialog.vue"
 import RoleEditorDialog from "./components/RoleEditorDialog.vue"
 import RolePageHeader from "./components/RolePageHeader.vue"
 import { useRoleManagement } from "./composables/useRoleManagement"
@@ -14,6 +15,7 @@ import { useRoleManagement } from "./composables/useRoleManagement"
 const authStore = useAuthStore()
 const roleManagement = useRoleManagement()
 const isEditorOpen = ref(false)
+const viewingRole = ref<DirectoryRole | null>(null)
 const editingRole = ref<DirectoryRole | null>(null)
 const deletingRole = ref<DirectoryRole | null>(null)
 
@@ -23,6 +25,7 @@ function openCreateDialog() {
 }
 
 function openEditDialog(role: DirectoryRole) {
+  viewingRole.value = null
   editingRole.value = role
   isEditorOpen.value = true
 }
@@ -66,9 +69,17 @@ onMounted(() => {
       :template-options="roleManagement.templateOptions.value"
       :group-options="roleManagement.groupOptions.value"
       @delete="deletingRole = $event"
+      @view="viewingRole = $event"
       @edit="openEditDialog"
     />
 
+    <RoleDetailDialog
+      :open="Boolean(viewingRole)" :role="viewingRole"
+      :scope-options="roleManagement.scopeOptions.value"
+      :template-options="roleManagement.templateOptions.value"
+      :group-options="roleManagement.groupOptions.value"
+      @close="viewingRole = null" @edit="openEditDialog"
+    />
     <RoleEditorDialog
       :is-dictionary-loading="roleManagement.isDictionaryLoading.value"
       :is-saving="roleManagement.isSaving.value"

@@ -115,3 +115,22 @@ python manage.py test --settings=config.settings.test
 ## 分层约定
 
 前端按 `app → views/layouts → features → shared` 分层；后端按 `config → apps` 分层，业务模块内部使用 `views → services → dao/integrations`，所有 MCP 工具统一位于 `apps/mcp_server/modules/<capability>/`。新增业务时优先创建独立 feature/app，不把领域逻辑堆在路由或视图函数中。
+
+
+
+
+本地测试账号：
+username	        display_name
+admin	            系统管理员
+
+president	        周总
+
+recruitment.manager	李四
+recruiter	        林晓
+
+delivery.manager	张三
+delivery.specialist	陈默
+delivery.assistant	王助理
+
+ito.sales	        张销售
+innovation.sales	李销售

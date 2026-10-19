@@ -132,6 +132,7 @@ function openCreateUser() {
 }
 
 function openEditUser(user: DirectoryUser) {
+  viewingUser.value = null
   editingUser.value = user
   isUserEditorOpen.value = true
 }
@@ -337,7 +338,7 @@ onMounted(() => void load())
       @close="closeUserEditor"
       @submit="submitUser"
     />
-    <UserDetailDialog :open="Boolean(viewingUser)" :user="viewingUser" :users="users" @close="viewingUser = null" />
+    <UserDetailDialog :open="Boolean(viewingUser)" :user="viewingUser" :users="users" @close="viewingUser = null" @edit="openEditUser" />
     <ConfirmDeleteDialog
       :is-deleting="isDeleting"
       :message="deleteMessage"

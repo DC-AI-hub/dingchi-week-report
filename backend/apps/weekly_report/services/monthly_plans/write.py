@@ -50,6 +50,9 @@ def record_change(plan, user_id, action, before, after):
                     "task_source",
                     "task_template",
                     "task_values",
+                    "dimension_source",
+                    "dimension_template",
+                    "dimension_values",
                 ]
             )
         ],

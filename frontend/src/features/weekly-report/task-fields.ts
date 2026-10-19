@@ -30,19 +30,19 @@ export const defaultReportTaskFields: ReportTemplateField[] = [
 export const defaultRecruitmentTaskFields: ReportTemplateField[] = [
   { field_code: "dimension", label: "维度", sort_order: 1, default_visible: true },
   { field_code: "task_name", label: "工作任务", sort_order: 2, default_visible: true },
-  { field_code: "work_content", label: "主要工作内容", sort_order: 3, default_visible: false },
-  { field_code: "output_description", label: "输出成果", sort_order: 4, default_visible: false },
-  { field_code: "planned_completion_date", label: "计划完成时间", sort_order: 5, default_visible: false },
-  { field_code: "progress_text", label: "工作进展（截至月日）", sort_order: 6, default_visible: false },
-  { field_code: "progress_percent", label: "完成进度（百分比）", sort_order: 7, default_visible: false },
-  { field_code: "quality_percent", label: "完成质量（百分比）", sort_order: 8, default_visible: false },
-  { field_code: "completion_rate", label: "月度工作完成率（完成进度*50%+完成质量*50%）", sort_order: 9, default_visible: false },
-  { field_code: "delay_reason", label: "进度缓慢原因说明", sort_order: 10, default_visible: false },
-  { field_code: "on_time_status", label: "是否在计划时间内完成", sort_order: 11, default_visible: false },
-  { field_code: "actual_completion_date", label: "实际完成时间", sort_order: 12, default_visible: false },
-  { field_code: "owner_name", label: "责任人", sort_order: 13, default_visible: false },
-  { field_code: "collaborator_names", label: "协作人", sort_order: 14, default_visible: false },
-  { field_code: "document_links", label: "相关文档链接或佐证材料", sort_order: 15, default_visible: false },
+  { field_code: "work_content", label: "主要工作内容", sort_order: 3, default_visible: true },
+  { field_code: "output_description", label: "输出成果", sort_order: 4, default_visible: true },
+  { field_code: "planned_completion_date", label: "计划完成时间", sort_order: 5, default_visible: true },
+  { field_code: "progress_text", label: "工作进展（截至月日）", sort_order: 6, default_visible: true },
+  { field_code: "progress_percent", label: "完成进度（百分比）", sort_order: 7, default_visible: true },
+  { field_code: "quality_percent", label: "完成质量（百分比）", sort_order: 8, default_visible: true },
+  { field_code: "completion_rate", label: "月度工作完成率（完成进度*50%+完成质量*50%）", sort_order: 9, default_visible: true },
+  { field_code: "delay_reason", label: "进度缓慢原因说明", sort_order: 10, default_visible: true },
+  { field_code: "on_time_status", label: "是否在计划时间内完成", sort_order: 11, default_visible: true },
+  { field_code: "actual_completion_date", label: "实际完成时间", sort_order: 12, default_visible: true },
+  { field_code: "owner_name", label: "责任人", sort_order: 13, default_visible: true },
+  { field_code: "collaborator_names", label: "协作人", sort_order: 14, default_visible: true },
+  { field_code: "document_links", label: "相关文档链接或佐证材料", sort_order: 15, default_visible: true },
 ]
 
 // 查看页固定展示主字段、工作任务、状态和更新时间；这些字段不进入可选列。
@@ -81,6 +81,7 @@ export function reportTaskStatusLabel(value: string | null | undefined): string 
 export function formatReportTaskField(item: ReportItem, fieldCode: string): string {
   if (fieldCode === "customer_name") return item.customer_name_snapshot || "—"
   if (fieldCode === "dimension") {
+    if (item.dimension_source === "template" && item.dimension_template) return previewTaskTemplate(item.dimension_template, item.dimension_values || [])
     const dimensionLabels: Record<string, string> = {
       overall: "总体目标",
       demand: "需求管理",

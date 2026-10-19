@@ -142,7 +142,10 @@ def report_list_view(request: HttpRequest) -> JsonResponse:
     team 角色额外支持 employee_scope=self/team。POST 参数为周报 JSON。
     可选 monthly_plan_tasks 随周报保存当月共用工作任务；详见 docs/monthly-plan-tasks-api.md。
     所有模板允许草稿 items 必填文本为空、planned_completion_date 为 null；
-    正式提交时全量检查必填项；共享正文及来源契约见 docs/weekly-task-texts.md。
+    正式提交时全量检查必填项；招聘新增可选 dimension_text_id（字符串ID）、
+    dimension_group_key、dimension_source/template/values，与 task_* 来源、占位契约一致；
+    维度/任务/内容共享引用须保持正文一致，禁止跨周报引用。旧数据省略维度引用时独立保存。
+    共享正文及来源契约见 docs/weekly-task-texts.md。
     GET 成功响应：data.items、page、page_size、total、total_pages；
     POST 成功响应：201 周报详情；权限按角色作用域过滤。
     失败：400/401/403/404/409；响应带 X-Trace-ID。
