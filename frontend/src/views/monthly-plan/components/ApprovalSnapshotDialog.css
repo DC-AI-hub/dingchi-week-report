@@ -1,4 +1,10 @@
-.approval-snapshot { display:grid; gap:16px; min-width:0; }
+.approval-snapshot {
+  display: grid; gap: 16px; min-width: 0;
+  --monthly-plan-table-min-width: 0px;
+  --monthly-plan-scope-width: 18%;
+  --monthly-plan-serial-width: 40px;
+  --monthly-plan-cell-padding: clamp(6px, 1vw, 14px);
+}
 .snapshot-goal { padding:16px; }
 .snapshot-goal h2 { margin:0 0 12px; font-size:1.1rem; }
 .snapshot-goal p { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }

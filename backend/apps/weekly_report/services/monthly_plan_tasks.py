@@ -86,7 +86,9 @@ def validate_report_monthly_data(summary: Any, tasks: Any, template_code: str) -
         raise ValueError("请至少填写一条月度计划。")
     if template_code == "functional_group_v1":
         return
-    label = "维度" if template_code == "recruitment_v1" else "客户"
+    label = "模块" if template_code == "human_resources_v1" else (
+        "维度" if template_code == "recruitment_v1" else "客户"
+    )
     if any(not task["scope_name"] for task in normalized):
         raise ValueError(f"月度计划中的{label}不能为空。")
 

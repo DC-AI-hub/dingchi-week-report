@@ -25,10 +25,11 @@ export interface ReportTaskTableProps {
 
 export function useReportTaskTable(props: ReportTaskTableProps) {
   const deliveryMode = computed(() => ["delivery_specialist_v1", "delivery_assistant_v1"].includes(props.templateCode || ""))
+  const humanResourcesMode = computed(() => props.templateCode === "human_resources_v1")
   const recruitmentMode = computed(() => props.templateCode === "recruitment_v1")
   const salesMode = computed(() => ["ito_sales_v1", "innovation_sales_v1"].includes(props.templateCode || ""))
   const functionalMode = computed(() => props.templateCode === "functional_group_v1")
-  const sharedMode = computed(() => deliveryMode.value || recruitmentMode.value || salesMode.value || functionalMode.value)
+  const sharedMode = computed(() => deliveryMode.value || recruitmentMode.value || salesMode.value || functionalMode.value || humanResourcesMode.value)
   const activeCustomer = ref("")
   const customerKey = (item: ReportItem) => item.customer_id || item.customer_name_snapshot || "unassigned"
   const customers = computed(() => {
@@ -53,6 +54,7 @@ export function useReportTaskTable(props: ReportTaskTableProps) {
   )
   const primaryField = computed<ReportTemplateField | null>(() => {
     if (deliveryMode.value || functionalMode.value) return null
+    if (humanResourcesMode.value && !props.fields?.length) return { field_code: "dimension", label: "模块", sort_order: 1, default_visible: true }
     const source = props.fields || []
     const dimension = source.find((field) => field.field_code === "dimension")
     const customerField = source.find((field) => field.field_code === "customer_name")
@@ -137,7 +139,7 @@ export function useReportTaskTable(props: ReportTaskTableProps) {
   }, { immediate: true })
 
   function customerRowspan(index: number): number {
-    if (recruitmentMode.value || salesMode.value) {
+    if (recruitmentMode.value || humanResourcesMode.value || salesMode.value) {
       const rows = pagedItems.value
       const key = (row: ReportItem) => (salesMode.value ? row.customer_text_id : row.dimension_text_id) || row.id
       if (index > 0 && key(rows[index - 1]!) === key(rows[index]!)) return 0
@@ -191,7 +193,7 @@ export function useReportTaskTable(props: ReportTaskTableProps) {
 
 
   function sharedKey(item: ReportItem, work: boolean): string {
-    const task = `${salesMode.value ? item.customer_text_id || item.id : recruitmentMode.value ? item.dimension_text_id || item.id : ""}:${item.task_text_id || item.id}`
+    const task = `${salesMode.value ? item.customer_text_id || item.id : recruitmentMode.value || humanResourcesMode.value ? item.dimension_text_id || item.id : ""}:${item.task_text_id || item.id}`
     return work ? `${task}:${item.work_content_text_id || item.id}` : task
   }
   function sharedRowspan(index: number, work = false): number {

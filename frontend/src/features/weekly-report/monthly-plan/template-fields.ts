@@ -1,4 +1,5 @@
 export function monthlyPlanScopeLabel(templateCode: string): string {
+  if (templateCode === "human_resources_v1") return "模块"
   if (templateCode === "functional_group_v1") return ""
   return ["recruitment_v1", "ito_sales_v1"].includes(templateCode) ? "维度" : "客户"
 }

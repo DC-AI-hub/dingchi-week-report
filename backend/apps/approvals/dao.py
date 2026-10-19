@@ -71,7 +71,10 @@ def participant_business_ids(user_id, business_type, pending_only=False, role_co
 def assigned_requests(
     user_id, business_type, business_ids, status, pending_only, page, size, role_code=None
 ):
-    assigned = ApprovalStep.objects.filter(approver_id=user_id)
+    # 只有已轮到或已处理的节点进入审批列表；未激活、上级驳回后取消的节点不可见。
+    assigned = ApprovalStep.objects.filter(
+        approver_id=user_id, status__in=["pending", "approved", "rejected"]
+    )
     if role_code is not None:
         assigned = assigned.filter(approver_role_code=role_code)
     if pending_only:

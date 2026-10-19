@@ -152,7 +152,7 @@ export function useTaskCollection(props: DeliveryTaskCollectionProps, emit: (eve
     localStorage.setItem(columnStorageKey.value, JSON.stringify(columns))
   }, { deep: true })
 
-  watch([customerFilter, plannedDateFilter, () => props.tasks.length], () => {
+  watch([customerFilter, plannedDateFilter], () => {
     taskPage.value = 1
   })
   watch([customerFilter, plannedDateFilter], () => { insertedTaskKeys.value.clear() })

@@ -8,6 +8,7 @@ import { isSupportedTemplate, type SupportedTemplateCode } from "./template-supp
  * 因此这里不能按 role_code 分流；新增模板版本时新增独立目录和注册项。
  */
 const templateEditors: Record<SupportedTemplateCode, Component> = {
+  human_resources_v1: defineAsyncComponent(() => import("@/views/weekly-report/human-resources/EditView.vue")),
   delivery_specialist_v1: defineAsyncComponent(
     () => import("@/views/weekly-report/templates/delivery-specialist/v1/EditView.vue"),
   ),

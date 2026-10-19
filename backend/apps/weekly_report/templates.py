@@ -9,6 +9,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from .template_definitions.human_resources import (
+    human_resources_definition,
+    human_resources_fields,
+)
+
 
 def _task_fields() -> list[dict[str, Any]]:
     """Return the built-in task-list columns in the Excel-defined order.
@@ -234,6 +239,7 @@ def _innovation_sales_task_fields() -> list[dict[str, Any]]:
 
 
 TEMPLATE_TASK_FIELDS: dict[str, list[dict[str, Any]]] = {
+    "human_resources_v1": human_resources_fields(),
     "delivery_specialist_v1": _task_fields(),
     "functional_group_v1": _functional_group_task_fields(),
     "delivery_assistant_v1": _delivery_assistant_task_fields(),
@@ -658,6 +664,9 @@ ROLE_TEMPLATES["innovation_sales"].update(
         ],
     }
 )
+
+
+ROLE_TEMPLATES["human_resources"] = human_resources_definition()
 
 
 def get_default_template(template_code: str, role_code: str | None = None) -> dict[str, Any]:

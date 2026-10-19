@@ -54,7 +54,6 @@ export function useRecruitmentTaskCollection(props: RecruitmentCollectionProps, 
     for (const task of tasks) insertedKeys.value.add(task.client_key)
     emit("update:tasks", [...props.tasks, ...tasks])
     quickFillOpen.value = false
-    if (tasks.length) void showTask(tasks[tasks.length - 1]!.client_key)
   }
   function insertTask(index: number, shared?: RecruitmentSharedField) {
     const task = newTask()

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import HumanResourcesMonthlyPlanPanel from "@/features/weekly-report/human-resources/components/MonthlyPlanPanel.vue"
 import { computed, defineAsyncComponent, ref, watch } from "vue"
 import { isSupportedTemplate } from "@/features/weekly-report/template-support"
 import { Plus } from "lucide-vue-next"
@@ -180,12 +181,12 @@ function addPlans(customer: string, indexes: number[]) {
   emit("update:tasks", expanded)
   quickFillOpen.value = false
   if (deliveryTemplate.value) activeCustomer.value = customer
-  page.value = Math.max(1, Math.ceil(expanded.filter(task => !deliveryTemplate.value || task.scope_name === customer).length / pageSize))
 }
 </script>
 
 <template>
-  <section v-if="readonly || isSupportedTemplate(templateCode)" class="dashboard-card monthly-task-panel">
+  <HumanResourcesMonthlyPlanPanel v-if="templateCode === 'human_resources_v1'" v-bind="props" @update:tasks="emit('update:tasks', $event)" @retry="emit('retry')" />
+  <section v-else-if="readonly || isSupportedTemplate(templateCode)" class="dashboard-card monthly-task-panel">
     <header class="monthly-task-header">
       <div class="monthly-task-heading"><h2>月度计划</h2><span>{{ monthKey }}</span></div>
       <div v-if="!readonly" class="monthly-task-actions">
@@ -236,8 +237,8 @@ function addPlans(customer: string, indexes: number[]) {
       <ReportPagination :page="page" :page-size="pageSize" :total="filteredTasks.length" :total-pages="totalPages" @change="page = $event" />
     </template>
   </section>
-  <MonthlyPlanTaskDialog v-if="!editableTemplate && (readonly || isSupportedTemplate(templateCode))" :template-code="templateCode" :open="editorOpen" :task="selectedTask" :readonly="viewing" @close="editorOpen = false" @save="save" />
-  <TaskTextFieldDialog v-if="isSupportedTemplate(templateCode)" :customer-label="scopeLabel" :open="Boolean(editingText)" :title="editingField === 'scope_name' ? scopeLabel : editingField === 'work_content' ? '工作内容' : '工作任务'" :value="editingText?.[editingField] || ''" :max-length="editingField === 'scope_name' ? 255 : editingField === 'work_content' ? 10000 : editableTemplate ? undefined : 2000" :template-field="editingField === 'scope_name' ? (salesTemplate ? 'customer_name' : 'dimension') : editingField === 'work_content' ? 'work_content' : 'task_name'" :templates="taskTemplates" @close="editingText = null" @save="saveText" />
+  <MonthlyPlanTaskDialog v-if="templateCode !== 'human_resources_v1' && !editableTemplate && (readonly || isSupportedTemplate(templateCode))" :template-code="templateCode" :open="editorOpen" :task="selectedTask" :readonly="viewing" @close="editorOpen = false" @save="save" />
+  <TaskTextFieldDialog v-if="templateCode !== 'human_resources_v1' && isSupportedTemplate(templateCode)" :customer-label="scopeLabel" :open="Boolean(editingText)" :title="editingField === 'scope_name' ? scopeLabel : editingField === 'work_content' ? '工作内容' : '工作任务'" :value="editingText?.[editingField] || ''" :max-length="editingField === 'scope_name' ? 255 : editingField === 'work_content' ? 10000 : editableTemplate ? undefined : 2000" :template-field="editingField === 'scope_name' ? (salesTemplate ? 'customer_name' : 'dimension') : editingField === 'work_content' ? 'work_content' : 'task_name'" :templates="taskTemplates" @close="editingText = null" @save="saveText" />
   <DeliveryQuickFillDialog v-if="editableTemplate" :open="quickFillOpen" :customer-label="scopeLabel" monthly :scope-less="functionalTemplate" :sales="salesTemplate" :recruitment="recruitmentTemplate" :templates="taskTemplates" @close="quickFillOpen = false" @confirm="addPlans" />
 </template>
 

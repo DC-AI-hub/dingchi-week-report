@@ -22,7 +22,7 @@ function submit(reject:boolean){
 }
 </script>
 <template>
-<BaseDialog :open="Boolean(record)" title="审批计划" :busy="busy" :width="record?.base_snapshot ? '1200px' : '960px'" height="80vh" @close="$emit('close')">
+<BaseDialog :open="Boolean(record)" title="审批计划" :busy="busy" width="min(1440px, 96vw)" height="90dvh" @close="$emit('close')">
  <div v-if="record" class="approval-snapshot">
   <dl class="approval-meta" aria-label="申请信息"><div><dt>申请人</dt><dd>{{record.employee_name || '—'}}</dd></div><div><dt>职位</dt><dd>{{record.role_name || record.role_code || '—'}}</dd></div><div><dt>分组</dt><dd>{{record.group_name || '未分组'}}</dd></div><div><dt>月份</dt><dd>{{record.month_key || record.snapshot.month_key || '—'}}</dd></div><div><dt>提交时间</dt><dd><time :datetime="record.created_at">{{formatDateTime(record.created_at)}}</time></dd></div><div><dt>审批状态</dt><dd><PlanStatusTag :status="record.status" /></dd></div></dl>
   <div v-if="record.status==='rejected'" class="approval-rejection"><strong>驳回原因</strong><p>{{rejectionReason}}</p></div>

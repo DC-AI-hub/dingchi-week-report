@@ -57,7 +57,6 @@ export function useSalesTaskCollection(props: SalesCollectionProps, emit: (event
     for (const task of tasks) insertedKeys.value.add(task.client_key)
     emit("update:tasks", [...props.tasks, ...tasks])
     quickFillOpen.value = false
-    if (tasks.length) void showTask(tasks[tasks.length - 1]!.client_key)
   }
   function insertTask(index: number, shared?: SharedTaskField) {
     const task = newTask()

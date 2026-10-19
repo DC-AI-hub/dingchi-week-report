@@ -6,8 +6,9 @@ from apps.weekly_report.models import WeeklyReportDailyTask, WeeklyReportMetric
 def submission_errors(report, items, fields, template):
     errors = []
     codes = {field.get("field_code") for field in fields}
+    labels = {field.get("field_code"): field.get("label") for field in fields}
     required = [
-        ("task_name_snapshot", "工作任务"),
+        ("task_name_snapshot", labels.get("task_name") or "工作任务"),
         ("work_content", "主要工作内容"),
         ("output_description", "输出成果"),
         ("planned_completion_date", "计划完成时间"),
@@ -15,7 +16,7 @@ def submission_errors(report, items, fields, template):
     if "customer_name" in codes:
         required.append(("customer_name_snapshot", "客户"))
     if "dimension" in codes:
-        required.append(("section_code", "维度"))
+        required.append(("section_code", labels.get("dimension") or "维度"))
     if not items:
         errors.append("本周工作至少需要一条任务。")
     for index, item in enumerate(items, 1):
@@ -29,7 +30,8 @@ def submission_errors(report, items, fields, template):
         if item.get("dimension_source") == "template" and any(
             not value.strip() for value in item.get("dimension_values", [])
         ):
-            errors.append(f"第{index}行维度的模板占位值尚未填写完整。")
+            label = labels.get("dimension") or "维度"
+            errors.append(f"第{index}行{label}的模板占位值尚未填写完整。")
         if item.get("customer_source") == "template" and any(
             not value.strip() for value in item.get("customer_values", [])
         ):

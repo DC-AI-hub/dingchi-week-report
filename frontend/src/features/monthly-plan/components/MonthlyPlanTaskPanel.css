@@ -6,17 +6,17 @@
 .monthly-task-heading h2 { margin: 0; color: var(--text-strong); font-size: 22px; }
 .monthly-task-heading span { color: var(--muted); font-size: 0.875rem; }
 .monthly-task-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
-.monthly-task-table { width: 100%; min-width: 760px; border-collapse: collapse; table-layout: fixed; }
+.monthly-task-table { width: 100%; min-width: var(--monthly-plan-table-min-width, 760px); border-collapse: collapse; table-layout: fixed; }
 .monthly-task-table th,
-.monthly-task-table td { padding: 13px 16px; border-bottom: 1px solid var(--line); text-align: left; }
+.monthly-task-table td { padding: 13px var(--monthly-plan-cell-padding, 16px); border-bottom: 1px solid var(--line); text-align: left; }
 .monthly-task-table th { color: var(--muted); background: var(--surface-soft); }
 .monthly-task-table tbody tr:last-child td { border-bottom: 0; }
-.monthly-task-table .serial { width: 64px; text-align: center; }
+.monthly-task-table .serial { width: var(--monthly-plan-serial-width, 64px); text-align: center; }
 .monthly-task-table .actions { width: 128px; text-align: center; white-space: nowrap; }
 .monthly-task-table:has(.insert-button) .actions { width: 230px; }
 .monthly-task-table td { vertical-align: top; }
-.monthly-task-table.delivery-table { min-width: 960px; }
-.monthly-task-table.delivery-table .customer { width: 200px; }
+.monthly-task-table.delivery-table { min-width: var(--monthly-plan-table-min-width, 960px); }
+.monthly-task-table.delivery-table .customer { width: var(--monthly-plan-scope-width, 200px); }
 .monthly-task-text-cell { display: block; width: 100%; min-height: 42px; padding: 8px; border: 1px solid transparent; border-radius: 8px; color: var(--text); background: transparent; font: inherit; line-height: 1.65; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; cursor: pointer; }
 .monthly-task-text-cell:hover:not(:disabled), .monthly-task-text-cell:focus-visible { border-color: var(--line); background: var(--surface-soft); outline: 2px solid var(--accent); outline-offset: -1px; }
 .insert-button { font-size: 22px; line-height: 1; }
@@ -32,13 +32,13 @@
   .monthly-task-actions { flex-wrap: wrap; }
 }
 
-.monthly-task-table .customer { width: 160px; }
+.monthly-task-table .customer { width: var(--monthly-plan-scope-width, 160px); }
 .monthly-task-table .customer-name { overflow-wrap: anywhere; }
 
 .monthly-customer-tabs { margin-bottom: 16px; border-bottom: 1px solid var(--line); }
 .monthly-task-plain { display: block; padding: 8px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 2; }
 
-.monthly-task-table.delivery-monthly-table { min-width: 860px; }
+.monthly-task-table.delivery-monthly-table { min-width: var(--monthly-plan-table-min-width, 860px); }
 .monthly-task-table.delivery-monthly-table .actions { width: 128px; }
 
 .shared-monthly-cell { position: relative; padding-bottom: 42px !important; }

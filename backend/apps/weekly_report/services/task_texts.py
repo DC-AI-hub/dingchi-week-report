@@ -57,6 +57,7 @@ def _resolve_text(report, raw, index, kind, existing, groups):
             "ito_sales_v1",
             "innovation_sales_v1",
             "functional_group_v1",
+            "human_resources_v1",
         }
         and (state[1] != "template" or state[2] != previous.template_text)
     ):
@@ -83,7 +84,7 @@ def save_task_texts(report, submitted):
     }
     groups = {}
     kinds = ("task", "work")
-    if report.template_code == "recruitment_v1":
+    if report.template_code in {"recruitment_v1", "human_resources_v1"}:
         kinds = ("dimension", *kinds)
     elif report.template_code in {"ito_sales_v1", "innovation_sales_v1"}:
         kinds = ("customer", *kinds)

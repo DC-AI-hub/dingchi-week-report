@@ -252,7 +252,7 @@ def test_personal_members_and_assigned_approval_tabs(people):
     assigned = read.list_plans(first, "manager", {"view": "approvals"})
     assert assigned["total"] == 1 and assigned["approvals"][0]["can_approve"]
     waiting = read.list_plans(second, "manager", {"view": "approvals"})
-    assert waiting["approvals"][0]["my_status"] == "waiting"
+    assert waiting["total"] == 0 and waiting["approvals"] == []
     write.decide(
         first, "manager", plan_id, {"action": "approve", "approval_id": first_submission["id"]}
     )
@@ -509,3 +509,62 @@ def test_functional_template_plan_without_customer_or_dimension_survives_approva
     result = read.gate(people[0], "delivery", "2026-10")["tasks"][0]
     assert not result["scope_name"] and result["task_source"] == "template"
     assert result["work_task"] == "完成5项" and result["task_values"] == ["5"]
+
+
+@pytest.mark.parametrize("process", ["initial", "change"])
+@pytest.mark.parametrize("approve", [True, False])
+def test_approval_lists_only_show_activated_steps(people, process, approve):
+    owner, first, second, _ = people
+    plan_id = int(create(people)["plan"]["id"])
+    if process == "change":
+        write.submit(owner, "delivery", plan_id)
+        write.decide(first, "manager", plan_id, {"action": "approve"})
+        write.decide(second, "manager", plan_id, {"action": "approve"})
+        child = change_write.create(owner, "delivery", plan_id)
+        business_id = int(child["change"]["id"])
+        change_write.save(
+            owner,
+            "delivery",
+            business_id,
+            {
+                "revision": child["change"]["revision"],
+                "summary": "变更目标",
+                "tasks": child["snapshot"]["tasks"],
+            },
+        )
+        change_write.submit(owner, "delivery", business_id)
+        business_type = "monthly_plan_change"
+    else:
+        business_id, business_type = plan_id, "monthly_plan"
+        write.submit(owner, "delivery", plan_id)
+    request_id = str(
+        ApprovalRequest.objects.get(
+            business_type=business_type,
+            business_id=business_id,
+            status="pending",
+        ).id
+    )
+
+    def records(user, **filters):
+        return read.list_plans(user, "manager", {"view": "approvals", **filters})
+
+    assert any(row["id"] == request_id for row in records(first)["approvals"])
+    for filters in [{}, {"status": "pending"}, {"pending_only": "true"}, {"page_size": 1}]:
+        assert all(row["id"] != request_id for row in records(second, **filters)["approvals"])
+    decision = {"action": "approve" if approve else "reject", "reason": "需要修改"}
+    if process == "change":
+        change_write.decide(first, "manager", business_id, decision)
+    else:
+        write.decide(first, "manager", business_id, decision)
+    own = [row for row in records(first)["approvals"] if row["id"] == request_id]
+    assert len(own) == 1 and own[0]["my_status"] == ("approved" if approve else "rejected")
+    next_rows = records(second, pending_only="true")
+    assert next_rows["total"] == (1 if approve else 0)
+    if approve:
+        assert next_rows["approvals"][0]["id"] == request_id
+        assert next_rows["approvals"][0]["can_approve"]
+    else:
+        for status in ["", "pending", "rejected"]:
+            assert all(
+                row["id"] != request_id for row in records(second, status=status)["approvals"]
+            )

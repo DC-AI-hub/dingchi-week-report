@@ -129,14 +129,20 @@ def assigned_approval_records(
     page=1,
     size=10,
 ):
-    """返回分配给本人每次提交的审批记录；分页前筛选，包含未轮到和已处理节点。"""
+    """返回已轮到或已由本人处理的审批记录；分页前排除未激活节点，保留已处理历史。"""
     total, requests = dao.assigned_requests(
         user_id, business_type, business_ids, status, pending_only, page, size, role_code
     )
     records = []
     for request in requests:
         record = _serialize_request(request, user_id, role_code)
-        own_step = next(step for step in record["steps"] if step["approver_id"] == str(user_id))
+        own_step = next(
+            step
+            for step in record["steps"]
+            if step["approver_id"] == str(user_id)
+            and step["approver_role_code"] == role_code
+            and step["status"] in {"pending", "approved", "rejected"}
+        )
         records.append(
             {
                 **record,

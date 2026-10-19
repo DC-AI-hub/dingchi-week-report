@@ -33,7 +33,7 @@ defineExpose({ openColumns, customers, activeCustomer, deliveryMode })
             <th
               class="fixed-col task-col"
               :class="{ 'task-col--without-primary': !primaryField }"
-            >工作任务</th>
+            >{{ props.fields?.find(field => field.field_code === 'task_name')?.label || '工作任务' }}</th>
             <th v-for="field in selectedFields" :key="field.field_code" class="dynamic-col"
               :class="{ 'multiline-col': ['work_content', 'output_description'].includes(field.field_code) }">
               {{ field.label }}

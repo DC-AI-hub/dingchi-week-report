@@ -1,3 +1,4 @@
+import { humanResourcesMonthlyPlanSampleFields } from "@/features/weekly-report/human-resources/samples"
 import { deliveryMonthlyPlanSampleFields } from "@/features/weekly-report/delivery-specialist/samples"
 import { deliveryAssistantMonthlyPlanSampleFields } from "@/features/weekly-report/delivery-assistant/samples"
 import { recruitmentMonthlyPlanSampleFields } from "@/features/weekly-report/recruitment/samples"
@@ -8,6 +9,7 @@ import { functionalMonthlyPlanSampleFields } from "@/features/weekly-report/func
 type SampleField = { label: string; value?: string; rows?: readonly {label:string;value:string}[] }
 // 沿用现有模板样例；当前样例仍由前端常量维护。
 const samples: Record<string, readonly SampleField[]> = {
+  human_resources_v1: humanResourcesMonthlyPlanSampleFields,
   delivery_specialist_v1: deliveryMonthlyPlanSampleFields,
   delivery_assistant_v1: deliveryAssistantMonthlyPlanSampleFields,
   recruitment_v1: recruitmentMonthlyPlanSampleFields,

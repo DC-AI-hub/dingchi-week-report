@@ -338,3 +338,43 @@ VALUES
     (410000000000000071, 400000000000000010, 'risk', '风险控制', 'high_risk_items', '高风险事项', '填写本月需重点关注的高风险事项数量。', 'metric', 'overall', 'number', '项', 0, '', 8, '{}', DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR));
 
 COMMIT;
+
+
+-- 人资周报模板：可重复执行，不改变既有职位的模板绑定。
+INSERT INTO report_template (id, template_code, template_name, description, status, created_at, updated_at) VALUES
+(400000000000000011, 'human_resources_v1', '人资周报', '人力资源与行政工作周报', 'active', DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR))
+ON DUPLICATE KEY UPDATE template_name=VALUES(template_name), description=VALUES(description), status=VALUES(status), updated_at=VALUES(updated_at);
+INSERT INTO system_dictionary (id, dict_type, dict_code, dict_name, dict_value, status, sort_order, created_at, updated_at) VALUES
+(100000000000000111, 'report_template', 'human_resources_v1', '人资周报', 'human_resources', 'active', 110, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(430000000000000101, 'weekly_report_fields_human_resources_v1', 'dimension', '模块', '1', 'active', 10, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(430000000000000102, 'weekly_report_fields_human_resources_v1', 'task_name', '工作事项', '1', 'active', 20, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(430000000000000103, 'weekly_report_fields_human_resources_v1', 'work_content', '主要工作内容', '1', 'active', 30, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(430000000000000104, 'weekly_report_fields_human_resources_v1', 'output_description', '输出成果', '1', 'active', 40, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(430000000000000105, 'weekly_report_fields_human_resources_v1', 'planned_completion_date', '计划完成时间', '1', 'active', 50, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(430000000000000106, 'weekly_report_fields_human_resources_v1', 'progress_text', '工作进展', '1', 'active', 60, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(430000000000000107, 'weekly_report_fields_human_resources_v1', 'progress_percent', '完成进度（百分比）', '1', 'active', 70, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(430000000000000108, 'weekly_report_fields_human_resources_v1', 'delay_reason', '进度缓慢原因说明', '1', 'active', 80, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(430000000000000109, 'weekly_report_fields_human_resources_v1', 'on_time_status', '是否在计划时间内完成', '1', 'active', 90, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(430000000000000110, 'weekly_report_fields_human_resources_v1', 'actual_completion_date', '实际完成时间', '1', 'active', 100, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(430000000000000111, 'weekly_report_fields_human_resources_v1', 'owner_name', '责任人', '1', 'active', 110, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(430000000000000112, 'weekly_report_fields_human_resources_v1', 'collaborator_names', '协作人', '1', 'active', 120, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(430000000000000113, 'weekly_report_fields_human_resources_v1', 'document_links', '相关文档链接或佐证材料', '1', 'active', 130, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR))
+ON DUPLICATE KEY UPDATE dict_name=VALUES(dict_name), dict_value=VALUES(dict_value), status=VALUES(status), sort_order=VALUES(sort_order), updated_at=VALUES(updated_at);
+
+INSERT INTO report_template_item (id, template_id, section_code, section_name, task_code, label, guidance, item_type, scope_type, value_type, unit, required, validation_rule, sort_order, config_json, created_at, updated_at) VALUES
+(410000000000000200, (SELECT id FROM report_template WHERE template_code='human_resources_v1'), '人力资源年度规划', '人力资源年度规划', 'hr_01', '人工成本预算', '跟进简老师审核意见，完成半年度人工成本预算复盘闭环', 'task', 'overall', 'text', '', 1, '', 0, '{}', DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(410000000000000201, (SELECT id FROM report_template WHERE template_code='human_resources_v1'), '人力资源年度规划', '人力资源年度规划', 'hr_02', '下半年工作计划', '启动人力行政部《下半年重点工作计划》编制，拉通各部门', 'task', 'overall', 'text', '', 1, '', 1, '{}', DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(410000000000000202, (SELECT id FROM report_template WHERE template_code='human_resources_v1'), '外派员工年度规划', '外派员工年度规划', 'hr_03', '风险管理', '推进2026年20项风险标准完善，提交简老师审核', 'task', 'overall', 'text', '', 1, '', 2, '{}', DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(410000000000000203, (SELECT id FROM report_template WHERE template_code='human_resources_v1'), '外派员工年度规划', '外派员工年度规划', 'hr_04', '成本管理', '跟进老板确认港交所项目方案模型，推动客户端拉通', 'task', 'overall', 'text', '', 1, '', 3, '{}', DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(410000000000000204, (SELECT id FROM report_template WHERE template_code='human_resources_v1'), '外派员工日常管理', '外派员工日常管理', 'hr_05', '释放人员管理', '完成林煜伟、尹春协商离职；跟进胡大龙、刘晴诉讼程序', 'task', 'overall', 'text', '', 1, '', 4, '{}', DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(410000000000000205, (SELECT id FROM report_template WHERE template_code='human_resources_v1'), '外派员工日常管理', '外派员工日常管理', 'hr_06', '诉讼案件', '林泽媛10月17日开庭的应诉资料准备', 'task', 'overall', 'text', '', 1, '', 5, '{}', DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(410000000000000206, (SELECT id FROM report_template WHERE template_code='human_resources_v1'), '人力资源管理', '人力资源管理', 'hr_07', '人员配置', '区域交付主管10月12日入职办理及入职培训', 'task', 'overall', 'text', '', 1, '', 6, '{}', DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(410000000000000207, (SELECT id FROM report_template WHERE template_code='human_resources_v1'), '人力资源管理', '人力资源管理', 'hr_08', '人员管理', '梁玉玲离职工作正式交接，本周完成待办事项交接', 'task', 'overall', 'text', '', 1, '', 7, '{}', DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(410000000000000208, (SELECT id FROM report_template WHERE template_code='human_resources_v1'), '人力资源管理', '人力资源管理', 'hr_09', '试用期人员管理', '启动3人次试用期阶段性访谈（陈泽楚、李娜娜、陈超）', 'task', 'overall', 'text', '', 1, '', 8, '{}', DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(410000000000000209, (SELECT id FROM report_template WHERE template_code='human_resources_v1'), '人力资源管理', '人力资源管理', 'hr_10', '绩效核算', '完成9月招聘团队绩效发放；
+
+完成三季度绩效面谈并输出面谈记录表', 'task', 'overall', 'text', '', 1, '', 9, '{}', DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(410000000000000210, (SELECT id FROM report_template WHERE template_code='human_resources_v1'), '人力资源管理', '人力资源管理', 'hr_11', '薪酬核发', '完成9月份工资核准与发放', 'task', 'overall', 'text', '', 1, '', 10, '{}', DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(410000000000000211, (SELECT id FROM report_template WHERE template_code='human_resources_v1'), '人力资源管理', '人力资源管理', 'hr_12', '内部培训管理', '完成诉讼案件复盘问题的交底与培训', 'task', 'overall', 'text', '', 1, '', 11, '{}', DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+(410000000000000212, (SELECT id FROM report_template WHERE template_code='human_resources_v1'), '行政管理', '行政管理', 'hr_13', '新办公室装修', '座位图纸人员与座位一一对应；推进利旧的施工进度', 'task', 'overall', 'text', '', 1, '', 12, '{}', DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR))
+ON DUPLICATE KEY UPDATE section_code=VALUES(section_code), section_name=VALUES(section_name), label=VALUES(label), guidance=VALUES(guidance), sort_order=VALUES(sort_order), updated_at=VALUES(updated_at);
