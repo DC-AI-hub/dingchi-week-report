@@ -44,7 +44,7 @@ function confirm() {
           <span v-if="sales" class="template-section"><span class="section-label">{{ customerLabel }}</span><strong class="section-text">{{ item.customer }}</strong></span>
           <span v-if="item.dimension && !recruitment" class="template-section"><span class="section-label">维度</span><strong class="section-text">{{ item.dimension }}</strong></span>
           <span class="template-section task-section"><span class="section-label">工作任务</span><strong class="section-text">{{ item.task }}</strong></span>
-          <span class="template-section work-section"><span class="section-label">主要工作内容<span v-if="monthly" class="reference-label">仅供参考</span></span><span class="section-text">{{ item.work }}</span></span>
+          <span class="template-section work-section"><span class="section-label">主要工作内容</span><span class="section-text">{{ item.work }}</span></span>
         </span>
       </label>
     </form>

@@ -209,9 +209,9 @@ def role_create_view(request: HttpRequest) -> JsonResponse:
     """新增角色定义，供系统管理员维护角色模板映射。
 
     方法/路径：POST /api/v1/roles/new/；认证：总裁或系统管理员；幂等：否。
-    请求体：role_code、role_name、scope、report_template_code、role_group_code 必填，
+    请求体：role_code、role_name、scope 必填；report_template_code、role_group_code 可为空字符串，
     description 可为空；
-    scope 必须是 role_scope 字典中的启用编码，report_template_code 必须是
+    scope 必须是 role_scope 字典中的启用编码，report_template_code 非空时必须是
     report_template 字典中的启用编码；role_code 使用小写字母、数字和下划线。
     成功响应：201 角色对象，ID 为字符串；失败：400 INVALID_REQUEST、401、403，
     编码重复返回 409 ROLE_CONFLICT；响应带 X-Trace-ID，新增字段保持向后兼容。
@@ -232,7 +232,7 @@ def role_detail_view(request: HttpRequest, role_id: str) -> JsonResponse:
 
     方法/路径：PATCH、DELETE /api/v1/roles/{id}/；认证：总裁或系统管理员。
     PATCH 请求体：可选 role_name、scope、description、report_template_code、role_group_code、
-    status、sort_order；
+    status、sort_order；模板与分组传空字符串表示清空，省略时保留原配置；
     role_code 不可修改。响应为更新后的角色对象。
     DELETE 请求体：无；执行软删除并停用用户角色分配，历史周报保留；响应包含字符串 id 和
     deleted=true。系统管理员角色及调用方当前角色禁止删除。

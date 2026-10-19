@@ -198,3 +198,35 @@ def test_status_filter_matches_children_before_root_pagination(people):
     change_write.delete(owner, "delivery", change_id)
     assert read.list_plans(owner, "delivery", {"view": "mine", "status": "rejected"})["total"] == 0
     assert read.list_plans(owner, "delivery", {"view": "mine", "status": "approved"})["total"] == 1
+
+
+def test_monthly_groups_survive_save_approval_and_change(people):
+    data = create(people)
+    plan_id = int(data["plan"]["id"])
+    first = {**data["tasks"][0], "scope_group_key": "scope-a", "task_group_key": "task-a",
+             "work_content": "工作内容一"}
+    second = {**first, "work_content": "工作内容二"}
+    second.pop("id")
+    data = write.save(people[0], "delivery", {
+        "revision": data["plan"]["revision"], "summary": "原目标", "tasks": [first, second],
+    }, plan_id)
+    assert len({task["id"] for task in data["tasks"]}) == 2
+    assert {task["task_group_key"] for task in data["tasks"]} == {"task-a"}
+    write.submit(people[0], "delivery", plan_id)
+    write.decide(people[1], "manager", plan_id, {"action": "approve"})
+    write.decide(people[2], "manager", plan_id, {"action": "approve"})
+    child = change_write.create(people[0], "delivery", plan_id)
+    change_id = int(child["change"]["id"])
+    tasks = child["snapshot"]["tasks"]
+    assert all(task["scope_group_key"] == "scope-a" for task in tasks)
+    tasks[1]["work_content"] = "独立编辑子内容"
+    change_write.save(people[0], "delivery", change_id, {
+        "revision": child["change"]["revision"], "summary": "原目标", "tasks": tasks,
+    })
+    change_write.submit(people[0], "delivery", change_id)
+    change_write.decide(people[1], "manager", change_id, {"action": "approve"})
+    change_write.decide(people[2], "manager", change_id, {"action": "approve"})
+    saved = read.detail(people[0], "delivery", plan_id)["tasks"]
+    assert [task["work_content"] for task in saved] == ["工作内容一", "独立编辑子内容"]
+    assert all(task["task_group_key"] == "task-a" for task in saved)
+    assert all(task["scope_group_key"] == "scope-a" for task in saved)

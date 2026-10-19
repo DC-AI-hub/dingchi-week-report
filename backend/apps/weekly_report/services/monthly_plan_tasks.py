@@ -9,7 +9,7 @@ from typing import Any
 from django.db import transaction
 
 from .. import monthly_plan_task_dao as dao
-from .monthly_task_metadata import restore_metadata, task_metadata
+from .monthly_task_metadata import restore_metadata, task_metadata, validate_group_contents
 
 
 def validate_month_key(month_key: str) -> str:
@@ -73,6 +73,7 @@ def validate_tasks(value: Any) -> list[dict[str, Any]]:
         if task_id and str(task_id).isdigit():
             normalized["id"] = str(task_id)
         work_tasks.append(normalized)
+    validate_group_contents(work_tasks)
     return work_tasks
 
 

@@ -86,10 +86,7 @@ export function useReportTaskTable(props: ReportTaskTableProps) {
       .map((item, index) => ({ item, index }))
       .sort(
         (left, right) =>
-          primaryValue(left.item).localeCompare(
-            primaryValue(right.item),
-            "zh-CN",
-          ) ||
+          // 与编辑页及保存载荷一致，客户/维度仅用于展示和筛选，不参与任务排序。
           left.item.sort_order - right.item.sort_order ||
           left.index - right.index,
       )

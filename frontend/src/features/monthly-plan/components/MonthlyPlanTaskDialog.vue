@@ -18,6 +18,7 @@ const scopeLabel = computed(() => monthlyPlanScopeLabel(props.templateCode || ""
 const configuredCustomers = computed(() => usesConfiguredCustomers(props.templateCode || ""))
 const customerName = ref("")
 const workTask = ref("")
+const workContent = ref("")
 const input = ref<HTMLTextAreaElement | null>(null)
 const formElement = ref<HTMLFormElement | null>(null)
 const pickerOpen = ref(false)
@@ -33,6 +34,7 @@ async function fillTemplate(index: number) {
   const template = templates.value[index]
   if (!template) return
   workTask.value = template.task
+  workContent.value = template.work
   if (props.templateCode === "recruitment_v1" && !customerName.value.trim()) customerName.value = recruitmentMonthlyTaskTemplates[index]?.dimension || ""
   selectedTemplate.value = String(index)
   pickerOpen.value = false
@@ -47,6 +49,7 @@ watch(() => [props.open, props.task] as const, () => {
   if (!props.open) return
   customerName.value = props.task?.scope_name || ""
   workTask.value = props.task?.work_task || ""
+  workContent.value = props.task?.work_content || ""
   if (!props.readonly) void nextTick(() => input.value?.focus())
 }, { immediate: true })
 
@@ -56,9 +59,11 @@ function save(action: "close" | "next") {
   emit("save", {
     scope_name: scopeLabel.value ? customerName.value.trim() : "",
     work_task: value,
+    work_content: workContent.value.trim(),
   }, action)
   if (action === "next") {
     workTask.value = ""
+    workContent.value = ""
     void nextTick(() => input.value?.focus())
   }
 }
@@ -87,6 +92,8 @@ function save(action: "close" | "next") {
         :required="!readonly"
         placeholder="请输入本月计划开展的工作任务"
       />
+      <label for="monthly-plan-work-content">工作内容</label>
+      <textarea id="monthly-plan-work-content" v-model="workContent" rows="6" maxlength="10000" :readonly="readonly" placeholder="请输入工作内容" />
     </form>
     <template #actions>
       <button class="ghost-button" type="button" @click="emit('close')">

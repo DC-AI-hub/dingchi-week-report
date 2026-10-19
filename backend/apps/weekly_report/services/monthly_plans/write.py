@@ -43,6 +43,8 @@ def record_change(plan, user_id, action, before, after):
             if any(
                 old[key].get(field) != new[key].get(field)
                 for field in [
+                    "scope_group_key",
+                    "task_group_key",
                     "scope_name",
                     "work_task",
                     "work_content",

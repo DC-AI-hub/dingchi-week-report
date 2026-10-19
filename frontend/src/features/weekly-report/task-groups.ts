@@ -28,11 +28,15 @@ export function templateTask(template: TaskTemplateOption, scope: "dimension" | 
     task_values: Array(template.task.split(/[?？]/).length - 1).fill(""), work_content: template.work,
   }
 }
+/** 工作任务及内容共用的空行分段规则，兼容不同系统换行和仅含空白的行。 */
+export function splitTaskBlocks(value: string): string[] {
+  return value.replace(/\r\n?/g, "\n").split(/\n[^\S\n]*\n(?:[^\S\n]*\n)*/)
+    .map(block => block.trim()).filter(Boolean)
+}
 /** 模板工作内容按空行生成子行；普通换行保留，上级字段共用分组。 */
 export function expandTemplateTasks<T extends EditableTask>(createTask: () => T): T[] {
   const first = createTask()
-  const blocks = first.work_content.replace(/\r\n?/g, "\n").split(/\n[^\S\n]*\n(?:[^\S\n]*\n)*/)
-    .map(block => block.trim()).filter(Boolean)
+  const blocks = splitTaskBlocks(first.work_content)
   if (blocks.length <= 1) return [first]
   return blocks.map((work_content, index) => ({
     ...(index === 0 ? first : createTask()), work_content,

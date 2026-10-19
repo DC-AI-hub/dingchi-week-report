@@ -112,3 +112,31 @@ def test_delete_system_admin_role_returns_conflict(client) -> None:
     assert response.json()["error"]["code"] == "ROLE_CONFLICT"
     role.refresh_from_db()
     assert role.status == "active"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("fields", [
+    {"report_template_code": ""},
+    {"role_group_code": ""},
+    {"report_template_code": "", "role_group_code": ""},
+])
+def test_patch_role_can_clear_template_and_group(client, fields):
+    _seed_role_dictionaries()
+    role = Role.objects.create(
+        role_code="clearable_role", role_name="可清空职位", scope="self",
+        report_template_code="delivery_specialist_v1", role_group_code="delivery",
+    )
+    with patch("apps.accounts.views.require_request_user", return_value=(object(), "system_admin")):
+        response = client.patch(
+            reverse("accounts:role-detail", args=[str(role.id)]),
+            data=json.dumps(fields), content_type="application/json",
+        )
+    assert response.status_code == 200
+    role.refresh_from_db()
+    for field, value in fields.items():
+        assert getattr(role, field) == value
+        assert response.json()["data"][field] == value
+    if "report_template_code" not in fields:
+        assert role.report_template_code == "delivery_specialist_v1"
+    if "role_group_code" not in fields:
+        assert role.role_group_code == "delivery"

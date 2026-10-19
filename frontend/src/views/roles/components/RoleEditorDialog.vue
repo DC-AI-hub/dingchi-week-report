@@ -36,8 +36,8 @@ const emptyForm = (): RoleMutationPayload => ({
   role_code: "",
   role_name: "",
   scope: props.scopeOptions[0]?.dict_code || "",
-  report_template_code: props.templateOptions[0]?.dict_code || "",
-  role_group_code: props.groupOptions[0]?.group_code || "",
+  report_template_code: "",
+  role_group_code: "",
   description: "",
 })
 
@@ -63,12 +63,6 @@ watch(
   () => {
     if (props.open && !props.role) {
       if (!form.scope) form.scope = props.scopeOptions[0]?.dict_code || ""
-      if (!form.report_template_code) {
-        form.report_template_code = props.templateOptions[0]?.dict_code || ""
-      }
-      if (!form.role_group_code) {
-        form.role_group_code = props.groupOptions[0]?.group_code || ""
-      }
     }
   },
   { deep: true },
@@ -95,19 +89,19 @@ function submitForm() {
     description: form.description.trim(),
   }
 
-  if (!payload.role_code || !payload.role_name || !payload.scope || !payload.report_template_code) {
-    formError.value = "请完整填写职位编码、职位名称、数据范围和周报模板。"
+  if (!payload.role_code || !payload.role_name || !payload.scope) {
+    formError.value = "请完整填写职位编码、职位名称和数据范围。"
     return
   }
   if (!props.scopeOptions.some((item) => item.dict_code === payload.scope)) {
     formError.value = "请选择有效的数据范围。"
     return
   }
-  if (!props.templateOptions.some((item) => item.dict_code === payload.report_template_code)) {
+  if (payload.report_template_code && !props.templateOptions.some((item) => item.dict_code === payload.report_template_code)) {
     formError.value = "请选择有效的周报模板。"
     return
   }
-  if (!props.groupOptions.some((item) => item.group_code === payload.role_group_code)) {
+  if (payload.role_group_code && !props.groupOptions.some((item) => item.group_code === payload.role_group_code)) {
     formError.value = "请选择有效的职位分组。"
     return
   }
@@ -175,11 +169,9 @@ function submitForm() {
           <span>周报模板</span>
           <select
             v-model="form.report_template_code"
-            :disabled="isSaving || isDictionaryLoading || !templateOptions.length"
+            :disabled="isSaving || isDictionaryLoading"
           >
-            <option value="" disabled>
-              {{ isDictionaryLoading ? "正在加载静态配置…" : "请选择周报模板" }}
-            </option>
+            <option value="">{{ isDictionaryLoading ? "正在加载静态配置…" : "无" }}</option>
             <option v-for="item in templateOptions" :key="item.id" :value="item.dict_code">
               {{ item.dict_name }}
             </option>
@@ -190,9 +182,9 @@ function submitForm() {
           <span>职位分组</span>
           <GroupTreeSelect
             v-model="form.role_group_code"
-            :allow-empty="false"
-            :disabled="isSaving || !groupOptions.length"
-            empty-label="请选择职位分组"
+            :allow-empty="true"
+            :disabled="isSaving"
+            empty-label="未分组"
             :groups="groupOptions"
             value-field="group_code"
           />

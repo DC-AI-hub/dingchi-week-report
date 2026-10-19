@@ -9,6 +9,7 @@ from apps.weekly_report.services.monthly_plan_tasks import (
     list_monthly_plan_tasks,
     save_monthly_plan_tasks,
     validate_report_monthly_data,
+    validate_tasks,
 )
 
 pytestmark = pytest.mark.django_db
@@ -345,3 +346,25 @@ def test_historical_report_checks_saved_month_instead_of_period_month(report_con
         )
     report.refresh_from_db()
     assert report.month_key == "2026-09"
+
+
+@pytest.mark.parametrize("field", ["scope_group_key", "task_group_key"])
+@pytest.mark.parametrize("value", ["", "x" * 129, 42, []])
+def test_monthly_group_keys_reject_invalid_values(field, value):
+    with pytest.raises(ValueError, match="分组标识"):
+        validate_tasks([{"work_task": "工作任务", field: value}])
+
+
+def test_monthly_grouped_fields_must_be_consistent():
+    rows = [
+        {"work_task": "任务一", "scope_name": "客户",
+         "scope_group_key": "scope", "task_group_key": "task"},
+        {"work_task": "任务二", "scope_name": "客户",
+         "scope_group_key": "scope", "task_group_key": "task"},
+    ]
+    with pytest.raises(ValueError, match="工作任务内容不一致"):
+        validate_tasks(rows)
+    rows[1]["work_task"] = "任务一"
+    rows[1]["scope_name"] = "另一个客户"
+    with pytest.raises(ValueError, match="客户/维度内容不一致"):
+        validate_tasks(rows)

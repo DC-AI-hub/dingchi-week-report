@@ -166,15 +166,17 @@ def get_role_list() -> list[dict[str, Any]]:
 def _validate_role_fields(
     *, role_code: str, role_name: str, scope: str, report_template_code: str
 ) -> None:
-    if not role_code or not role_name or not report_template_code:
-        raise ValueError("角色编码、角色名称和模板编码不能为空。")
+    if not role_code or not role_name:
+        raise ValueError("职位编码和职位名称不能为空。")
     if len(role_code) > 64 or not _role_code_pattern.fullmatch(role_code):
         raise ValueError("角色编码必须以小写字母开头，只能包含小写字母、数字和下划线。")
     if len(role_name) > 128 or len(report_template_code) > 64:
         raise ValueError("角色名称或模板编码超过允许长度。")
     if not is_active_dictionary_code("role_scope", scope):
         raise ValueError("数据范围不是有效的字典项。")
-    if not is_active_dictionary_code("report_template", report_template_code):
+    if report_template_code and not is_active_dictionary_code(
+        "report_template", report_template_code
+    ):
         raise ValueError("周报模板不是有效的字典项。")
 
 
@@ -291,7 +293,7 @@ def _is_descendant(*, group_id: int, candidate_parent_id: int) -> bool:
 
 def _validate_role_group_code(role_group_code: str) -> None:
     if not role_group_code:
-        raise ValueError("角色分组不能为空。")
+        return
     if not OrganizationGroup.objects.filter(
         group_code=role_group_code,
         status="active",

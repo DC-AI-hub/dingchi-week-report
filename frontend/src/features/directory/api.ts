@@ -24,9 +24,9 @@ export function listRoles(): Promise<{ items: DirectoryRole[] }> {
 
 /**
  * 新增角色并建立周报模板与数据范围映射。
- * 方法/路径：POST /v1/roles/new/；请求体必填 role_code、role_name、scope、report_template_code、
- * role_group_code，description 可为空；scope 和 report_template_code 必须使用字典接口返回的编码，
- * role_group_code 必须使用分组接口返回的启用编码。
+ * 方法/路径：POST /v1/roles/new/；请求体必填 role_code、role_name、scope；
+ * report_template_code 为空字符串表示无模板，role_group_code 为空字符串表示未分组；
+ * scope 与非空模板编码使用启用字典项，非空分组编码使用分组接口返回的启用编码。
  * 响应：创建后的角色对象；编码重复返回 ROLE_CONFLICT，参数非法返回 INVALID_REQUEST。
  * 请求由统一客户端携带 Bearer Token 与 X-Trace-ID，角色编码创建后不可修改。
  */
@@ -37,7 +37,8 @@ export function createRole(payload: RoleMutationPayload): Promise<DirectoryRole>
 /**
  * 修改角色名称、数据范围、说明和周报模板映射。
  * 方法/路径：PATCH /v1/roles/{id}/；路径 id 为 Snowflake 字符串；请求体字段定义同新增，
- * role_code 仅用于前端保持统一表单，后端不会修改该不可变编码。
+ * role_code 仅用于前端保持统一表单，后端不会修改该不可变编码；
+ * 模板、分组传空字符串时清空原配置，省略时保留原值。
  * 响应：更新后的角色对象；不存在返回 ROLE_NOT_FOUND，参数非法返回 INVALID_REQUEST。
  * 请求由统一客户端携带 Bearer Token 与 X-Trace-ID，既有字段语义保持兼容。
  */

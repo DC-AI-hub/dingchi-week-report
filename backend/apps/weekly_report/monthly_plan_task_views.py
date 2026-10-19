@@ -16,6 +16,7 @@ def monthly_plan_task_list_view(request: HttpRequest, month_key: str) -> JsonRes
     GET /api/v1/monthly-plan-tasks/{month_key}/；Bearer 认证；幂等：是。
     month_key 为 YYYY-MM，有效年份 0001–9999；无请求体，不接受其他员工或角色参数。
     响应 data.items 按 sort_order 升序，字段 id（字符串）、scope_name（客户/维度）、
+    scope_group_key/task_group_key（可选，当前计划内分组标识，最多128字符；旧数据省略时独立）、
     work_task（长文本）、
     task_source/task_template/task_values（可选模板来源及占位值，旧数据默认自定义）、
     sort_order、updated_at。
