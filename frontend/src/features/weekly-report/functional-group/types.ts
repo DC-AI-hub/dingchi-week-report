@@ -12,7 +12,7 @@ import {
 export const functionalTaskFieldDefinitions: DeliveryTaskFieldDefinition[] =
   deliveryTaskFieldDefinitions
     .filter((field) => field.code !== "customer_name")
-    .map((field) => ({ ...field }))
+    .map((field) => ({ ...field, default_visible: true }))
 
 export type FunctionalTaskDraft = DeliveryTaskDraft
 

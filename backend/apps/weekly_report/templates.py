@@ -71,19 +71,12 @@ def _functional_group_task_fields() -> list[dict[str, Any]]:
         ("collaborator_names", "协作人"),
         ("document_links", "相关文档链接或佐证材料"),
     ]
-    default_visible = {
-        "task_name",
-        "output_description",
-        "planned_completion_date",
-        "progress_percent",
-        "on_time_status",
-    }
     return [
         {
             "field_code": code,
             "label": label,
             "sort_order": index,
-            "default_visible": code in default_visible,
+            "default_visible": True,
         }
         for index, (code, label) in enumerate(labels, start=1)
     ]

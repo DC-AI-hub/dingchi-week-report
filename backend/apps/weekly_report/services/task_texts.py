@@ -56,6 +56,7 @@ def _resolve_text(report, raw, index, kind, existing, groups):
             "recruitment_v1",
             "ito_sales_v1",
             "innovation_sales_v1",
+            "functional_group_v1",
         }
         and (state[1] != "template" or state[2] != previous.template_text)
     ):

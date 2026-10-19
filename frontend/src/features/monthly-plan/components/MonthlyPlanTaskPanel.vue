@@ -11,6 +11,7 @@ import { deliveryTaskTemplates } from "@/features/weekly-report/delivery-special
 import { itoSalesTaskTemplates } from "@/features/weekly-report/ito-sales/task-templates"
 import { innovationSalesTaskTemplates } from "@/features/weekly-report/innovation-sales/task-templates"
 import TemplateCustomerCell from "@/features/weekly-report/components/TemplateCustomerCell.vue"
+import { functionalTaskTemplates } from "@/features/weekly-report/functional-group/task-templates"
 import { recruitmentMonthlyTaskTemplates } from "@/features/weekly-report/recruitment/task-templates"
 import { monthlyPlanScopeLabel } from "@/features/weekly-report/monthly-plan/template-fields"
 import { monthlyPlanSampleFields } from "@/features/weekly-report/monthly-plan/samples"
@@ -44,8 +45,9 @@ const quickFillOpen = ref(false)
 const deliveryTemplate = computed(() => ["delivery_specialist_v1", "delivery_assistant_v1"].includes(props.templateCode || ""))
 const recruitmentTemplate = computed(() => props.templateCode === "recruitment_v1")
 const salesTemplate = computed(() => ["ito_sales_v1", "innovation_sales_v1"].includes(props.templateCode || ""))
-const editableTemplate = computed(() => deliveryTemplate.value || recruitmentTemplate.value || salesTemplate.value)
-const taskTemplates = computed<readonly TaskTemplateOption[]>(() => salesTemplate.value ? (props.templateCode === "innovation_sales_v1" ? innovationSalesTaskTemplates : itoSalesTaskTemplates) : recruitmentTemplate.value ? recruitmentMonthlyTaskTemplates : props.templateCode === "delivery_assistant_v1" ? deliveryAssistantTaskTemplates : deliveryTaskTemplates)
+const functionalTemplate = computed(() => props.templateCode === "functional_group_v1")
+const editableTemplate = computed(() => deliveryTemplate.value || recruitmentTemplate.value || salesTemplate.value || functionalTemplate.value)
+const taskTemplates = computed<readonly TaskTemplateOption[]>(() => functionalTemplate.value ? functionalTaskTemplates : salesTemplate.value ? (props.templateCode === "innovation_sales_v1" ? innovationSalesTaskTemplates : itoSalesTaskTemplates) : recruitmentTemplate.value ? recruitmentMonthlyTaskTemplates : props.templateCode === "delivery_assistant_v1" ? deliveryAssistantTaskTemplates : deliveryTaskTemplates)
 const viewing = ref(false)
 const selectedTask = ref<MonthlyPlanTask | null>(null)
 const editingText = ref<MonthlyPlanTask | null>(null)
@@ -133,7 +135,7 @@ function saveText(value: string, templateIndex?: number) {
         task_values: Array(template.task.split(/[?？]/).length - 1).fill(""),
       })
     }
-    if (deliveryTemplate.value && editingField.value === "work_task") {
+    if ((deliveryTemplate.value || functionalTemplate.value) && editingField.value === "work_task") {
       Object.assign(fields, template ? {
         task_source: "template", task_template: template.task,
         task_values: Array(template.task.split(/[?？]/).length - 1).fill(""), work_task: template.task,
@@ -217,7 +219,7 @@ function addPlans(customer: string, indexes: number[]) {
   </section>
   <MonthlyPlanTaskDialog v-if="!editableTemplate && (readonly || isSupportedTemplate(templateCode))" :template-code="templateCode" :open="editorOpen" :task="selectedTask" :readonly="viewing" @close="editorOpen = false" @save="save" />
   <TaskTextFieldDialog v-if="isSupportedTemplate(templateCode)" :open="Boolean(editingText)" :title="editingField === 'scope_name' ? scopeLabel : '工作任务'" :value="editingText?.[editingField] || ''" :max-length="editingField === 'scope_name' ? 255 : editableTemplate ? undefined : 2000" :template-field="editingField === 'scope_name' ? (salesTemplate ? 'customer_name' : 'dimension') : 'task_name'" :templates="taskTemplates" @close="editingText = null" @save="saveText" />
-  <DeliveryQuickFillDialog v-if="editableTemplate" :open="quickFillOpen" monthly :sales="salesTemplate" :recruitment="recruitmentTemplate" :templates="taskTemplates" @close="quickFillOpen = false" @confirm="addPlans" />
+  <DeliveryQuickFillDialog v-if="editableTemplate" :open="quickFillOpen" monthly :scope-less="functionalTemplate" :sales="salesTemplate" :recruitment="recruitmentTemplate" :templates="taskTemplates" @close="quickFillOpen = false" @confirm="addPlans" />
 </template>
 
 <style scoped src="./MonthlyPlanTaskPanel.css"></style>

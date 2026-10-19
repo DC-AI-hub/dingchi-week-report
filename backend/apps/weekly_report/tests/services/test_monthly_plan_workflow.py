@@ -472,3 +472,40 @@ def test_sales_customer_and_task_metadata_survive_approval_change(
     assert result["scope_name"] == "客户B" and result["customer_values"] == ["B"]
     assert result["work_task"] == "入职5人" and result["task_values"] == ["5"]
     assert result["customer_source"] == result["task_source"] == "template"
+
+
+def test_functional_template_plan_without_customer_or_dimension_survives_approval_change(
+    people, monkeypatch
+):
+    monkeypatch.setattr(
+        reports, "resolve_role_template", lambda role: {"template_code": "functional_group_v1"}
+    )
+    task = {
+        "work_task": "完成4项",
+        "task_source": "template",
+        "task_template": "完成？项",
+        "task_values": ["4"],
+    }
+    main = write.save(
+        people[0], "delivery", {"month_key": "2026-10", "summary": "职能目标", "tasks": [task]}
+    )
+    plan_id = int(main["plan"]["id"])
+    assert not main["tasks"][0]["scope_name"] and main["tasks"][0]["task_source"] == "template"
+    write.submit(people[0], "delivery", plan_id)
+    write.decide(people[1], "manager", plan_id, {"action": "approve"})
+    write.decide(people[2], "manager", plan_id, {"action": "approve"})
+    child = change_write.create(people[0], "delivery", plan_id)
+    change_id = int(child["change"]["id"])
+    changed = {**child["snapshot"]["tasks"][0], "work_task": "完成5项", "task_values": ["5"]}
+    change_write.save(
+        people[0],
+        "delivery",
+        change_id,
+        {"revision": child["change"]["revision"], "summary": "职能目标", "tasks": [changed]},
+    )
+    change_write.submit(people[0], "delivery", change_id)
+    change_write.decide(people[1], "manager", change_id, {"action": "approve"})
+    change_write.decide(people[2], "manager", change_id, {"action": "approve"})
+    result = read.gate(people[0], "delivery", "2026-10")["tasks"][0]
+    assert not result["scope_name"] and result["task_source"] == "template"
+    assert result["work_task"] == "完成5项" and result["task_values"] == ["5"]

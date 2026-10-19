@@ -54,7 +54,7 @@ export function useTaskCollection(props: DeliveryTaskCollectionProps, emit: (eve
   const showCustomer = computed(() => props.includeCustomer)
   const editableDelivery = computed(() => props.includeCustomer && ["delivery_specialist_v1", "delivery_assistant_v1"].includes(props.columnPreferenceKey || "") && props.mode === "weekly")
   const columnStorageKey = computed(
-    () => `weekly-report:visible-columns:${props.columnPreferenceKey}:${props.mode}${editableDelivery.value ? ":all-fields-v2" : ""}`,
+    () => `weekly-report:visible-columns:${props.columnPreferenceKey}:${props.mode}${editableDelivery.value ? ":all-fields-v2" : props.columnPreferenceKey === "functional_group_v1" ? ":all-fields-v3" : ""}`,
   )
 
   const customerOptions = computed(() =>
@@ -114,7 +114,7 @@ export function useTaskCollection(props: DeliveryTaskCollectionProps, emit: (eve
   })
 
   function defaultColumns(fields: DeliveryTaskFieldDefinition[]) {
-    if (editableDelivery.value) return fields.map(field => field.code)
+    if (editableDelivery.value || props.columnPreferenceKey === "functional_group_v1") return fields.map(field => field.code)
     const defaults = fields
       .filter((field) => props.mode === "monthly" ? monthlyColumns.includes(field.code) : field.default_visible)
       .map((field) => field.code)

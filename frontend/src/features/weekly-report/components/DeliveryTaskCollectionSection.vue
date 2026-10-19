@@ -54,7 +54,7 @@ const { addTemplates, filteredTaskEntries, quickFillOpen, columnsOpen, users, cu
     />
   </FullscreenPanel>
 
-  <DeliveryQuickFillDialog :templates="templates" :open="quickFillOpen" @close="quickFillOpen = false" @confirm="addTemplates" />
+  <DeliveryQuickFillDialog :scope-less="!showCustomer" :templates="templates" :open="quickFillOpen" @close="quickFillOpen = false" @confirm="addTemplates" />
   <BaseDialog :open="columnsOpen" title="选择展示字段" width="620px" @close="columnsOpen = false">
     <div class="column-options">
       <label v-for="field in availableFields" :key="field.code"><input v-model="selectedColumns" :value="field.code" type="checkbox" />{{ field.label }}</label>

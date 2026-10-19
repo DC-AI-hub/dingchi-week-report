@@ -27,7 +27,8 @@ export function useReportTaskTable(props: ReportTaskTableProps) {
   const deliveryMode = computed(() => ["delivery_specialist_v1", "delivery_assistant_v1"].includes(props.templateCode || ""))
   const recruitmentMode = computed(() => props.templateCode === "recruitment_v1")
   const salesMode = computed(() => ["ito_sales_v1", "innovation_sales_v1"].includes(props.templateCode || ""))
-  const sharedMode = computed(() => deliveryMode.value || recruitmentMode.value || salesMode.value)
+  const functionalMode = computed(() => props.templateCode === "functional_group_v1")
+  const sharedMode = computed(() => deliveryMode.value || recruitmentMode.value || salesMode.value || functionalMode.value)
   const activeCustomer = ref("")
   const customerKey = (item: ReportItem) => item.customer_id || item.customer_name_snapshot || "unassigned"
   const customers = computed(() => {
@@ -51,7 +52,7 @@ export function useReportTaskTable(props: ReportTaskTableProps) {
     () => `weekly-report:detail-visible-columns:${sharedMode.value ? "shared-v3:" : ""}${props.preferenceKey || "default"}`,
   )
   const primaryField = computed<ReportTemplateField | null>(() => {
-    if (deliveryMode.value) return null
+    if (deliveryMode.value || functionalMode.value) return null
     const source = props.fields || []
     const dimension = source.find((field) => field.field_code === "dimension")
     const customer = source.find((field) => field.field_code === "customer_name")

@@ -134,3 +134,5 @@ delivery.assistant	王助理
 
 ito.sales	        张销售
 innovation.sales	李销售
+
+functional.group    职能组

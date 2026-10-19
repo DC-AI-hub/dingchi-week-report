@@ -7,7 +7,7 @@ import { deliveryTaskTemplates } from "@/features/weekly-report/delivery-special
 
 import type { TaskTemplateOption } from "@/features/weekly-report/task-editing"
 
-const props = withDefaults(defineProps<{ open: boolean; monthly?: boolean; recruitment?: boolean; sales?: boolean; templates?: readonly TaskTemplateOption[] }>(), { templates: () => deliveryTaskTemplates })
+const props = withDefaults(defineProps<{ open: boolean; monthly?: boolean; recruitment?: boolean; sales?: boolean; scopeLess?: boolean; templates?: readonly TaskTemplateOption[] }>(), { templates: () => deliveryTaskTemplates })
 const emit = defineEmits<{ close: []; confirm: [customer: string, indexes: number[]] }>()
 const customer = ref("")
 const selected = ref<number[]>([])
@@ -34,8 +34,8 @@ function confirm() {
 <template>
   <BaseDialog :open="open" title="快速填写任务" width="960px" height="90vh" @close="emit('close')">
     <form ref="formElement" id="delivery-quick-fill-form" class="quick-fill" novalidate @submit.prevent="confirm">
-      <label v-if="!recruitment && !sales">客户 <span class="required">*</span></label>
-      <DeliveryCustomerSelect v-if="open && !recruitment && !sales" v-model="customer" required />
+      <label v-if="!recruitment && !sales && !scopeLess">客户 <span class="required">*</span></label>
+      <DeliveryCustomerSelect v-if="open && !recruitment && !sales && !scopeLess" v-model="customer" required />
       <div class="selection-heading"><strong>选择工作任务（已选 {{ selected.length }} / {{ templates.length }}）</strong><button class="link-button" type="button" @click="toggleAll">{{ selected.length === templates.length ? '取消全选' : '全选' }}</button></div>
       <label v-for="(item, index) in templates" :key="index" class="template-option" :class="{ selected: selected.includes(index), 'recruitment-option': recruitment }">
         <input ref="taskInputs" v-model="selected" type="checkbox" :value="index" :aria-label="`选择任务 ${index + 1}`" @change="clearTaskValidity" />

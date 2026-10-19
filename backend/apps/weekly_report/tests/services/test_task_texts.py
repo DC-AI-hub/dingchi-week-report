@@ -27,7 +27,9 @@ def report_for(template="delivery_specialist_v1", employee=42):
     )
 
 
-@pytest.mark.parametrize("template", ["delivery_specialist_v1", "delivery_assistant_v1"])
+@pytest.mark.parametrize(
+    "template", ["delivery_specialist_v1", "delivery_assistant_v1", "functional_group_v1"]
+)
 def test_shared_text_round_trip_updates_once_and_keeps_independent_rows(template):
     report = report_for(template)
     payload = [
@@ -96,7 +98,9 @@ def test_all_templates_accept_long_and_incomplete_drafts_but_reject_submission(
     assert report.status != "completed"
 
 
-@pytest.mark.parametrize("template", ["delivery_specialist_v1", "delivery_assistant_v1"])
+@pytest.mark.parametrize(
+    "template", ["delivery_specialist_v1", "delivery_assistant_v1", "functional_group_v1"]
+)
 def test_template_values_persist_and_descriptions_are_immutable(template):
     report = report_for(template)
     reports._save_items(

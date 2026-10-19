@@ -122,17 +122,17 @@ INSERT INTO `system_dictionary`
 VALUES
     (100000000000000110, 'report_template', 'functional_group_v1', '职能组周报', 'functional_group', '职能组使用的职能事项周报模板。', 'active', 100, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
     (430000000000000074, 'weekly_report_fields_functional_group_v1', 'task_name', '工作任务', '1', '职能事项工作任务名称。', 'active', 10, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
-    (430000000000000075, 'weekly_report_fields_functional_group_v1', 'work_content', '主要工作内容', '0', '职能事项主要工作内容。', 'active', 20, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+    (430000000000000075, 'weekly_report_fields_functional_group_v1', 'work_content', '主要工作内容', '1', '职能事项主要工作内容。', 'active', 20, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
     (430000000000000076, 'weekly_report_fields_functional_group_v1', 'output_description', '输出成果', '1', '职能事项输出成果。', 'active', 30, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
     (430000000000000077, 'weekly_report_fields_functional_group_v1', 'planned_completion_date', '计划完成时间', '1', '职能事项计划完成日期。', 'active', 40, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
-    (430000000000000078, 'weekly_report_fields_functional_group_v1', 'progress_text', '工作进展（截至月日）', '0', '职能事项截至统计日期的工作进展。', 'active', 50, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+    (430000000000000078, 'weekly_report_fields_functional_group_v1', 'progress_text', '工作进展（截至月日）', '1', '职能事项截至统计日期的工作进展。', 'active', 50, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
     (430000000000000079, 'weekly_report_fields_functional_group_v1', 'progress_percent', '完成进度（百分比）', '1', '职能事项完成进度百分比。', 'active', 60, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
-    (430000000000000080, 'weekly_report_fields_functional_group_v1', 'delay_reason', '进度缓慢原因说明', '0', '职能事项进度缓慢原因。', 'active', 70, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+    (430000000000000080, 'weekly_report_fields_functional_group_v1', 'delay_reason', '进度缓慢原因说明', '1', '职能事项进度缓慢原因。', 'active', 70, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
     (430000000000000081, 'weekly_report_fields_functional_group_v1', 'on_time_status', '是否在计划时间内完成', '1', '职能事项按计划完成状态。', 'active', 80, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
-    (430000000000000082, 'weekly_report_fields_functional_group_v1', 'actual_completion_date', '实际完成时间', '0', '职能事项实际完成日期。', 'active', 90, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
-    (430000000000000083, 'weekly_report_fields_functional_group_v1', 'owner_name', '责任人', '0', '职能事项责任人。', 'active', 100, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
-    (430000000000000084, 'weekly_report_fields_functional_group_v1', 'collaborator_names', '协作人', '0', '职能事项协作人。', 'active', 110, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
-    (430000000000000085, 'weekly_report_fields_functional_group_v1', 'document_links', '相关文档链接或佐证材料', '0', '职能事项相关文档链接或佐证材料。', 'active', 120, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR));
+    (430000000000000082, 'weekly_report_fields_functional_group_v1', 'actual_completion_date', '实际完成时间', '1', '职能事项实际完成日期。', 'active', 90, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+    (430000000000000083, 'weekly_report_fields_functional_group_v1', 'owner_name', '责任人', '1', '职能事项责任人。', 'active', 100, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+    (430000000000000084, 'weekly_report_fields_functional_group_v1', 'collaborator_names', '协作人', '1', '职能事项协作人。', 'active', 110, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR)),
+    (430000000000000085, 'weekly_report_fields_functional_group_v1', 'document_links', '相关文档链接或佐证材料', '1', '职能事项相关文档链接或佐证材料。', 'active', 120, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 8 HOUR));
 
 INSERT INTO `organization_group`
     (id, group_code, group_name, description, parent_group_id, is_system, status, created_at, updated_at)
