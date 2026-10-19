@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DeliveryCustomerSelect from "./DeliveryCustomerSelect.vue"
 import ScrollableTabs from "@/components/navigation/ScrollableTabs.vue"
 import FullscreenPanel from "@/components/layout/FullscreenPanel.vue"
 import ExamplePreviewButton from "@/components/feedback/ExamplePreviewButton.vue"
@@ -16,14 +17,14 @@ const props = withDefaults(defineProps<DeliveryTaskCollectionProps>(), {
   columnPreferenceKey: "delivery_specialist_v1",
 })
 const emit = defineEmits<{ "update:tasks": [tasks: DeliveryTaskDraft[]] }>()
-const { addTemplates, filteredTaskEntries, quickFillOpen, columnsOpen, users, customerFilter, plannedDateFilter, taskPage, taskPageSize, showCustomer, editableDelivery, customerOptions, selectedColumns, availableFields, selectedFields, totalTaskPages, pagedTaskEntries, addTask, removeTask, patchTask, insertTask } = useTaskCollection(props, emit)
+const { assignCustomer, addTemplates, filteredTaskEntries, quickFillOpen, columnsOpen, users, customerFilter, plannedDateFilter, taskPage, taskPageSize, showCustomer, editableDelivery, customerOptions, selectedColumns, availableFields, selectedFields, totalTaskPages, pagedTaskEntries, addTask, removeTask, patchTask, insertTask } = useTaskCollection(props, emit)
 </script>
 
 <template>
   <FullscreenPanel :title="title" class="dashboard-card task-section">
     <template #tabs>
       <ScrollableTabs v-if="editableDelivery && customerOptions.length" v-model="customerFilter"
-        :items="customerOptions.map(customer => ({ id: customer, name: customer }))" />
+        :items="customerOptions.map(customer => ({ id: customer, name: customer || '未选择客户' }))" />
     </template>
     <template #actions>
         <ExamplePreviewButton
@@ -35,6 +36,7 @@ const { addTemplates, filteredTaskEntries, quickFillOpen, columnsOpen, users, cu
         <button class="primary-button" type="button" @click="addTask">新增任务</button>
     </template>
     <div class="task-section__filters">
+      <label v-if="editableDelivery && customerOptions.includes('') && customerFilter === ''" class="unassigned-customer"><span>客户</span><DeliveryCustomerSelect model-value="" required @update:model-value="assignCustomer" /></label>
       <select v-if="showCustomer && !editableDelivery" v-model="customerFilter" aria-label="按客户筛选">
         <option value="">全部客户</option>
         <option v-for="customer in customerOptions" :key="customer" :value="customer">{{ customer }}</option>
@@ -44,7 +46,7 @@ const { addTemplates, filteredTaskEntries, quickFillOpen, columnsOpen, users, cu
         <input v-model="plannedDateFilter" type="date" aria-label="按计划完成时间筛选" />
       </label>
     </div>
-    <DeliveryEditableTaskTable delivery-mode :entries="pagedTaskEntries" :fields="selectedFields" :users="users" :templates="templates" :offset="(taskPage - 1) * taskPageSize" @patch="patchTask" @insert="(index, shared) => insertTask(index, shared === 'dimension' || shared === 'customer_name' ? undefined : shared)" @remove="removeTask" />
+    <DeliveryEditableTaskTable delivery-mode :total-tasks="tasks.length" @add-blank="insertTask(-1)" :entries="pagedTaskEntries" :fields="selectedFields" :users="users" :templates="templates" :offset="(taskPage - 1) * taskPageSize" @patch="patchTask" @insert="(index, shared) => insertTask(index, shared === 'dimension' || shared === 'customer_name' ? undefined : shared)" @remove="removeTask" />
     <ReportPagination
       :page="taskPage"
       :page-size="taskPageSize"

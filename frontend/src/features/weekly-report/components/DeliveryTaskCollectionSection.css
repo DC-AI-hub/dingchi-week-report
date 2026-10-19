@@ -7,3 +7,7 @@
 .column-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .column-options label { display: flex; align-items: center; gap: 9px; color: #1b3967; }
 @media (max-width: 720px) { .column-options { grid-template-columns: 1fr; } }
+
+.unassigned-customer { min-width: 280px; }
+.unassigned-customer :deep(.delivery-customer-select) { flex: 1; min-width: 0; }
+@media (max-width: 720px) { .task-section__filters { flex-wrap: wrap; } .unassigned-customer { width: 100%; min-width: 0; } }

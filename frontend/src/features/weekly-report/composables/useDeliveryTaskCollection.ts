@@ -59,7 +59,7 @@ export function useTaskCollection(props: DeliveryTaskCollectionProps, emit: (eve
 
   const customerOptions = computed(() =>
     Array.from(
-      new Set(props.tasks.map((task) => task.customer_name.trim()).filter(Boolean)),
+      new Set(props.tasks.map((task) => task.customer_name.trim()).filter(name => name || editableDelivery.value)),
     ).sort((left, right) => left.localeCompare(right, "zh-CN")),
   )
 
@@ -68,7 +68,7 @@ export function useTaskCollection(props: DeliveryTaskCollectionProps, emit: (eve
       .map((task, index) => ({ task, index }))
       .filter(({ task }) =>
         insertedTaskKeys.value.has(task.client_key) || (
-          (!customerFilter.value || task.customer_name === customerFilter.value) &&
+          (editableDelivery.value ? task.customer_name === customerFilter.value : !customerFilter.value || task.customer_name === customerFilter.value) &&
           (!plannedDateFilter.value || task.planned_completion_date === plannedDateFilter.value)
         ),
       )
@@ -191,6 +191,13 @@ export function useTaskCollection(props: DeliveryTaskCollectionProps, emit: (eve
     return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}`
   }
 
+  function assignCustomer(customer: string) {
+    if (!customer.trim()) return
+    emit("update:tasks", props.tasks.map(task => !task.customer_name.trim()
+      ? { ...task, customer_name: customer, updated_at: currentLocalTimestamp() } : task))
+    customerFilter.value = customer
+  }
+
   function removeTask(index: number) {
     emit("update:tasks", props.tasks.filter((_, itemIndex) => itemIndex !== index))
   }
@@ -257,5 +264,5 @@ export function useTaskCollection(props: DeliveryTaskCollectionProps, emit: (eve
 
   onMounted(() => void loadUsers())
 
-  return { addTemplates, filteredTaskEntries, quickFillOpen, columnsOpen, users, customerFilter, plannedDateFilter, taskPage, taskPageSize, showCustomer, editableDelivery, customerOptions, selectedColumns, availableFields, selectedFields, totalTaskPages, pagedTaskEntries, addTask, removeTask, patchTask, insertTask, customerRowspan, displayValue }
+  return { assignCustomer, addTemplates, filteredTaskEntries, quickFillOpen, columnsOpen, users, customerFilter, plannedDateFilter, taskPage, taskPageSize, showCustomer, editableDelivery, customerOptions, selectedColumns, availableFields, selectedFields, totalTaskPages, pagedTaskEntries, addTask, removeTask, patchTask, insertTask, customerRowspan, displayValue }
 }

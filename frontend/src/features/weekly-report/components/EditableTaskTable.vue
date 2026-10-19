@@ -18,6 +18,7 @@ const props = withDefaults(defineProps<{
   fields: EditableTaskField[]
   users: DirectoryUserOption[]
   offset: number
+  totalTasks?: number
   deliveryMode?: boolean
   recruitmentMode?: boolean
   salesMode?: boolean
@@ -25,6 +26,7 @@ const props = withDefaults(defineProps<{
   templates?: readonly TaskTemplateOption[]
 }>(), { scopeField: "customer_name", templates: () => deliveryTaskTemplates })
 const emit = defineEmits<{
+  addBlank: []
   patch: [key: string, value: Partial<EditableTask>]
   insert: [index: number, shared?: "customer_name" | "dimension" | "task_name" | "work_content"]
   edit: [index: number]
@@ -112,7 +114,12 @@ function spanRows(index: number, field: "customer_name" | "dimension" | "task_na
           <td class="date-col">{{ formatDateTime(entry.task.updated_at) }}</td>
           <td class="actions-col"><div class="row-actions"><button v-if="!deliveryMode && !recruitmentMode && !salesMode" type="button" class="link-button" @click="emit('view', entry.task)">查看</button><button v-if="!deliveryMode && !recruitmentMode && !salesMode" type="button" class="link-button" @click="emit('edit', entry.index)">编辑</button><button type="button" class="link-button danger" @click="emit('remove', entry.index)">删除</button><button type="button" class="insert-button" :aria-label="`在第 ${offset + index + 1} 行后插入任务`" title="在此行后插入任务" @click="emit('insert', entry.index)"><Plus :size="17" aria-hidden="true" /></button></div></td>
         </tr>
-        <tr v-if="!entries.length"><td :colspan="fields.length + (deliveryMode ? 4 : 5)" class="empty">暂无任务，请新增</td></tr>
+        <tr v-if="!entries.length"><td :colspan="fields.length + (deliveryMode ? 4 : 5)" class="empty"><div class="empty-task-content">
+          <p>{{ totalTasks ? '当前筛选条件下暂无任务' : '暂无工作任务' }}</p>
+          <div v-if="!totalTasks" class="empty-task-actions">
+            <button class="empty-task-button" type="button" @click="emit('addBlank')"><Plus :size="18" aria-hidden="true" />添加空白任务</button>
+          </div>
+        </div></td></tr>
       </tbody>
     </table>
   </div>

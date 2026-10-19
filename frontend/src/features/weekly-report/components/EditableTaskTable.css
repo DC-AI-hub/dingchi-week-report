@@ -1,4 +1,4 @@
-.editable-table-wrap { width: 100%; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+.editable-table-wrap { container-type: inline-size; width: 100%; max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
 .editable-task-table { width: 100%; min-width: 1100px; table-layout: fixed; border-collapse: separate; border-spacing: 0; }
 .editable-task-table th, .editable-task-table td { box-sizing: border-box; padding: 12px 10px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
 .editable-task-table th { color: var(--muted); background: var(--surface-soft); font-weight: 700; text-align: center; }
@@ -31,3 +31,10 @@
 @media (hover: none) { .cell-insert { opacity: 1; pointer-events: auto; } }
 
 .delivery-mode .actions-col { width: 110px; }
+
+.empty p { margin: 0 0 12px; }
+.empty-task-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; }
+.empty-task-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 9px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-soft); color: var(--accent-dark); cursor: pointer; font: inherit; }
+.empty-task-button:hover, .empty-task-button:focus-visible { border-color: var(--accent); outline: 2px solid var(--line); outline-offset: 2px; }
+
+.empty-task-content { position: sticky; left: 28px; width: calc(100cqw - 56px); }
