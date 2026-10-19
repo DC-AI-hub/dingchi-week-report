@@ -65,19 +65,19 @@ export interface ItoSalesTaskFieldDefinition {
 export const itoSalesTaskFieldDefinitions: ItoSalesTaskFieldDefinition[] = [
   { code: "customer_name", label: "客户", sort_order: 1, default_visible: true },
   { code: "task_name", label: "工作任务", sort_order: 2, default_visible: true },
-  { code: "work_content", label: "主要工作指引", sort_order: 3, default_visible: false },
+  { code: "work_content", label: "主要工作指引", sort_order: 3, default_visible: true },
   { code: "output_description", label: "输出成果", sort_order: 4, default_visible: true },
   { code: "planned_completion_date", label: "计划完成时间", sort_order: 5, default_visible: true },
-  { code: "progress_text", label: "工作进展（截至月日）", sort_order: 6, default_visible: false },
+  { code: "progress_text", label: "工作进展（截至月日）", sort_order: 6, default_visible: true },
   { code: "progress_percent", label: "完成进度（百分比）", sort_order: 7, default_visible: true },
   { code: "quality_percent", label: "完成质量（百分比）", sort_order: 8, default_visible: true },
   { code: "completion_rate", label: "月度工作完成率（完成进度*50%+完成质量*50%）", sort_order: 9, default_visible: true },
-  { code: "delay_reason", label: "进度缓慢原因说明", sort_order: 10, default_visible: false },
+  { code: "delay_reason", label: "进度缓慢原因说明", sort_order: 10, default_visible: true },
   { code: "on_time_status", label: "是否在计划时间内完成", sort_order: 11, default_visible: true },
-  { code: "actual_completion_date", label: "实际完成时间", sort_order: 12, default_visible: false },
-  { code: "owner_name", label: "责任人", sort_order: 13, default_visible: false },
-  { code: "collaborator_names", label: "协作人", sort_order: 14, default_visible: false },
-  { code: "document_links", label: "相关文档链接或佐证材料", sort_order: 15, default_visible: false },
+  { code: "actual_completion_date", label: "实际完成时间", sort_order: 12, default_visible: true },
+  { code: "owner_name", label: "责任人", sort_order: 13, default_visible: true },
+  { code: "collaborator_names", label: "协作人", sort_order: 14, default_visible: true },
+  { code: "document_links", label: "相关文档链接或佐证材料", sort_order: 15, default_visible: true },
 ]
 
 export function emptyItoSalesTask(ownerName = ""): ItoSalesTaskDraft {

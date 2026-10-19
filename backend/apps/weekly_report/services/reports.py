@@ -1049,7 +1049,9 @@ def _save_items(
             report_id=report.id,
             scope_type=str(raw.get("scope_type") or config.get("scope_type") or "overall"),
             customer_id=_optional_int(raw.get("customer_id")),
-            customer_name_snapshot=customer_name,
+            customer_name_snapshot=""
+            if text_refs[index].get("customer_text_id")
+            else customer_name,
             section_code=(
                 ""
                 if text_refs[index].get("dimension_text_id")

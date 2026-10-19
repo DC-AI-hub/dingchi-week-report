@@ -53,6 +53,9 @@ def record_change(plan, user_id, action, before, after):
                     "dimension_source",
                     "dimension_template",
                     "dimension_values",
+                    "customer_source",
+                    "customer_template",
+                    "customer_values",
                 ]
             )
         ],

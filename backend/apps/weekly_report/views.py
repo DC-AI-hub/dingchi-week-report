@@ -145,6 +145,8 @@ def report_list_view(request: HttpRequest) -> JsonResponse:
     正式提交时全量检查必填项；招聘新增可选 dimension_text_id（字符串ID）、
     dimension_group_key、dimension_source/template/values，与 task_* 来源、占位契约一致；
     维度/任务/内容共享引用须保持正文一致，禁止跨周报引用。旧数据省略维度引用时独立保存。
+    销售手填客户支持可选 customer_text_id/group_key/source/template/values，规则与任务一致；
+    与系统客户配置无关，返回 customer_name_snapshot 为解析后的文字；旧数据省略时独立自定义保存。
     共享正文及来源契约见 docs/weekly-task-texts.md。
     GET 成功响应：data.items、page、page_size、total、total_pages；
     POST 成功响应：201 周报详情；权限按角色作用域过滤。

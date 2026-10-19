@@ -84,6 +84,8 @@ export function saveMonthlyPlan(monthKey: string, summary: string): Promise<Mont
  * 新增 task_text_id/work_content_text_id（字符串逻辑ID）、task_group_key/work_content_group_key（草稿分组）。
  * 共享同一引用/分组的行必须传一致正文。任务来源 task_source=custom/template；
  * task_template 保留模板原文，task_values 是每个问号对应的字符串数组。交付模板来源任务仅可改占位值。
+ * 销售手填客户支持 customer_text_id/group_key/source/template/values；文本ID为字符串，source为custom/template，
+ * values为每项最多256字的占位值数组；与系统客户ID无关，省略时按独立自定义文本处理；新增字段兼容旧数据。
  * 招聘维度新增可选 dimension_text_id/group_key/source/template/values，与任务的同名后缀字段语义相同。
  * 维度ID为字符串、source=custom/template、values为每项最多256字的字符串数组；省略时兼容旧数据。
  * 缺省来源按 custom 处理；引用跨周报、类型不匹配或共享文本冲突返回400，仍统一携带 trace_id。

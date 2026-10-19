@@ -1,6 +1,6 @@
 import type { DeliveryTaskDraft, DeliveryTaskColumn } from "./delivery-specialist/types"
 
-export interface TaskTemplateOption { task: string; work: string; dimension?: string }
+export interface TaskTemplateOption { task: string; work: string; dimension?: string; customer?: string }
 export type EditableTask = Omit<DeliveryTaskDraft, "customer_name"> & {
   customer_name?: string
   dimension?: string

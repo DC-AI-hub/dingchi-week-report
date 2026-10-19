@@ -4,7 +4,7 @@ import BaseDialog from "@/components/overlay/BaseDialog.vue"
 import { deliveryTaskTemplates } from "@/features/weekly-report/delivery-specialist/task-templates"
 import TaskTemplatePopover from "./TaskTemplatePopover.vue"
 import type { TaskTemplateOption } from "@/features/weekly-report/task-editing"
-const props = withDefaults(defineProps<{ open: boolean; title: string; value: string; maxLength?: number; templateField?: "task_name" | "work_content" | "dimension"; templates?: readonly TaskTemplateOption[] }>(), { templates: () => deliveryTaskTemplates })
+const props = withDefaults(defineProps<{ open: boolean; title: string; value: string; maxLength?: number; templateField?: "task_name" | "work_content" | "dimension" | "customer_name"; templates?: readonly TaskTemplateOption[] }>(), { templates: () => deliveryTaskTemplates })
 const emit = defineEmits<{ close: []; save: [value: string, templateIndex?: number] }>()
 const draft = ref("")
 const selectedTemplate = ref("")
@@ -20,7 +20,7 @@ async function fillTemplate(index: number) {
   if (!props.templateField) return
   const template = props.templates[index]
   selectedTemplate.value = String(index)
-  if (template) draft.value = props.templateField === "dimension" ? template.dimension || "" : props.templateField === "task_name" ? template.task : template.work
+  if (template) draft.value = props.templateField === "customer_name" ? template.customer || "" : props.templateField === "dimension" ? template.dimension || "" : props.templateField === "task_name" ? template.task : template.work
   pickerOpen.value = false
   await nextTick()
   formElement.value?.querySelector("textarea")?.dispatchEvent(new Event("input", { bubbles: true }))
@@ -38,7 +38,7 @@ function save() {
   <BaseDialog :open="open" :title="`编辑${title}`" width="800px" @close="emit('close')">
     <form id="delivery-task-text-form" ref="formElement" class="text-field-form" @submit.prevent="save">
       <div class="text-field-heading"><label for="delivery-task-text">{{ title }}</label><button v-if="templateField" ref="pickerTrigger" type="button" class="template-picker-button" :aria-expanded="pickerOpen" aria-haspopup="dialog" @click="togglePicker">选择模板</button></div>
-      <textarea id="delivery-task-text" v-model="draft" class="text-field-input" :rows="templateField === 'dimension' ? 3 : 10" :maxlength="maxLength" :aria-label="title" />
+      <textarea id="delivery-task-text" v-model="draft" class="text-field-input" :rows="templateField === 'dimension' || templateField === 'customer_name' ? 3 : 10" :maxlength="maxLength" :aria-label="title" />
     </form>
     <template #actions><button class="ghost-button" type="button" @click="emit('close')">取消</button><button class="primary-button" type="submit" form="delivery-task-text-form">确定</button></template>
   </BaseDialog>

@@ -209,6 +209,7 @@ CREATE TABLE IF NOT EXISTS `weekly_report_item` (
     `customer_name_snapshot` VARCHAR(255) NOT NULL COMMENT '客户名称快照',
     `section_code` VARCHAR(64) NOT NULL COMMENT '模板分区编码快照',
     `task_code` VARCHAR(64) NOT NULL COMMENT '模板任务项编码快照',
+    `customer_text_id` BIGINT NULL COMMENT '销售手填客户共享文本逻辑ID，与系统客户无关',
     `dimension_text_id` BIGINT NULL COMMENT '共享维度文本逻辑ID',
     `task_text_id` BIGINT NULL COMMENT '工作任务文本逻辑ID',
     `work_content_text_id` BIGINT NULL COMMENT '工作内容文本逻辑ID',

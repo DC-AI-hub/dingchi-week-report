@@ -79,6 +79,7 @@ export function reportTaskStatusLabel(value: string | null | undefined): string 
 }
 
 export function formatReportTaskField(item: ReportItem, fieldCode: string): string {
+  if (fieldCode === "customer_name" && item.customer_source === "template" && item.customer_template) return previewTaskTemplate(item.customer_template, item.customer_values || [])
   if (fieldCode === "customer_name") return item.customer_name_snapshot || "—"
   if (fieldCode === "dimension") {
     if (item.dimension_source === "template" && item.dimension_template) return previewTaskTemplate(item.dimension_template, item.dimension_values || [])

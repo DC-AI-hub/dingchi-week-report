@@ -49,6 +49,7 @@ def copy_details(source, target):
         copied = duplicate(
             row,
             report_id=target.id,
+            customer_text_id=text_map.get(row.customer_text_id),
             dimension_text_id=text_map.get(row.dimension_text_id),
             task_text_id=text_map.get(row.task_text_id),
             work_content_text_id=text_map.get(row.work_content_text_id),

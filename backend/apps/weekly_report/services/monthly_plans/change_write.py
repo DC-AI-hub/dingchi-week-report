@@ -82,6 +82,9 @@ def same_content(first, second):
             task.get("dimension_source", "custom"),
             task.get("dimension_template", ""),
             tuple(task.get("dimension_values", [])),
+            task.get("customer_source", "custom"),
+            task.get("customer_template", ""),
+            tuple(task.get("customer_values", [])),
         )
         for task in first["tasks"]
     ] == [
@@ -96,6 +99,9 @@ def same_content(first, second):
             task.get("dimension_source", "custom"),
             task.get("dimension_template", ""),
             tuple(task.get("dimension_values", [])),
+            task.get("customer_source", "custom"),
+            task.get("customer_template", ""),
+            tuple(task.get("customer_values", [])),
         )
         for task in second["tasks"]
     ]

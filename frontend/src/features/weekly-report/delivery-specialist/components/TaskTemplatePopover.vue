@@ -52,7 +52,7 @@ onBeforeUnmount(() => {
       <div class="popover-list" role="radiogroup" aria-label="工作任务模板">
         <label v-for="(item, index) in templates" :key="index" class="template-choice" :class="{ selected: selected === String(index) }" @click.prevent="emit('select', index)">
           <input type="radio" name="delivery-task-template" :value="index" :checked="selected === String(index)" @change="emit('select', index)" />
-          <span class="choice-content"><span v-if="item.dimension" class="choice-task"><span class="choice-label">维度</span><strong>{{ item.dimension }}</strong></span><span class="choice-task"><span class="choice-label">工作任务</span><strong>{{ item.task }}</strong></span><span class="choice-work"><span class="choice-label">主要工作内容</span><span>{{ item.work }}</span></span></span>
+          <span class="choice-content"><span v-if="item.customer" class="choice-task"><span class="choice-label">客户</span><strong>{{ item.customer }}</strong></span><span v-if="item.dimension" class="choice-task"><span class="choice-label">维度</span><strong>{{ item.dimension }}</strong></span><span class="choice-task"><span class="choice-label">工作任务</span><strong>{{ item.task }}</strong></span><span class="choice-work"><span class="choice-label">主要工作内容</span><span>{{ item.work }}</span></span></span>
         </label>
       </div>
     </section>

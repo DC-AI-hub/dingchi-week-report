@@ -26,7 +26,8 @@ export interface ReportTaskTableProps {
 export function useReportTaskTable(props: ReportTaskTableProps) {
   const deliveryMode = computed(() => ["delivery_specialist_v1", "delivery_assistant_v1"].includes(props.templateCode || ""))
   const recruitmentMode = computed(() => props.templateCode === "recruitment_v1")
-  const sharedMode = computed(() => deliveryMode.value || recruitmentMode.value)
+  const salesMode = computed(() => ["ito_sales_v1", "innovation_sales_v1"].includes(props.templateCode || ""))
+  const sharedMode = computed(() => deliveryMode.value || recruitmentMode.value || salesMode.value)
   const activeCustomer = ref("")
   const customerKey = (item: ReportItem) => item.customer_id || item.customer_name_snapshot || "unassigned"
   const customers = computed(() => {
@@ -137,9 +138,9 @@ export function useReportTaskTable(props: ReportTaskTableProps) {
   }, { immediate: true })
 
   function customerRowspan(index: number): number {
-    if (recruitmentMode.value) {
+    if (recruitmentMode.value || salesMode.value) {
       const rows = pagedItems.value
-      const key = (row: ReportItem) => row.dimension_text_id || row.id
+      const key = (row: ReportItem) => (salesMode.value ? row.customer_text_id : row.dimension_text_id) || row.id
       if (index > 0 && key(rows[index - 1]!) === key(rows[index]!)) return 0
       let count = 1
       while (index + count < rows.length && key(rows[index + count]!) === key(rows[index]!)) count++
@@ -164,7 +165,7 @@ export function useReportTaskTable(props: ReportTaskTableProps) {
     if (primaryField.value.field_code === "dimension") {
       return formatReportTaskField(item, "dimension")
     }
-    return item.customer_name_snapshot || "—"
+    return formatReportTaskField(item, "customer_name")
   }
 
   function statusClass(value: string | null | undefined): string {
@@ -191,7 +192,7 @@ export function useReportTaskTable(props: ReportTaskTableProps) {
 
 
   function sharedKey(item: ReportItem, work: boolean): string {
-    const task = `${recruitmentMode.value ? item.dimension_text_id || item.id : ""}:${item.task_text_id || item.id}`
+    const task = `${salesMode.value ? item.customer_text_id || item.id : recruitmentMode.value ? item.dimension_text_id || item.id : ""}:${item.task_text_id || item.id}`
     return work ? `${task}:${item.work_content_text_id || item.id}` : task
   }
   function sharedRowspan(index: number, work = false): number {

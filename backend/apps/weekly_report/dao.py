@@ -187,7 +187,9 @@ def get_report_header(report_id: int) -> dict[str, Any] | None:
 def get_report_items(report_id: int) -> list[dict[str, Any]]:
     rows = _fetch(
         """
-        SELECT i.id, i.report_id, i.scope_type, i.customer_id, i.customer_name_snapshot,
+        SELECT i.id, i.report_id, i.scope_type, i.customer_id,
+               COALESCE(c.content, i.customer_name_snapshot) AS customer_name_snapshot,
+               i.customer_text_id,
                COALESCE(d.content, i.section_code) AS section_code, i.dimension_text_id,
                i.task_code, i.guidance_snapshot, i.output_description,
                i.planned_completion_date, i.progress_text, i.progress_percent,
@@ -197,6 +199,9 @@ def get_report_items(report_id: int) -> list[dict[str, Any]]:
                i.sort_order, i.created_at, i.updated_at, i.task_text_id, i.work_content_text_id,
                COALESCE(t.content, i.task_name_snapshot) AS resolved_task,
                COALESCE(w.content, i.work_content) AS resolved_work,
+               COALESCE(c.source, 'custom') AS customer_source,
+               COALESCE(c.template_text, '') AS customer_template,
+               COALESCE(c.values_json, '[]') AS customer_values_json,
                COALESCE(d.source, 'custom') AS dimension_source,
                COALESCE(d.template_text, '') AS dimension_template,
                COALESCE(d.values_json, '[]') AS dimension_values_json,
@@ -204,6 +209,7 @@ def get_report_items(report_id: int) -> list[dict[str, Any]]:
                COALESCE(t.template_text, '') AS task_template,
                COALESCE(t.values_json, '[]') AS task_values_json
         FROM weekly_report_item i
+        LEFT JOIN weekly_task_text c ON c.id = i.customer_text_id AND c.report_id = i.report_id
         LEFT JOIN weekly_task_text d ON d.id = i.dimension_text_id AND d.report_id = i.report_id
         LEFT JOIN weekly_task_text t ON t.id = i.task_text_id AND t.report_id = i.report_id
         LEFT JOIN weekly_task_text w ON w.id = i.work_content_text_id AND w.report_id = i.report_id
@@ -217,6 +223,7 @@ def get_report_items(report_id: int) -> list[dict[str, Any]]:
         row["work_content"] = row.pop("resolved_work")
         row["task_values"] = json.loads(row.pop("task_values_json"))
         row["dimension_values"] = json.loads(row.pop("dimension_values_json"))
+        row["customer_values"] = json.loads(row.pop("customer_values_json"))
     return rows
 
 

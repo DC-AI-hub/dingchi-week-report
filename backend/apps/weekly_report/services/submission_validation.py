@@ -30,6 +30,10 @@ def submission_errors(report, items, fields, template):
             not value.strip() for value in item.get("dimension_values", [])
         ):
             errors.append(f"第{index}行维度的模板占位值尚未填写完整。")
+        if item.get("customer_source") == "template" and any(
+            not value.strip() for value in item.get("customer_values", [])
+        ):
+            errors.append(f"第{index}行客户的模板占位值尚未填写完整。")
         if (
             item.get("on_time_status") in {"late", "overdue"}
             and not str(item.get("delay_reason") or "").strip()

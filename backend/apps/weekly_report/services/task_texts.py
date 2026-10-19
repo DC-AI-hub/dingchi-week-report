@@ -7,8 +7,13 @@ from apps.weekly_report.models import WeeklyReportItem, WeeklyTaskText
 
 
 def _text_state(raw, kind):
-    prefix = "dimension" if kind == "dimension" else "task"
-    field = {"task": "task_name_snapshot", "work": "work_content", "dimension": "dimension"}[kind]
+    prefix = kind if kind in {"dimension", "customer"} else "task"
+    field = {
+        "task": "task_name_snapshot",
+        "work": "work_content",
+        "dimension": "dimension",
+        "customer": "customer_name_snapshot",
+    }[kind]
     content = str(
         raw.get(field, raw.get("section_code", "") if kind == "dimension" else "") or ""
     ).strip()
@@ -34,6 +39,7 @@ def _resolve_text(report, raw, index, kind, existing, groups):
         "task": ("task_text_id", "task_group_key"),
         "work": ("work_content_text_id", "work_content_group_key"),
         "dimension": ("dimension_text_id", "dimension_group_key"),
+        "customer": ("customer_text_id", "customer_group_key"),
     }[kind]
     state = _text_state(raw, kind)
     text_id = str(raw.get(id_key) or "")
@@ -44,7 +50,13 @@ def _resolve_text(report, raw, index, kind, existing, groups):
         previous
         and previous.source == "template"
         and report.template_code
-        in {"delivery_specialist_v1", "delivery_assistant_v1", "recruitment_v1"}
+        in {
+            "delivery_specialist_v1",
+            "delivery_assistant_v1",
+            "recruitment_v1",
+            "ito_sales_v1",
+            "innovation_sales_v1",
+        }
         and (state[1] != "template" or state[2] != previous.template_text)
     ):
         raise ValueError("模板任务仅允许修改占位值，不能修改描述文字。")
@@ -69,11 +81,11 @@ def save_task_texts(report, submitted):
         for row in WeeklyTaskText.objects.select_for_update().filter(report_id=report.id)
     }
     groups = {}
-    kinds = (
-        ("dimension", "task", "work")
-        if report.template_code == "recruitment_v1"
-        else ("task", "work")
-    )
+    kinds = ("task", "work")
+    if report.template_code == "recruitment_v1":
+        kinds = ("dimension", *kinds)
+    elif report.template_code in {"ito_sales_v1", "innovation_sales_v1"}:
+        kinds = ("customer", *kinds)
     return [
         dict(_resolve_text(report, raw, index, kind, existing, groups) for kind in kinds)
         for index, raw in enumerate(submitted)
@@ -82,8 +94,10 @@ def save_task_texts(report, submitted):
 
 def remove_unused_texts(report_id):
     refs = set()
-    for task_id, work_id, dimension_id in WeeklyReportItem.objects.filter(
+    for task_id, work_id, dimension_id, customer_id in WeeklyReportItem.objects.filter(
         report_id=report_id
-    ).values_list("task_text_id", "work_content_text_id", "dimension_text_id"):
-        refs.update(value for value in (task_id, work_id, dimension_id) if value is not None)
+    ).values_list("task_text_id", "work_content_text_id", "dimension_text_id", "customer_text_id"):
+        refs.update(
+            value for value in (task_id, work_id, dimension_id, customer_id) if value is not None
+        )
     WeeklyTaskText.objects.filter(report_id=report_id).exclude(id__in=refs).delete()

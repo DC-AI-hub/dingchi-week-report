@@ -8,6 +8,9 @@ import { createId } from "@/utils/id"
 import DeliveryQuickFillDialog from "@/features/weekly-report/components/TaskQuickFillDialog.vue"
 import { deliveryAssistantTaskTemplates } from "@/features/weekly-report/delivery-assistant/task-templates"
 import { deliveryTaskTemplates } from "@/features/weekly-report/delivery-specialist/task-templates"
+import { itoSalesTaskTemplates } from "@/features/weekly-report/ito-sales/task-templates"
+import { innovationSalesTaskTemplates } from "@/features/weekly-report/innovation-sales/task-templates"
+import TemplateCustomerCell from "@/features/weekly-report/components/TemplateCustomerCell.vue"
 import { recruitmentMonthlyTaskTemplates } from "@/features/weekly-report/recruitment/task-templates"
 import { monthlyPlanScopeLabel } from "@/features/weekly-report/monthly-plan/template-fields"
 import { monthlyPlanSampleFields } from "@/features/weekly-report/monthly-plan/samples"
@@ -40,8 +43,9 @@ const editorOpen = ref(false)
 const quickFillOpen = ref(false)
 const deliveryTemplate = computed(() => ["delivery_specialist_v1", "delivery_assistant_v1"].includes(props.templateCode || ""))
 const recruitmentTemplate = computed(() => props.templateCode === "recruitment_v1")
-const editableTemplate = computed(() => deliveryTemplate.value || recruitmentTemplate.value)
-const taskTemplates = computed<readonly TaskTemplateOption[]>(() => recruitmentTemplate.value ? recruitmentMonthlyTaskTemplates : props.templateCode === "delivery_assistant_v1" ? deliveryAssistantTaskTemplates : deliveryTaskTemplates)
+const salesTemplate = computed(() => ["ito_sales_v1", "innovation_sales_v1"].includes(props.templateCode || ""))
+const editableTemplate = computed(() => deliveryTemplate.value || recruitmentTemplate.value || salesTemplate.value)
+const taskTemplates = computed<readonly TaskTemplateOption[]>(() => salesTemplate.value ? (props.templateCode === "innovation_sales_v1" ? innovationSalesTaskTemplates : itoSalesTaskTemplates) : recruitmentTemplate.value ? recruitmentMonthlyTaskTemplates : props.templateCode === "delivery_assistant_v1" ? deliveryAssistantTaskTemplates : deliveryTaskTemplates)
 const viewing = ref(false)
 const selectedTask = ref<MonthlyPlanTask | null>(null)
 const editingText = ref<MonthlyPlanTask | null>(null)
@@ -109,6 +113,16 @@ function saveText(value: string, templateIndex?: number) {
     const current = props.tasks.find(task => task.id === editingText.value?.id)
     const template = templateIndex === undefined ? undefined : taskTemplates.value[templateIndex]
     const fields: Partial<MonthlyPlanTask> = { [editingField.value]: value }
+    if (salesTemplate.value && template) {
+      if (editingField.value === "scope_name" || !current?.scope_name?.trim()) Object.assign(fields, {
+        scope_name: template.customer || "", customer_source: "template", customer_template: template.customer || "",
+        customer_values: Array((template.customer || "").split(/[?？]/).length - 1).fill(""),
+      })
+      if (editingField.value === "work_task" || !current?.work_task.trim()) Object.assign(fields, {
+        task_source: "template", task_template: template.task, work_task: template.task,
+        task_values: Array(template.task.split(/[?？]/).length - 1).fill(""),
+      })
+    }
     if (recruitmentTemplate.value && template) {
       if (editingField.value === "scope_name" || !current?.scope_name?.trim()) Object.assign(fields, {
         scope_name: template.dimension || "", dimension_source: "template", dimension_template: template.dimension || "",
@@ -142,9 +156,10 @@ function insertAfter(id: string) {
 
 function addPlans(customer: string, indexes: number[]) {
   if (unavailable.value || props.readonly) return
-  const tasks = indexes.map(index => ({ id: `draft-${createId()}`, scope_name: recruitmentTemplate.value ? recruitmentMonthlyTaskTemplates[index]!.dimension : customer, work_task: taskTemplates.value[index]!.task,
+  const tasks = indexes.map(index => ({ id: `draft-${createId()}`, scope_name: salesTemplate.value ? taskTemplates.value[index]!.customer : recruitmentTemplate.value ? recruitmentMonthlyTaskTemplates[index]!.dimension : customer, work_task: taskTemplates.value[index]!.task,
     ...(editableTemplate.value ? { task_source: "template" as const, task_template: taskTemplates.value[index]!.task,
       task_values: Array(taskTemplates.value[index]!.task.split(/[?？]/).length - 1).fill("") } : {}),
+    ...(salesTemplate.value ? { customer_source: "template" as const, customer_template: taskTemplates.value[index]!.customer || "", customer_values: Array((taskTemplates.value[index]!.customer || "").split(/[?？]/).length - 1).fill("") } : {}),
     ...(recruitmentTemplate.value ? { dimension_source: "template" as const, dimension_template: recruitmentMonthlyTaskTemplates[index]!.dimension, dimension_values: Array(recruitmentMonthlyTaskTemplates[index]!.dimension.split(/[?？]/).length - 1).fill("") } : {}) }))
   emit("update:tasks", [...props.tasks, ...tasks])
   quickFillOpen.value = false
@@ -175,7 +190,7 @@ function addPlans(customer: string, indexes: number[]) {
           <tbody>
             <tr v-for="(task, index) in entries" :key="task.id">
               <td class="serial">{{ (page - 1) * pageSize + index + 1 }}</td>
-              <td v-if="scopeLabel && !deliveryTemplate" class="customer-name"><TemplateDimensionCell v-if="recruitmentTemplate && !readonly && !unavailable && task.dimension_source === 'template'" :task="{ ...task, dimension: task.scope_name }" @patch="patch(task.id, { scope_name: $event.dimension, dimension_values: $event.dimension_values })" /><span v-else-if="recruitmentTemplate && (readonly || unavailable)" class="monthly-task-plain">{{ task.dimension_source === 'template' ? previewTaskTemplate(task.dimension_template || '', task.dimension_values || []) : task.scope_name || '—' }}</span><button v-else-if="recruitmentTemplate && !readonly" class="monthly-task-text-cell" type="button" :disabled="unavailable" aria-label="编辑维度" @click="openText(task, 'scope_name')">{{ task.scope_name || '点击填写维度' }}</button><template v-else>{{ task.scope_name || "—" }}</template></td>
+              <td v-if="scopeLabel && !deliveryTemplate" class="customer-name"><template v-if="salesTemplate"><span v-if="readonly || unavailable" class="monthly-task-plain">{{ task.customer_source === 'template' ? previewTaskTemplate(task.customer_template || '', task.customer_values || []) : task.scope_name || '—' }}</span><TemplateCustomerCell v-else-if="task.customer_source === 'template'" :task="{ ...task, customer_name: task.scope_name }" @patch="patch(task.id, { scope_name: $event.customer_name, customer_values: $event.customer_values })" /><button v-else class="monthly-task-text-cell" type="button" aria-label="编辑客户" @click="openText(task, 'scope_name')">{{ task.scope_name || '点击填写客户' }}</button></template><template v-else><TemplateDimensionCell v-if="recruitmentTemplate && !readonly && !unavailable && task.dimension_source === 'template'" :task="{ ...task, dimension: task.scope_name }" @patch="patch(task.id, { scope_name: $event.dimension, dimension_values: $event.dimension_values })" /><span v-else-if="recruitmentTemplate && (readonly || unavailable)" class="monthly-task-plain">{{ task.dimension_source === 'template' ? previewTaskTemplate(task.dimension_template || '', task.dimension_values || []) : task.scope_name || '—' }}</span><button v-else-if="recruitmentTemplate && !readonly" class="monthly-task-text-cell" type="button" :disabled="unavailable" aria-label="编辑维度" @click="openText(task, 'scope_name')">{{ task.scope_name || '点击填写维度' }}</button><template v-else>{{ task.scope_name || "—" }}</template></template></td>
               <td>
                 <template v-if="editableTemplate">
                   <span v-if="readonly || unavailable" class="monthly-task-plain">{{ displayTask(task) || "—" }}</span>
@@ -201,8 +216,8 @@ function addPlans(customer: string, indexes: number[]) {
     </template>
   </section>
   <MonthlyPlanTaskDialog v-if="!editableTemplate && (readonly || isSupportedTemplate(templateCode))" :template-code="templateCode" :open="editorOpen" :task="selectedTask" :readonly="viewing" @close="editorOpen = false" @save="save" />
-  <TaskTextFieldDialog v-if="isSupportedTemplate(templateCode)" :open="Boolean(editingText)" :title="editingField === 'scope_name' ? '维度' : '工作任务'" :value="editingText?.[editingField] || ''" :max-length="editingField === 'scope_name' ? 255 : editableTemplate ? undefined : 2000" :template-field="editingField === 'scope_name' ? 'dimension' : 'task_name'" :templates="taskTemplates" @close="editingText = null" @save="saveText" />
-  <DeliveryQuickFillDialog v-if="editableTemplate" :open="quickFillOpen" monthly :recruitment="recruitmentTemplate" :templates="taskTemplates" @close="quickFillOpen = false" @confirm="addPlans" />
+  <TaskTextFieldDialog v-if="isSupportedTemplate(templateCode)" :open="Boolean(editingText)" :title="editingField === 'scope_name' ? scopeLabel : '工作任务'" :value="editingText?.[editingField] || ''" :max-length="editingField === 'scope_name' ? 255 : editableTemplate ? undefined : 2000" :template-field="editingField === 'scope_name' ? (salesTemplate ? 'customer_name' : 'dimension') : 'task_name'" :templates="taskTemplates" @close="editingText = null" @save="saveText" />
+  <DeliveryQuickFillDialog v-if="editableTemplate" :open="quickFillOpen" monthly :sales="salesTemplate" :recruitment="recruitmentTemplate" :templates="taskTemplates" @close="quickFillOpen = false" @confirm="addPlans" />
 </template>
 
 <style scoped src="./MonthlyPlanTaskPanel.css"></style>

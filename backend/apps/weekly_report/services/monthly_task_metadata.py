@@ -21,7 +21,11 @@ def _field_metadata(item, prefix):
 
 
 def task_metadata(item):
-    return {**_field_metadata(item, "task"), **_field_metadata(item, "dimension")}
+    return {
+        **_field_metadata(item, "task"),
+        **_field_metadata(item, "dimension"),
+        **_field_metadata(item, "customer"),
+    }
 
 
 def restore_metadata(tasks, snapshot):
@@ -53,4 +57,7 @@ def task_content_key(task):
         metadata["dimension_source"],
         metadata["dimension_template"],
         tuple(metadata["dimension_values"]),
+        metadata["customer_source"],
+        metadata["customer_template"],
+        tuple(metadata["customer_values"]),
     )
