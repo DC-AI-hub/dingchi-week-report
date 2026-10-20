@@ -16,7 +16,7 @@ export const itoSalesMonthlyPlanSampleFields = [
 
 
 
-/** 月度与周度指引分开维护，分别对应 Excel 第 3–7 行和第 10–14 行。 */
+/** 月度与周度指引分别维护，区域业务中的地区、月份及业务数据统一使用问号占位。 */
 export const itoSalesMonthlyTaskSampleFields = itoSalesMonthlyTaskTemplates.map((task, index) => ({
   label: `任务 ${index + 1}`,
   rows: [
