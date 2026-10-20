@@ -124,10 +124,6 @@ onMounted(() => void load())
           :show-customer-tabs="false"
         />
       </FullscreenPanel>
-      <section class="dashboard-card detail-card">
-        <div class="section-heading"><h2>本周总结</h2></div>
-        <p class="summary-text">{{ detail.report.summary || "暂无总结" }}</p>
-      </section>
       <DailyTaskSection
         :report="detail.report"
         :daily-tasks="detail.daily_tasks"

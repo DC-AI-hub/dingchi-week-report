@@ -1,7 +1,7 @@
 import { computed, reactive, ref, watch } from "vue"
 import { useTodoStore } from "@/features/todos/store"
 import { useAuthStore } from "@/features/auth/store"
-import { decideManagedPlan, decidePlanChange,deletePlanChange,submitPlanChange,createPlanChange, deleteManagedPlan, getPlanContext, listMonthlyPlans, submitManagedPlan } from "./api"
+import { copyManagedPlan, decideManagedPlan, decidePlanChange,deletePlanChange,submitPlanChange,createPlanChange, deleteManagedPlan, getPlanContext, listMonthlyPlans, submitManagedPlan } from "./api"
 import type { ApprovalRecord, PlanContext, PlanFilters, PlanList, PlanListView } from "./types"
 
 export function useMonthlyPlanList() {
@@ -82,5 +82,11 @@ export function useMonthlyPlanList() {
     catch(cause){error.value=cause instanceof Error?cause.message:'申请变更失败。';return ''}
     finally{busy.value=false}
   }
-  return { appliedStatus, pendingCount, filters, data, context, error, busy, load, initialize, action, activeTab, tabs, selectTab, decide,beginChange }
+  async function copyPlan(id: string) {
+    busy.value = true; error.value = ""
+    try { const result = await copyManagedPlan(id); await load(); return result.plan.id }
+    catch (cause) { error.value = cause instanceof Error ? cause.message : "复制月度计划失败。"; return "" }
+    finally { busy.value = false }
+  }
+  return { copyPlan, appliedStatus, pendingCount, filters, data, context, error, busy, load, initialize, action, activeTab, tabs, selectTab, decide,beginChange }
 }

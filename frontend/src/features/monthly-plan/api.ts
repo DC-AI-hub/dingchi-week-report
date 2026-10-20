@@ -34,3 +34,6 @@ export function deletePlanChange(id:string):Promise<{id:string;deleted:true}> { 
 
 /** GET approvals/{id}/：本人分配审批单的冻结快照及变更基线，不受列表筛选分页影响；Bearer/trace，400/401/403；返回ApprovalRecord，v1新增。 */
 export function getAssignedApproval(id:string):Promise<import("./types").ApprovalRecord>{return request({method:"GET",url:base+"approvals/"+id+"/"})}
+
+/** POST {id}/copy/，无请求体；仅本人当前职位审批通过主计划；以最新生效内容创建下月独立草稿，排除未通过变更；返回PlanDetail，所有ID为字符串；400未通过或下月已存在、401/403/404/409，统一Bearer和X-Trace-ID，v1新增。 */
+export function copyManagedPlan(id: string): Promise<PlanDetail> { return request({ method: "POST", url: base + id + "/copy/" }) }

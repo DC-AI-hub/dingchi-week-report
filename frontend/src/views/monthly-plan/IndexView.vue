@@ -21,6 +21,7 @@ const router=useRouter(),route=useRoute()
 const deleting = ref("")
 const deletingChange=ref(false)
 function askDelete(id:string,change=false){deleting.value=id;deletingChange.value=change}
+async function copyPlan(id:string){const planId=await list.copyPlan(id);if(planId)await router.push({name:"monthly-plan-edit",params:{planId},query:{tab:"mine"}})}
 async function beginChange(id:string){const changeId=await list.beginChange(id);if(changeId)await router.push({name:"monthly-plan-change-edit",params:{changeId},query:{tab:list.activeTab.value}})}
 const viewing = ref<ApprovalRecord|null>(null)
 async function decide(record:ApprovalRecord,reject:boolean,reason:string){if(await list.decide(record,reject,reason))closeViewing()}
@@ -56,7 +57,7 @@ onMounted(async()=>{
     <MonthlyPlanFilters v-model="list.filters" :busy="list.busy.value" :view="list.activeTab.value" @search="search" />
     <NoticeBridge :warning-message="list.error.value" />
     <MonthlyApprovalTable v-if="list.activeTab.value==='approvals'" :records="list.data.value.approvals" :busy="list.busy.value" @view="viewing=$event" />
-    <MonthlyPlanTable v-else :status-filter="list.appliedStatus.value" :items="list.data.value.items" :busy="list.busy.value" :view="list.activeTab.value" @submit="list.action($event, 'submit')" @delete="askDelete($event)" @change-create="beginChange" @change-submit="list.action($event, 'submit', true)" @change-delete="askDelete($event,true)" />
+    <MonthlyPlanTable v-else :status-filter="list.appliedStatus.value" :items="list.data.value.items" :busy="list.busy.value" :view="list.activeTab.value" @submit="list.action($event, 'submit')" @delete="askDelete($event)" @copy="copyPlan" @change-create="beginChange" @change-submit="list.action($event, 'submit', true)" @change-delete="askDelete($event,true)" />
     <PaginationBar class="monthly-list-pagination" :page="list.data.value.page" :page-size="list.data.value.page_size" :total="list.data.value.total" :total-pages="list.data.value.total_pages" :disabled="list.busy.value" @change="page" />
     </div></section>
     <ApprovalSnapshotDialog :record="viewing" :busy="list.busy.value" :error="list.error.value" @close="closeViewing" @decide="decide" />

@@ -8,6 +8,9 @@ app_name = "weekly_report"
 
 urlpatterns = [
     path(
+        "monthly-plan-management/<str:plan_id>/copy/", monthly_views.copy_view, name="monthly-copy"
+    ),
+    path(
         "monthly-plan-management/approvals/<str:approval_id>/", monthly_views.approval_detail_view
     ),
     path(

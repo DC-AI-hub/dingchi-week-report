@@ -7,7 +7,7 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 from apps.accounts.services.auth import AuthenticationError, require_request_user
 from apps.core.http import api_error, api_success, log_unhandled_exception
 
-from .services.monthly_plans import approval_read, change_read, change_write, read, write
+from .services.monthly_plans import approval_read, change_read, change_write, copy, read, write
 from .services.monthly_plans.policy import PlanNotFound
 
 
@@ -131,3 +131,14 @@ def approval_detail_view(request, approval_id):
     return invoke(
         request, lambda user, role: approval_read.detail_assigned(user, role, int(approval_id))
     )
+
+
+@csrf_exempt
+@require_POST
+def copy_view(request, plan_id):
+    """POST {id}/copy/：无请求体，仅本人当前职位已通过主计划可复制。
+
+    返回下月草稿完整详情（字符串ID）；复制最新生效内容及模板元数据，不包含未通过变更。
+    目标月份已存在返回400；401未认证、403无权、404不存在、409并发冲突；统一包络及trace。
+    """
+    return invoke(request, lambda user, role: copy.copy_next_month(user, role, int(plan_id)))

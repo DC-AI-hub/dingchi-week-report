@@ -105,7 +105,7 @@ function displayDate(value: string) {
   <section class="dashboard-card detail-card daily-task-card">
     <NoticeBridge :warning-message="warningMessage" />
     <div class="section-heading daily-task-card__heading">
-      <h2>每日工作任务</h2>
+      <h2>每日工作总结</h2>
       <button v-if="canManage" class="primary-button" type="button" @click="openCreate">
         填写日报
       </button>

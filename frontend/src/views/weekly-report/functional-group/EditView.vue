@@ -90,9 +90,6 @@ onMounted(() => void form.load())
         :sample-content="functionalWeeklyTaskSample"
         :sample-fields="functionalWeeklyTaskSampleFields"
       />
-      <section class="dashboard-card weekly-summary">
-        <label>本周总结<textarea v-model.trim="form.report.summary" rows="4" /></label>
-      </section>
       <DailyTaskSection
         :report="form.report"
         v-model:daily-tasks="form.dailyTasks.value"
