@@ -54,8 +54,10 @@
 .fullscreen-panel__body :deep(.report-task-table) { display: flex; flex-direction: column; }
 .fullscreen-panel__body :deep(.report-task-table-wrap) { flex: 1; }
 .fullscreen-panel__body :deep(thead th) { position: sticky; top: 0; z-index: 6; }
-.fullscreen-panel__body :deep(thead .fixed-col),
-.fullscreen-panel__body :deep(thead .actions-col) { z-index: 7; }
+/* 双向固定表头必须高于滚动表头（6），也高于获得焦点的正文单元格（5）。
+   增加容器及单元格选择器权重，避免被各模板表格的局部样式覆盖。 */
+.fullscreen-panel .fullscreen-panel__body :deep(table thead th.fixed-col),
+.fullscreen-panel .fullscreen-panel__body :deep(table thead th.actions-col) { z-index: 8; }
 
 .fullscreen-panel--expanded .fullscreen-panel__body :deep(.editable-table-wrap),
 .fullscreen-panel--expanded .fullscreen-panel__body :deep(.task-table-wrap),
