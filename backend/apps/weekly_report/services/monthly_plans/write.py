@@ -45,9 +45,12 @@ def record_change(plan, user_id, action, before, after):
                 for field in [
                     "scope_group_key",
                     "task_group_key",
+                    "content_group_key",
                     "scope_name",
                     "work_task",
                     "work_content",
+                    "output_description",
+                    "planned_date",
                     "sort_order",
                     "task_source",
                     "task_template",

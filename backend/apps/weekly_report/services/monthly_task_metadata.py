@@ -22,7 +22,7 @@ def _field_metadata(item, prefix):
 
 def _group_metadata(item):
     groups = {}
-    for field in ("scope_group_key", "task_group_key"):
+    for field in ("scope_group_key", "task_group_key", "content_group_key"):
         value = item.get(field)
         if value is None:
             continue
@@ -63,9 +63,12 @@ def task_content_key(task):
     return (
         metadata.get("scope_group_key", ""),
         metadata.get("task_group_key", ""),
+        metadata.get("content_group_key", ""),
         task.get("scope_name") or "",
         task.get("work_task"),
         task.get("work_content", ""),
+        task.get("output_description", ""),
+        task.get("planned_date") or None,
         metadata["task_source"],
         metadata["task_template"],
         tuple(metadata["task_values"]),
@@ -80,7 +83,7 @@ def task_content_key(task):
 
 def validate_group_contents(tasks):
     """分组仅在本次计划载荷内生效，共用字段及其模板信息必须一致。"""
-    scopes, groups = {}, {}
+    scopes, groups, contents = {}, {}, {}
     for task in tasks:
         scope_key = task.get("scope_group_key")
         task_key = task.get("task_group_key")
@@ -99,3 +102,9 @@ def validate_group_contents(tasks):
             raise ValueError("同一月度计划分组的客户/维度内容不一致。")
         if task_key and groups.setdefault((scope_key, task_key), content) != content:
             raise ValueError("同一月度计划分组的工作任务内容不一致。")
+
+        content_key = task.get("content_group_key")
+        if content_key and contents.setdefault(
+            (scope_key, task_key, content_key), task.get("work_content", "")
+        ) != task.get("work_content", ""):
+            raise ValueError("同一月度计划分组的工作内容不一致。")

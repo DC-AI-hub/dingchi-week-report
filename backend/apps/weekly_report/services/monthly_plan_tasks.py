@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from datetime import date
 from typing import Any
 
 from django.db import transaction
@@ -34,6 +35,8 @@ def list_monthly_plan_tasks(
             "dimension": row.scope_name or "",
             "work_task": row.work_task,
             "work_content": row.work_content,
+            "output_description": row.output_description,
+            "planned_date": row.planned_date.isoformat() if row.planned_date else None,
             "sort_order": row.sort_order,
             "updated_at": row.updated_at.isoformat(),
         }
@@ -68,6 +71,7 @@ def validate_tasks(value: Any) -> list[dict[str, Any]]:
             "work_task": work_task,
             "work_content": work_content.strip(),
         }
+        normalized.update(validate_outcome(item))
         normalized.update(task_metadata(item))
         task_id = item.get("id")
         if task_id and str(task_id).isdigit():
@@ -75,6 +79,21 @@ def validate_tasks(value: Any) -> list[dict[str, Any]]:
         work_tasks.append(normalized)
     validate_group_contents(work_tasks)
     return work_tasks
+
+
+def validate_outcome(item):
+    output = item.get("output_description", "")
+    if not isinstance(output, str) or len(output) > 10000:
+        raise ValueError("月度计划输出成果必须为文字且不能超过10000字符。")
+    planned = item.get("planned_date") or None
+    if planned is not None:
+        if not isinstance(planned, str) or not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", planned):
+            raise ValueError("月度计划计划完成时间必须为有效的 YYYY-MM-DD 日期。")
+        try:
+            date.fromisoformat(planned)
+        except ValueError as exc:
+            raise ValueError("月度计划计划完成时间必须为有效日期。") from exc
+    return {"output_description": output.strip(), "planned_date": planned}
 
 
 def validate_report_monthly_data(summary: Any, tasks: Any, template_code: str) -> None:

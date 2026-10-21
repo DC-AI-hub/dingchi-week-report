@@ -6,10 +6,13 @@ export interface MonthlyPlanTask extends Pick<TaskTextMetadata, "task_source" | 
   /** 当前月度计划内的客户/维度、工作任务分组；省略时每行独立。 */
   scope_group_key?: string
   task_group_key?: string
+  content_group_key?: string
   scope_name?: string
   work_task: string
   /** 主要工作内容；旧审批快照省略时按空文本显示。 */
   work_content?: string
+  output_description?: string
+  planned_date?: string | null
   sort_order?: number
   updated_at?: string
 }
@@ -18,7 +21,10 @@ export interface MonthlyPlanTaskPayload extends Pick<TaskTextMetadata, "task_sou
   /** 当前月度计划内的客户/维度、工作任务分组；省略时每行独立。 */
   scope_group_key?: string
   task_group_key?: string
+  content_group_key?: string
   scope_name?: string
   work_task: string
   work_content?: string
+  output_description?: string
+  planned_date?: string | null
 }

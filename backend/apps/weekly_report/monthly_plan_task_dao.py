@@ -42,6 +42,8 @@ def replace_tasks(
         task.scope_name = fields["scope_name"] or None
         task.work_task = fields["work_task"]
         task.work_content = fields.get("work_content", "")
+        task.output_description = fields.get("output_description", "")
+        task.planned_date = fields.get("planned_date")
         task.sort_order = index
         task.save()
 

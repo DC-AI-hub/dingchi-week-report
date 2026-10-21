@@ -3,6 +3,7 @@
   --monthly-plan-table-min-width: 0px;
   --monthly-plan-scope-width: 18%;
   --monthly-plan-serial-width: 40px;
+  --monthly-plan-date-width: clamp(90px, 12vw, 160px);
   --monthly-plan-cell-padding: clamp(6px, 1vw, 14px);
 }
 .snapshot-goal { padding:16px; }

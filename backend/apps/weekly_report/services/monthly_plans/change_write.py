@@ -12,7 +12,7 @@ from ..monthly_plan_tasks import (
     validate_report_monthly_data,
     validate_tasks,
 )
-from ..monthly_task_metadata import snapshot_with_metadata
+from ..monthly_task_metadata import snapshot_with_metadata, task_content_key
 from . import change_read
 from .policy import PlanNotFound, configured_approvers, editable_plan, readable_plan
 from .versions import live_snapshot
@@ -71,40 +71,8 @@ def normalized_proposal(change, payload):
 
 def same_content(first, second):
     return first["summary"] == second["summary"] and [
-        (
-            task.get("id"),
-            task.get("scope_name") or "",
-            task["work_task"],
-            task.get("work_content", ""),
-            task.get("task_source", "custom"),
-            task.get("task_template", ""),
-            tuple(task.get("task_values", [])),
-            task.get("dimension_source", "custom"),
-            task.get("dimension_template", ""),
-            tuple(task.get("dimension_values", [])),
-            task.get("customer_source", "custom"),
-            task.get("customer_template", ""),
-            tuple(task.get("customer_values", [])),
-        )
-        for task in first["tasks"]
-    ] == [
-        (
-            task.get("id"),
-            task.get("scope_name") or "",
-            task["work_task"],
-            task.get("work_content", ""),
-            task.get("task_source", "custom"),
-            task.get("task_template", ""),
-            tuple(task.get("task_values", [])),
-            task.get("dimension_source", "custom"),
-            task.get("dimension_template", ""),
-            tuple(task.get("dimension_values", [])),
-            task.get("customer_source", "custom"),
-            task.get("customer_template", ""),
-            tuple(task.get("customer_values", [])),
-        )
-        for task in second["tasks"]
-    ]
+        (task.get("id"), task_content_key(task)) for task in first["tasks"]
+    ] == [(task.get("id"), task_content_key(task)) for task in second["tasks"]]
 
 
 @transaction.atomic

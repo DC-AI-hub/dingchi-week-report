@@ -159,6 +159,8 @@ class MonthlyPlanTask(SnowflakeIdModel):
     scope_name = models.CharField(max_length=255, blank=True, null=True, default="")
     work_task = models.TextField()
     work_content = models.TextField(blank=True, default="")
+    output_description = models.TextField(blank=True, default="")
+    planned_date = models.DateField(null=True, blank=True)
     sort_order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
