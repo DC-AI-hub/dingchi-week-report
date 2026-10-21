@@ -14,7 +14,7 @@ from ..monthly_plan_tasks import (
 )
 from ..monthly_task_metadata import snapshot_with_metadata
 from . import change_read
-from .policy import PlanNotFound, editable_plan, readable_plan, require_managers
+from .policy import PlanNotFound, configured_approvers, editable_plan, readable_plan
 from .versions import live_snapshot
 
 
@@ -29,7 +29,7 @@ def locked_change(user, role_code, change_id, *, editable=False):
             raise PermissionError("只能修改本人当前角色的变更申请。")
         if change.status not in {"draft", "rejected"}:
             raise ValueError("审批中或已通过的变更申请不能修改。")
-        require_managers(user.id)
+        configured_approvers(user.id)
     return plan, change
 
 
@@ -138,15 +138,18 @@ def submit(user, role_code, change_id):
     history = approval_history("monthly_plan_change", change.id, user.id, role_code)
     if history and history[0]["status"] == "rejected" and history[0]["revision"] == change.revision:
         raise ValueError("请修改驳回的变更申请后再提交。")
+    approvers = configured_approvers(user.id)
     start_approval(
         business_type="monthly_plan_change",
         business_id=change.id,
         applicant_id=user.id,
         revision=change.revision,
         snapshot=proposal,
-        approvers=require_managers(user.id),
+        approvers=approvers,
     )
-    change.status, change.rejection_reason = "pending", ""
+    change.status, change.rejection_reason = "pending" if approvers else "approved", ""
+    if not approvers:
+        publish(plan, change)
     dao.save_change(change)
     return change_read.detail(user, role_code, change.id)
 

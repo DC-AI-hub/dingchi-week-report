@@ -15,7 +15,7 @@ from ..monthly_plan_tasks import (
     validate_report_monthly_data,
 )
 from ..monthly_task_metadata import snapshot_with_metadata, task_content_key
-from .policy import editable_plan, readable_plan, require_managers
+from .policy import configured_approvers, editable_plan, readable_plan
 from .read import detail
 
 
@@ -76,7 +76,7 @@ def record_change(plan, user_id, action, before, after):
 def save(user, role_code, payload, plan_id=None):
     if account_role_scope(role_code) == "all":
         raise PermissionError("全员角色仅支持查看和审批。")
-    require_managers(user.id)
+    configured_approvers(user.id)
     before = {}
     if plan_id:
         plan = editable_plan(user, role_code, plan_id)
@@ -139,15 +139,16 @@ def submit(user, role_code, plan_id):
         raise ValueError("请先修改驳回的计划，再重新提交。")
     data = snapshot(plan)
     validate_report_monthly_data(plan.summary, data["tasks"], plan.template_code)
+    approvers = configured_approvers(user.id)
     start_approval(
         business_type="monthly_plan",
         business_id=int(plan.id),
         applicant_id=int(user.id),
         revision=plan.revision,
         snapshot=data,
-        approvers=require_managers(user.id),
+        approvers=approvers,
     )
-    plan.status, plan.rejection_reason = "pending", ""
+    plan.status, plan.rejection_reason = "pending" if approvers else "approved", ""
     dao.save_plan(plan)
     return detail(user, role_code, plan.id)
 

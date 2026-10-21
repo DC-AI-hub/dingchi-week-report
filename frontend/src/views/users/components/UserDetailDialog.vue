@@ -18,6 +18,8 @@ const managerDisplayName = computed(() => {
   return ids.map((id, index) => `${index + 1}. ${props.users?.find((item) => item.id === id)?.display_name || "未知"}`).join(" → ") || "无"
 })
 
+const monthlyApproverDisplayName = computed(() => (props.user?.monthly_approver_ids || []).map((id, index) => `${index + 1}. ${props.users.find(item => item.id === id)?.display_name || "未知"}`).join(" → ") || "无（提交后直接通过）")
+
 const emit = defineEmits<{
   close: []
   edit: [user: DirectoryUser]
@@ -41,6 +43,7 @@ const emit = defineEmits<{
         <div><dt>手机号</dt><dd>{{ user.phone || "未填写" }}</dd></div>
         <div><dt>所属分组</dt><dd>{{ user.group_name || "未分组" }}</dd></div>
         <div><dt>直属上级</dt><dd>{{ managerDisplayName }}</dd></div>
+        <div><dt>月报审批人</dt><dd>{{ monthlyApproverDisplayName }}</dd></div>
         <div class="detail-grid__wide"><dt>职位</dt><dd class="detail-roles">{{ user.role_names.length ? user.role_names.join("、") : "未分配" }}</dd></div>
       </dl>
     </div>

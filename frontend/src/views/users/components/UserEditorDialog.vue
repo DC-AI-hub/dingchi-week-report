@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, watch } from "vue"
-
 import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
 import PersonSelect from "@/features/directory/components/PersonSelect.vue"
@@ -11,7 +10,6 @@ import type {
   DirectoryUser,
   UserMutationPayload,
 } from "@/features/directory/types"
-
 const props = withDefaults(
   defineProps<{
     open: boolean
@@ -29,12 +27,10 @@ const props = withDefaults(
     isSaving: false,
   },
 )
-
 const emit = defineEmits<{
   close: []
   submit: [payload: UserMutationPayload]
 }>()
-
 const isEditing = computed(() => Boolean(props.user))
 const formError = ref("")
 const displayNameInput = ref<HTMLInputElement | null>(null)
@@ -48,17 +44,19 @@ const form = reactive<UserMutationPayload>({
   group_id: null,
   manager_id: null,
   manager_ids: [],
+  monthly_approver_ids: [],
   role_codes: [],
   status: "active",
 })
-
 const managerSelection = computed({
   get: () => form.manager_ids || [],
   set: (value: string | string[]) => { form.manager_ids = Array.isArray(value) ? value : value ? [value] : [] },
 })
-
+const monthlyApproverSelection = computed({
+  get: () => form.monthly_approver_ids || [],
+  set: (value: string | string[]) => { form.monthly_approver_ids = Array.isArray(value) ? value : value ? [value] : [] },
+})
 const availableManagers = computed(() => props.users.filter((item) => item.id !== props.user?.id))
-
 watch(
   () => ({ open: props.open, user: props.user, roles: props.roles }),
   ({ open, user, roles }) => {
@@ -75,6 +73,7 @@ watch(
             password: "",
             group_id: user.group_id,
             manager_id: user.manager_id,
+            monthly_approver_ids: [...(user.monthly_approver_ids || [])],
             manager_ids: user.manager_ids?.length ? [...user.manager_ids] : user.manager_id ? [user.manager_id] : [],
             role_codes: [...user.role_codes],
             status: user.status,
@@ -89,6 +88,7 @@ watch(
             group_id: null,
             manager_id: null,
             manager_ids: [],
+            monthly_approver_ids: [],
             role_codes: roles[0] ? [roles[0].role_code] : [],
             status: "active",
           },
@@ -98,13 +98,11 @@ watch(
   },
   { immediate: true, deep: true },
 )
-
 function toggleRole(roleCode: string) {
   form.role_codes = form.role_codes.includes(roleCode)
     ? form.role_codes.filter((item) => item !== roleCode)
     : [...form.role_codes, roleCode]
 }
-
 function submitForm() {
   const payload: UserMutationPayload = {
     username: form.username.trim(),
@@ -116,6 +114,7 @@ function submitForm() {
     group_id: form.group_id || null,
     manager_id: form.manager_ids?.[0] || null,
     manager_ids: [...(form.manager_ids || [])],
+    monthly_approver_ids: [...(form.monthly_approver_ids || [])],
     role_codes: [...form.role_codes],
     status: form.status || "active",
   }
@@ -139,7 +138,6 @@ function submitForm() {
   emit("submit", payload)
 }
 </script>
-
 <template>
   <BaseDialog
     :busy="isSaving"
@@ -187,8 +185,12 @@ function submitForm() {
         </label>
         <label>
           <span>直属上级</span>
-          <PersonSelect v-model="managerSelection" :users="availableManagers" :disabled="isSaving" multiple ordered aria-label="直属上级审批顺序" />
-          <small>按选择顺序依次审批，取消后重新选择可调整顺序。</small>
+          <PersonSelect v-model="managerSelection" :users="availableManagers" :disabled="isSaving" multiple aria-label="直属上级" />
+        </label>
+        <label>
+          <span>月报审批人</span>
+          <PersonSelect v-model="monthlyApproverSelection" :users="availableManagers" :disabled="isSaving" multiple ordered aria-label="月报审批顺序" />
+          <small>按选择顺序依次审批；不选则提交后直接通过。</small>
         </label>
         <label v-if="isEditing">
           <span>账号状态</span>
@@ -215,5 +217,4 @@ function submitForm() {
     </template>
   </BaseDialog>
 </template>
-
 <style scoped src="./UserEditorDialog.css"></style>

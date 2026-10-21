@@ -7,11 +7,12 @@ from typing import Any
 from .manager_dao import role_name, role_names, role_scope
 from .models import UserAccount
 from .services.auth import get_user_roles, require_request_user
-from .services.managers import get_managers, profiles, visible_ids
+from .services.managers import profiles, visible_ids
+from .services.monthly_approvers import get_monthly_approvers
 
 
 def approval_managers(user_id):
-    return get_managers(user_id)
+    return get_monthly_approvers(user_id)
 
 
 def visible_user_ids(user, role_code):

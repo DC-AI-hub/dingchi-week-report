@@ -26,15 +26,12 @@ def editable_plan(user, role_code, plan_id):
         raise PermissionError("只能修改当前角色下自己的月度计划。")
     if plan.status == "pending":
         raise ValueError("审批期间不允许修改或删除月度计划。")
-    require_managers(user.id)
+    configured_approvers(user.id)
     return plan
 
 
-def require_managers(user_id):
-    managers = approval_managers(user_id)
-    if not managers:
-        raise ValueError("未配置直属上级，请联系管理员配置后再填写月度计划。")
-    return managers
+def configured_approvers(user_id):
+    return approval_managers(user_id)
 
 
 def ensure_approved(user, role_code, month_key, *, missing_message=None):

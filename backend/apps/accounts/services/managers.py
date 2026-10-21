@@ -3,7 +3,7 @@ from .. import manager_dao
 
 def validate_managers(user_id, value):
     if not isinstance(value, list):
-        raise ValueError("直属上级必须为按审批顺序排列的人员 ID 数组。")
+        raise ValueError("直属上级必须为人员 ID 数组。")
     try:
         ids = [int(item) for item in value]
     except (ValueError, TypeError) as exc:
@@ -36,7 +36,7 @@ def get_managers(user_id):
         int(item.id): item for item in manager_dao.active_users(ids).only("id", "display_name")
     }
     if len(users) != len(ids):
-        raise ValueError("直属上级中存在停用人员，请联系管理员调整审批顺序。")
+        raise ValueError("直属上级中存在停用人员，请联系管理员调整直属上级配置。")
     return [{"id": str(value), "name": users[value].display_name} for value in ids]
 
 

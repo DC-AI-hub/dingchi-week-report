@@ -16,6 +16,7 @@ TRUNCATE TABLE `report_template_item`;
 TRUNCATE TABLE `report_template`;
 TRUNCATE TABLE `user_group_membership`;
 TRUNCATE TABLE `user_role`;
+TRUNCATE TABLE `user_monthly_approver`;
 TRUNCATE TABLE `user_account`;
 TRUNCATE TABLE `role`;
 TRUNCATE TABLE `organization_group`;

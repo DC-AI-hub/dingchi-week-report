@@ -12,8 +12,6 @@ from .todo_entries import entry, notify
 
 @transaction.atomic
 def start_approval(*, business_type, business_id, applicant_id, revision, snapshot, approvers):
-    if not approvers:
-        raise ValueError("未配置直属上级，请联系管理员配置后再填写月度计划。")
     if dao.has_pending_request(business_type, business_id):
         raise ValueError("已有待审批记录，请勿重复提交。")
     request = dao.create_request(
@@ -23,6 +21,10 @@ def start_approval(*, business_type, business_id, applicant_id, revision, snapsh
         revision=revision,
         snapshot_json=json.dumps(snapshot, ensure_ascii=False),
     )
+    if not approvers:
+        request.status, request.completed_at = "approved", timezone.now()
+        dao.save_request(request)
+        return int(request.id)
     approvers = [
         {
             **person,

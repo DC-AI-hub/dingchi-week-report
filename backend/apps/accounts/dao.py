@@ -12,6 +12,7 @@ from django.db import connection
 
 from .manager_dao import ordered_manager_ids
 from .models import OrganizationGroup, Role, UserAccount, UserRole
+from .monthly_approver_dao import ordered_ids
 
 
 def list_roles() -> list[dict[str, Any]]:
@@ -145,6 +146,7 @@ def list_users(
             item["role_codes"] = _split_group_values(item.pop("role_codes_csv", None))
             item["role_names"] = _split_group_values(item.pop("role_names_csv", None))
             item["manager_ids"] = [str(value) for value in ordered_manager_ids(int(item["id"]))]
+            item["monthly_approver_ids"] = [str(value) for value in ordered_ids(int(item["id"]))]
             rows.append(item)
         return rows
 

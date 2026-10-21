@@ -48,6 +48,7 @@ export interface DirectoryUser {
   phone: string
   manager_id: string | null
   manager_ids?: string[]
+  monthly_approver_ids?: string[]
   group_id: string | null
   group_name?: string | null
   avatar_color: string
@@ -83,6 +84,7 @@ export interface UserMutationPayload {
   group_id: string | null
   manager_id: string | null
   manager_ids?: string[]
+  monthly_approver_ids?: string[]
   role_codes: string[]
   status?: string
 }

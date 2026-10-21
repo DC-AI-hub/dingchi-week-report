@@ -15,7 +15,9 @@ from apps.core.security.passwords import CryptoPayloadError, decrypt_client_pass
 
 from ..manager_dao import ordered_manager_ids
 from ..models import Role, UserAccount, UserGroupMembership, UserManager, UserRole
+from ..monthly_approver_dao import has_applicants, ordered_ids
 from .managers import set_managers
+from .monthly_approvers import set_monthly_approvers
 
 
 class AuthenticationError(ValueError):
@@ -214,6 +216,8 @@ def create_user(*, payload: Mapping[str, Any]) -> UserAccount:
             user.manager_id = ids[0] if ids else None
         elif manager_id:
             set_managers(int(user.id), [manager_id])
+        if "monthly_approver_ids" in payload:
+            set_monthly_approvers(int(user.id), payload["monthly_approver_ids"])
         for index, role in enumerate(roles):
             UserRole.objects.create(user_id=user.id, role_id=role.id, is_default=index == 0)
     return user
@@ -267,6 +271,8 @@ def update_user(*, user: UserAccount, payload: Mapping[str, Any]) -> UserAccount
             int(user.id), payload.get("manager_ids", [user.manager_id] if user.manager_id else [])
         )
         user.manager_id = ids[0] if ids else None
+    if "monthly_approver_ids" in payload:
+        set_monthly_approvers(int(user.id), payload["monthly_approver_ids"])
     if "role_codes" in payload:
         role_codes = _normalise_role_codes(payload.get("role_codes"))
         roles = list(Role.objects.filter(role_code__in=role_codes, status="active"))
@@ -298,6 +304,8 @@ def delete_user(*, user_id: int, acting_user_id: int) -> UserAccount:
         or UserManager.objects.filter(manager_id=user.id).exists()
     ):
         raise UserConflictError("该用户仍有直属下属，请先调整下属的直属上级。")
+    if has_applicants(user.id):
+        raise UserConflictError("该用户仍为月报审批人，请先调整月报审批人配置。")
     user.status = "deleted"
     user.save(update_fields=["status", "updated_at"])
     UserRole.objects.filter(user_id=user.id, status="active").update(
@@ -316,6 +324,7 @@ def serialize_user(user: UserAccount) -> dict[str, Any]:
         "email": user.email,
         "phone": user.phone,
         "manager_ids": [str(value) for value in ordered_manager_ids(int(user.id))],
+        "monthly_approver_ids": [str(value) for value in ordered_ids(int(user.id))],
         "manager_id": str(user.manager_id) if user.manager_id is not None else None,
         "group_id": str(user.group_id) if user.group_id is not None else None,
         "avatar_color": user.avatar_color,

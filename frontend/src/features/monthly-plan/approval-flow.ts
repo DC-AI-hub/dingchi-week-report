@@ -22,7 +22,7 @@ export function buildApprovalFlow(plan: ManagedMonthlyPlan | null, record: Appro
     const result = ({approved:"通过",rejected:"驳回",pending:"待审批",waiting:"未处理",cancelled:"已取消"} as Record<string,string>)[step.status] || "未处理"
     nodes.push({ id: `approval-${step.sort_order}`, title: "审批", person: step.approver_name, result, time: step.acted_at, reason: step.reason, state })
   }
-  if (!steps.length) nodes.push({id:"approval",title:"审批",person:"—",result:"未处理",time:null,state:"waiting"})
+  if (!steps.length) nodes.push({id:"approval",title:"审批",person:"无需审批",result:active?.status === "approved" ? "自动通过" : "提交后自动通过",time:active?.completed_at || null,state:active?.status === "approved" ? "done" : "waiting"})
   const finished = active?.status === "approved" || active?.status === "rejected"
   nodes.push({
     id:"end", title:"结束", person:"", result:"", time:null, terminal:true,

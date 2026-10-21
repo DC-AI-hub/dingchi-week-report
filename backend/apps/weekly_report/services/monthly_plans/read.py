@@ -52,8 +52,6 @@ def context(user, role_code):
     warning = ""
     try:
         managers = approval_managers(user.id)
-        if not managers:
-            warning = "未配置直属上级，请联系管理员配置后再填写月度计划。"
     except ValueError as exc:
         managers, warning = [], str(exc)
     template_code = ""
@@ -66,7 +64,7 @@ def context(user, role_code):
         "managers": managers,
         "warning": warning,
         "template_code": template_code,
-        "can_create": bool(template_code and managers and not warning),
+        "can_create": bool(template_code and not warning),
         "has_approval_tasks": bool(assigned_root_ids(user.id, role_code)),
         "pending_approval_count": pending_monthly_count(user.id, role_code),
     }

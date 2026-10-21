@@ -5,6 +5,7 @@ from django.db import transaction
 
 from apps.accounts.models import Role, UserAccount, UserRole
 from apps.accounts.services.managers import set_managers
+from apps.accounts.services.monthly_approvers import set_monthly_approvers
 from apps.approvals.models import ApprovalRequest
 from apps.weekly_report.models import MonthlyPlan, MonthlyPlanRevision
 from apps.weekly_report.services import reports
@@ -38,6 +39,7 @@ def people(monkeypatch):
         reports, "resolve_role_template", lambda role: {"template_code": "delivery_specialist_v1"}
     )
     set_managers(users[0].id, [str(users[1].id), str(users[2].id)])
+    set_monthly_approvers(users[0].id, [str(users[1].id), str(users[2].id)])
     return users
 
 
@@ -153,12 +155,10 @@ def test_sequential_approval_rejection_resubmit_and_change_history(people):
     assert ApprovalRequest.objects.count() == 4
 
 
-def test_unconfigured_or_invalid_managers_cannot_write(people):
+def test_unconfigured_managers_do_not_block_monthly_plan(people):
     owner, first, second, outsider = people
     set_managers(owner.id, [])
-    with pytest.raises(ValueError, match="未配置直属上级"):
-        create(people)
-    assert not MonthlyPlan.objects.exists()
+    assert create(people)["plan"]["status"] == "draft"
     with pytest.raises(ValueError, match="重复"):
         set_managers(owner.id, [first.id, first.id])
     with pytest.raises(ValueError, match="本人"):

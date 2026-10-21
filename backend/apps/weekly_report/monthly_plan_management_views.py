@@ -73,7 +73,7 @@ def detail_view(request, plan_id):
 @csrf_exempt
 @require_POST
 def submit_view(request, plan_id):
-    """POST /monthly-plan-management/{id}/submit/：按上级顺序创建新的审批单及不可变快照。"""
+    """POST {id}/submit/：按独立月报审批人顺序创建审批单及不可变快照，空配置自动通过。"""
     return invoke(request, lambda user, role: write.submit(user, role, int(plan_id)))
 
 
@@ -108,7 +108,7 @@ def change_detail_view(request, change_id):
 @csrf_exempt
 @require_POST
 def change_submit_view(request, change_id):
-    """POST changes/{id}/submit/，按上级顺序提交变更，未改变或旧版本返回400。"""
+    """POST changes/{id}/submit/，按独立月报审批人顺序提交变更，未改变或旧版本返回400。"""
     return invoke(request, lambda user, role: change_write.submit(user, role, int(change_id)))
 
 

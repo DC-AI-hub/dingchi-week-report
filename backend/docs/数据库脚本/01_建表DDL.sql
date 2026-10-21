@@ -524,3 +524,13 @@ CREATE TABLE IF NOT EXISTS weekly_task_text (
  source VARCHAR(16) NOT NULL DEFAULT 'custom', template_text LONGTEXT NOT NULL,
  values_json LONGTEXT NOT NULL, created_at DATETIME(6) NOT NULL, updated_at DATETIME(6) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 独立月报审批人：不回填直属上级，空配置提交时自动通过。
+CREATE TABLE IF NOT EXISTS user_monthly_approver (
+  id BIGINT NOT NULL PRIMARY KEY COMMENT '雪花主键',
+  user_id BIGINT NOT NULL COMMENT '申请人逻辑ID',
+  approver_id BIGINT NOT NULL COMMENT '月报审批人逻辑ID',
+  sort_order INT UNSIGNED NOT NULL COMMENT '选择顺序，从0开始',
+  CONSTRAINT uq_monthly_approver_pair UNIQUE (user_id, approver_id),
+  CONSTRAINT uq_monthly_approver_order UNIQUE (user_id, sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

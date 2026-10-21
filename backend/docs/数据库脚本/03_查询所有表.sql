@@ -103,3 +103,6 @@ SELECT * FROM `django_session`;
 SELECT * FROM `monthly_plan_change`;
 
 SELECT * FROM `todo_item`;
+
+-- 独立月报审批人，按选择顺序查看。
+SELECT * FROM `user_monthly_approver` ORDER BY user_id, sort_order;

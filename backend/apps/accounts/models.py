@@ -115,3 +115,23 @@ class UserGroupMembership(SnowflakeIdModel):
         constraints = [
             models.UniqueConstraint(fields=["user_id", "group_id"], name="uq_user_group_pair"),
         ]
+
+
+class UserMonthlyApprover(SnowflakeIdModel):
+    """月报审批配置独立于组织上下级，顺序为选择顺序。"""
+
+    user_id = models.BigIntegerField()
+    approver_id = models.BigIntegerField()
+    sort_order = models.PositiveIntegerField()
+
+    class Meta:
+        db_table = "user_monthly_approver"
+        ordering = ["sort_order", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user_id", "approver_id"], name="uq_monthly_approver_pair"
+            ),
+            models.UniqueConstraint(
+                fields=["user_id", "sort_order"], name="uq_monthly_approver_order"
+            ),
+        ]

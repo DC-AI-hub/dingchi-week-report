@@ -1,3 +1,4 @@
+/** 用户接口 monthly_approver_ids 为有序字符串ID数组；新增省略默认空，修改省略保留，[]清空；独立于manager_ids，空配置提交月度计划自动通过。 */
 import { request } from "@/shared/api/http"
 
 import type {

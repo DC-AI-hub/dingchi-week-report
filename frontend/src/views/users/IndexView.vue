@@ -153,6 +153,7 @@ async function submitUser(payload: UserMutationPayload) {
       group_id: payload.group_id || null,
       manager_id: payload.manager_ids?.[0] || null,
       manager_ids: payload.manager_ids || [],
+      monthly_approver_ids: [...(payload.monthly_approver_ids || [])],
       role_codes: payload.role_codes,
       status: payload.status || "active",
     }
