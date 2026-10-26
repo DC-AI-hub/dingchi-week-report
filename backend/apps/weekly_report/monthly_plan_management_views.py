@@ -1,3 +1,10 @@
+"""月度计划v1接口；新增任务字段契约见docs/monthly-task-progress-api.md。
+
+Bearer认证、本人编辑/授权查看；统一success包络和X-Trace-ID。
+任务扩展适用于POST新增、PATCH修改/变更、GET详情/审批/gate；新增字段向后兼容。
+非法字段返回400 INVALID_REQUEST；无权403 FORBIDDEN；未认证401；不输出敏感任务日志。
+"""
+
 import json
 
 from django.db import IntegrityError
