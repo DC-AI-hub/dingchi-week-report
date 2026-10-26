@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import MonthlyPlanOutcomeCells from "@/features/monthly-plan/components/MonthlyPlanOutcomeCells.vue"
+import FullscreenPanel from "@/components/layout/FullscreenPanel.vue"
+import MonthlyPlanTaskCells from "@/features/monthly-plan/components/MonthlyPlanTaskCells.vue"
+import MonthlyPlanFieldDialog from "@/features/monthly-plan/components/MonthlyPlanFieldDialog.vue"
+import { useMonthlyTaskFields } from "@/features/monthly-plan/useMonthlyTaskFields"
+import { formatDateTime } from "@/utils/date"
 import { computed, ref, watch } from "vue"
 import { Plus } from "lucide-vue-next"
 import ExamplePreviewButton from "@/components/feedback/ExamplePreviewButton.vue"
@@ -15,6 +19,7 @@ import TaskQuickFillDialog from "./TaskQuickFillDialog.vue"
 import TaskTextFieldDialog from "./TaskTextFieldDialog.vue"
 const props = defineProps<{ tasks: MonthlyPlanTask[]; monthKey: string; templateCode?: string; readonly?: boolean; disabled?: boolean; isLoading?: boolean; errorMessage?: string }>()
 const emit = defineEmits<{ "update:tasks": [tasks: MonthlyPlanTask[]]; retry: [] }>()
+const { users, columnsOpen, selected, availableFields, selectedFields, fieldError, reloadFields } = useMonthlyTaskFields(() => props.templateCode || "human_resources_v1")
 const rows = computed(() => expandMonthlyTasks(props.tasks))
 const blocked = computed(() => props.readonly || props.disabled || props.isLoading || Boolean(props.errorMessage))
 const page = ref(1), pageSize = 10
@@ -25,7 +30,12 @@ watch([rows, blocked], ([tasks, stop]) => { if (!stop && tasks.some((task, index
 const quickFillOpen = ref(false)
 const editing = ref<{ task: MonthlyPlanTask; field: "scope_name" | "work_task" | "work_content" } | null>(null)
 const title = computed(() => editing.value?.field === "scope_name" ? "模块" : editing.value?.field === "work_content" ? "工作内容" : "工作事项")
-function patch(id: string, fields: Partial<MonthlyPlanTask>) { if (!blocked.value) emit("update:tasks", patchMonthlyTasks(rows.value, id, fields)) }
+function patch(id: string, fields: Partial<MonthlyPlanTask>) {
+  if (blocked.value) return
+  const current = rows.value.find(task => task.id === id)
+  if (current && ("progress_percent" in fields || "quality_percent" in fields)) fields.completion_rate = Math.round((Number(fields.progress_percent ?? current.progress_percent ?? 0) + Number(fields.quality_percent ?? current.quality_percent ?? 0)) / 2)
+  emit("update:tasks", patchMonthlyTasks(rows.value, id, fields))
+}
 function insert(id: string, level?: MonthlyGroupLevel) {
   if (blocked.value) return
   if (level) emit("update:tasks", insertMonthlyChild(rows.value, id, level))
@@ -63,20 +73,28 @@ function saveText(value: string, index?: number) {
 }
 </script>
 <template>
-  <section class="dashboard-card monthly-task-panel">
-    <header class="monthly-task-header"><div class="monthly-task-heading"><h2>月度计划</h2><span>{{ monthKey }}</span></div><div v-if="!readonly" class="monthly-task-actions"><ExamplePreviewButton content="" :fields="humanResourcesMonthlyTaskSampleFields" panel-title="人资月度计划填写样例" /><button class="primary-button" type="button" :disabled="blocked" @click="quickFillOpen = true">新增计划</button></div></header>
+  <FullscreenPanel title="月度计划" class="dashboard-card monthly-task-panel">
+    <template #tabs><span>{{ monthKey }}</span></template>
+    <template #actions>
+      <button class="ghost-button" type="button" @click="columnsOpen = true">选择展示字段</button>
+      <template v-if="!readonly">
+        <ExamplePreviewButton content="" :fields="humanResourcesMonthlyTaskSampleFields" panel-title="人资月度计划填写样例" />
+        <button class="primary-button" type="button" :disabled="blocked" @click="quickFillOpen = true">新增计划</button>
+      </template>
+    </template>
     <div v-if="isLoading" class="monthly-task-empty">正在加载月度计划…</div>
     <div v-else-if="errorMessage" class="monthly-task-empty"><p>{{ errorMessage }}</p><button class="ghost-button" type="button" @click="emit('retry')">重试</button></div>
-    <template v-else><div class="monthly-task-table-wrap"><table class="monthly-task-table delivery-table"><thead><tr><th class="serial">序号</th><th class="customer">模块</th><th>工作事项</th><th>工作内容</th><th>输出成果</th><th class="planned-date">计划完成时间</th><th v-if="!readonly" class="actions">操作</th></tr></thead><tbody>
+    <template v-else><p v-if="fieldError" role="alert">{{ fieldError }} <button class="ghost-button" type="button" @click="reloadFields">重试</button></p><div class="monthly-task-table-wrap"><table class="monthly-task-table delivery-table" :style="{ minWidth: `${800 + selectedFields.length * 210}px` }"><thead><tr><th class="serial">序号</th><th class="customer">模块</th><th>工作事项</th><th v-for="field in selectedFields" :key="field.code">{{ field.label }}</th><th>更新时间</th><th v-if="!readonly" class="actions">操作</th></tr></thead><tbody>
       <tr v-for="(task, index) in entries" :key="task.id"><td class="serial">{{ (page - 1) * pageSize + index + 1 }}</td>
         <td v-if="monthlyRowSpan(entries, index, 'scope')" :rowspan="monthlyRowSpan(entries, index, 'scope')" class="shared-monthly-cell"><span v-if="blocked" class="monthly-task-plain">{{ task.scope_name || '—' }}</span><TemplateTaskCell v-else-if="task.dimension_source === 'template'" label="模块" :task="{ task_name: task.scope_name || '', task_template: task.dimension_template, task_values: task.dimension_values }" @patch="patch(task.id, { scope_name: $event.task_name, dimension_values: $event.task_values })" /><button v-else class="monthly-task-text-cell" type="button" @click="editing = { task, field: 'scope_name' }">{{ task.scope_name || '点击填写模块' }}</button><button v-if="!blocked" class="cell-insert" type="button" aria-label="新增共用模块的工作事项" @click="insert(task.id, 'scope')"><Plus :size="16" /></button></td>
         <td v-if="monthlyRowSpan(entries, index, 'task')" :rowspan="monthlyRowSpan(entries, index, 'task')" class="shared-monthly-cell"><span v-if="blocked" class="monthly-task-plain">{{ task.task_source === 'template' ? previewTaskTemplate(task.task_template || '', task.task_values || []) : task.work_task || '—' }}</span><TemplateTaskCell v-else-if="task.task_source === 'template'" label="工作事项" :task="{ task_name: task.work_task, task_template: task.task_template, task_values: task.task_values }" @patch="patch(task.id, { work_task: $event.task_name, task_values: $event.task_values })" /><button v-else class="monthly-task-text-cell" type="button" @click="editing = { task, field: 'work_task' }">{{ task.work_task || '点击填写工作事项' }}</button><button v-if="!blocked" class="cell-insert" type="button" aria-label="新增共用工作事项的工作内容" @click="insert(task.id, 'task')"><Plus :size="16" /></button></td>
-        <td v-if="monthlyRowSpan(entries, index, 'content')" :rowspan="monthlyRowSpan(entries, index, 'content')" class="shared-monthly-cell"><span v-if="blocked" class="monthly-task-plain">{{ task.work_content || '—' }}</span><button v-else class="monthly-task-text-cell" type="button" @click="editing = { task, field: 'work_content' }">{{ task.work_content || '点击填写工作内容' }}</button><button v-if="!blocked" class="cell-insert" type="button" aria-label="新增共用工作内容的成果" @click="insert(task.id, 'content')"><Plus :size="16" /></button></td>
-        <MonthlyPlanOutcomeCells :task="task" :readonly="blocked" @patch="patch(task.id, $event)" />
+        <MonthlyPlanTaskCells :task="task" :fields="selectedFields" :users="users" :readonly="blocked" :content-span="monthlyRowSpan(entries, index, 'content')" @patch="patch(task.id, $event)" @insert-content="insert(task.id, 'content')" />
+        <td>{{ formatDateTime(task.updated_at) }}</td>
         <td v-if="!readonly" class="actions"><button class="link-button danger" type="button" :disabled="blocked" @click="emit('update:tasks', rows.filter(row => row.id !== task.id))">删除</button><button class="link-button insert-button" type="button" :disabled="blocked" aria-label="新增空白计划" @click="insert(task.id)"><Plus :size="18" /></button></td>
-      </tr><tr v-if="!rows.length"><td :colspan="readonly ? 6 : 7" class="monthly-task-empty">暂无月度计划</td></tr>
+      </tr><tr v-if="!rows.length"><td :colspan="selectedFields.length + (readonly ? 4 : 5)" class="monthly-task-empty">暂无月度计划</td></tr>
     </tbody></table></div><PaginationBar :page="page" :page-size="pageSize" :total="rows.length" :total-pages="totalPages" @change="page = $event" /></template>
-  </section>
+  </FullscreenPanel>
+  <MonthlyPlanFieldDialog v-model="selected" :open="columnsOpen" :fields="availableFields" @close="columnsOpen = false" />
   <TaskQuickFillDialog :open="quickFillOpen" monthly :templates="humanResourcesMonthlyTaskTemplates" @close="quickFillOpen = false" @confirm="add" />
   <TaskTextFieldDialog :open="Boolean(editing)" :title="title" :value="editing?.task[editing.field] || ''" :templates="humanResourcesMonthlyTaskTemplates" :max-length="editing?.field === 'scope_name' ? 255 : editing?.field === 'work_content' ? 10000 : undefined" :template-field="editing?.field === 'scope_name' ? 'dimension' : editing?.field === 'work_task' ? 'task_name' : 'work_content'" @close="editing = null" @save="saveText" />
 </template>
