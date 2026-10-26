@@ -3,6 +3,8 @@
 import json
 import re
 
+from .monthly_task_progress import progress_metadata
+
 
 def _field_metadata(item, prefix):
     source = item.get(f"{prefix}_source", "custom")
@@ -34,6 +36,7 @@ def _group_metadata(item):
 
 def task_metadata(item):
     return {
+        **progress_metadata(item),
         **_group_metadata(item),
         **_field_metadata(item, "task"),
         **_field_metadata(item, "dimension"),
@@ -69,6 +72,7 @@ def task_content_key(task):
         task.get("work_content", ""),
         task.get("output_description", ""),
         task.get("planned_date") or None,
+        tuple(sorted(progress_metadata(task).items())),
         metadata["task_source"],
         metadata["task_template"],
         tuple(metadata["task_values"]),
