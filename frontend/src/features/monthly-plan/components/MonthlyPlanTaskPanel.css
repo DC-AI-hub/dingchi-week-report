@@ -12,7 +12,8 @@
 .monthly-task-table th { color: var(--muted); background: var(--surface-soft); }
 .monthly-task-table tbody tr:last-child td { border-bottom: 0; }
 .monthly-task-table .serial { width: var(--monthly-plan-serial-width, 64px); text-align: center; }
-.monthly-task-table .actions { width: 128px; text-align: center; white-space: nowrap; }
+.monthly-task-table .actions { position: sticky; right: 0; z-index: 2; width: 128px; text-align: center; white-space: nowrap; background: var(--surface-strong); box-shadow: -2px 0 var(--line); }
+.monthly-task-table thead .actions { z-index: 3; background: var(--surface-soft); }
 .monthly-task-table:has(.insert-button) .actions { width: 230px; }
 .monthly-task-table td { vertical-align: top; }
 .monthly-task-table.delivery-table { min-width: var(--monthly-plan-table-min-width, 960px); }

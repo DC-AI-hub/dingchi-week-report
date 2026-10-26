@@ -1,0 +1,6 @@
+td { padding: 13px 16px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+.text-cell, .text-value { display: block; width: 100%; min-height: 42px; padding: 8px; color: var(--text); font: inherit; line-height: 1.65; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; }
+.text-cell { border: 1px solid transparent; border-radius: 8px; background: transparent; cursor: pointer; }
+.text-cell:hover, .text-cell:focus-visible { border-color: var(--line); background: var(--surface-soft); }
+.shared-cell { position: relative; padding-bottom: 42px !important; }
+.cell-insert { position: absolute; right: 8px; bottom: 8px; display: grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--line); border-radius: 6px; color: var(--accent); background: var(--surface-soft); cursor: pointer; }

@@ -1,0 +1,42 @@
+<script setup lang="ts">
+import { computed, ref } from "vue"
+import { Plus } from "lucide-vue-next"
+import type { DirectoryUserOption } from "@/features/directory/types"
+import type { MonthlyPlanTask } from "@/features/weekly-report/monthly-plan/types"
+import { emptyDeliveryTask, type DeliveryTaskFieldDefinition } from "@/features/weekly-report/delivery-specialist/types"
+import type { EditableTask } from "@/features/weekly-report/task-editing"
+import TaskInlineField from "@/features/weekly-report/components/TaskInlineField.vue"
+import TaskTextFieldDialog from "@/features/weekly-report/delivery-specialist/components/TaskTextFieldDialog.vue"
+import { reportTaskStatusLabel } from "@/features/weekly-report/task-fields"
+const props = defineProps<{ task: MonthlyPlanTask; fields: DeliveryTaskFieldDefinition[]; readonly?: boolean; contentSpan: number; users: DirectoryUserOption[] }>()
+const emit = defineEmits<{ patch: [fields: Partial<MonthlyPlanTask>]; insertContent: [] }>()
+const editing = ref<DeliveryTaskFieldDefinition | null>(null)
+const textFields = ["work_content", "output_description", "progress_text", "delay_reason", "document_links"]
+const draft = computed(() => ({ ...emptyDeliveryTask(), ...props.task, client_key: props.task.id,
+  task_name: props.task.work_task, customer_name: props.task.scope_name || "", work_content_group_key: props.task.content_group_key,
+  work_content: props.task.work_content || "", output_description: props.task.output_description || "",
+  planned_completion_date: props.task.planned_date || "",
+}))
+function patch(value: Partial<EditableTask>) {
+  const { planned_completion_date, ...rest } = value
+  emit("patch", { ...rest, ...("planned_completion_date" in value ? { planned_date: planned_completion_date || null } : {}) })
+}
+function display(field: DeliveryTaskFieldDefinition) {
+  const value = draft.value[field.code]
+  if (field.code === "on_time_status") return reportTaskStatusLabel(String(value || ""))
+  if (["progress_percent", "quality_percent", "completion_rate"].includes(field.code)) return `${value ?? 0}%`
+  return String(value || "—")
+}
+</script>
+<template>
+  <template v-for="field in fields" :key="field.code">
+    <td v-if="field.code !== 'work_content' || contentSpan" :rowspan="field.code === 'work_content' ? contentSpan : 1" :class="{ 'shared-cell': field.code === 'work_content' }">
+      <span v-if="readonly" class="text-value">{{ display(field) }}</span>
+      <button v-else-if="textFields.includes(field.code)" class="text-cell" type="button" :aria-label="`编辑${field.label}`" @click="editing = field">{{ draft[field.code] || `点击填写${field.label}` }}</button>
+      <TaskInlineField v-else :task="draft" :field="field.code" :label="field.label" :users="users" @patch="patch" />
+      <button v-if="field.code === 'work_content' && !readonly" class="cell-insert" type="button" aria-label="新增共用工作内容的成果" @click="emit('insertContent')"><Plus :size="16" /></button>
+    </td>
+  </template>
+  <TaskTextFieldDialog :open="Boolean(editing)" :title="editing?.label || ''" :value="editing ? String(draft[editing.code] || '') : ''" :max-length="10000" @close="editing = null" @save="value => { if (editing) patch({ [editing.code]: value }); editing = null }" />
+</template>
+<style scoped src="./MonthlyPlanTaskCells.css"></style>
