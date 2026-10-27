@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { vResizableColumns } from "@/shared/table/resizable-columns"
+import { useTaskTableResizeKey } from "@/features/weekly-report/useTaskTableResizeKey"
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
 import { useReportTaskTable, type ReportTaskTableProps } from "../composables/useReportTaskTable"
 import ReportPagination from "./ReportPagination.vue"
 import ReportTaskDetailDialog from "./ReportTaskDetailDialog.vue"
 const props = withDefaults(defineProps<ReportTaskTableProps>(), { showColumnsButton: true, showCustomerTabs: true })
+const resizeKey = useTaskTableResizeKey("weekly", () => props.templateCode)
 const {
   sharedMode, deliveryMode, customers, activeCustomer, columnsOpen, selectedCodes, detailOpen, detailItem,
   page, pageSize, availableFields, primaryField, displayItems, totalPages, pagedItems, selectedFields,
@@ -25,21 +28,21 @@ defineExpose({ openColumns, customers, activeCustomer, deliveryMode })
     </div>
 
     <div class="report-task-table-wrap">
-      <table class="report-task-table__grid">
+      <table v-resizable-columns="resizeKey" class="report-task-table__grid">
         <thead>
           <tr>
-            <th class="fixed-col serial-col">序号</th>
-            <th v-if="primaryField" class="fixed-col customer-col">{{ primaryField.label }}</th>
+            <th class="fixed-col serial-col" data-column-key="serial">序号</th>
+            <th :data-column-key="primaryField.field_code" v-if="primaryField" class="fixed-col customer-col">{{ primaryField.label }}</th>
             <th
-              class="fixed-col task-col"
+              data-column-key="task_name" class="fixed-col task-col"
               :class="{ 'task-col--without-primary': !primaryField }"
             >{{ props.fields?.find(field => field.field_code === 'task_name')?.label || '工作任务' }}</th>
-            <th v-for="field in selectedFields" :key="field.field_code" class="dynamic-col"
+            <th :data-column-key="field.field_code" v-for="field in selectedFields" :key="field.field_code" class="dynamic-col"
               :class="{ 'multiline-col': ['work_content', 'output_description'].includes(field.field_code) }">
               {{ field.label }}
             </th>
-            <th class="fixed-col status-col">状态</th>
-            <th class="fixed-col updated-col">更新时间</th>
+            <th class="fixed-col status-col" data-column-key="status">状态</th>
+            <th class="fixed-col updated-col" data-column-key="updated_at">更新时间</th>
           </tr>
         </thead>
         <tbody>

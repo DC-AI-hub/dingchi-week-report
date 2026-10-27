@@ -1,4 +1,6 @@
 <script setup lang="ts" generic="T extends EditableTask">
+import { vResizableColumns } from "@/shared/table/resizable-columns"
+import { useTaskTableResizeKey } from "@/features/weekly-report/useTaskTableResizeKey"
 import { computed, ref } from "vue"
 import { Plus } from "lucide-vue-next"
 import type { DirectoryUserOption } from "@/features/directory/types"
@@ -11,6 +13,7 @@ import TaskEvidenceDialog from "@/features/weekly-report/components/TaskEvidence
 import ModuleCell from "./ModuleCell.vue"
 import TaskTextFieldDialog from "./TaskTextFieldDialog.vue"
 const props = defineProps<{ entries: { task: T; index: number }[]; fields: EditableTaskField[]; users: DirectoryUserOption[]; offset: number; totalTasks?: number; templates: readonly TaskTemplateOption[] }>()
+const resizeKey = useTaskTableResizeKey("weekly", () => "human_resources_v1")
 const emit = defineEmits<{ addBlank: []; patch: [key: string, value: Partial<EditableTask>]; insert: [index: number, shared?: "dimension" | "task_name" | "work_content"]; remove: [index: number] }>()
 const textFields: EditableTaskColumn[] = ["task_name", "work_content", "output_description", "progress_text", "delay_reason", "document_links"]
 const editing = ref<{ key: string; field: EditableTaskColumn; value: string } | null>(null)
@@ -62,8 +65,8 @@ function spanRows(index: number, field: "dimension" | "task_name" | "work_conten
 }
 </script>
 <template>
-  <div class="editable-table-wrap"><table class="editable-task-table delivery-mode">
-    <thead><tr><th class="serial-col">序号</th><th class="customer-col">模块</th><th class="task-col">工作事项</th><th v-for="field in fields" :key="field.code" class="value-col" :class="{ 'multiline-col': textFields.includes(field.code) }">{{ field.label }}</th><th class="date-col">更新时间</th><th class="actions-col">操作</th></tr></thead>
+  <div class="editable-table-wrap"><table v-resizable-columns="resizeKey" class="editable-task-table delivery-mode">
+    <thead><tr><th class="serial-col" data-column-key="serial">序号</th><th data-column-key="dimension" class="customer-col">模块</th><th class="task-col" data-column-key="task_name">工作事项</th><th :data-column-key="field.code" v-for="field in fields" :key="field.code" class="value-col" :class="{ 'multiline-col': textFields.includes(field.code) }">{{ field.label }}</th><th class="date-col" data-column-key="updated_at">更新时间</th><th class="actions-col" data-column-key="actions">操作</th></tr></thead>
     <tbody><tr v-for="(entry, index) in entries" :key="entry.task.client_key" :class="{ 'blank-row': !entry.task.task_name }">
       <td class="serial-col">{{ offset + index + 1 }}</td>
       <td v-if="spanRows(index, 'dimension')" :rowspan="spanRows(index, 'dimension')" class="customer-col shared-cell"><ModuleCell v-if="entry.task.dimension_source === 'template'" :task="entry.task" @patch="emit('patch', entry.task.client_key, $event)" /><button v-else class="text-cell" type="button" @click="editText(entry.task, 'dimension')">{{ entry.task.dimension || '点击填写模块' }}</button><button class="cell-insert" type="button" aria-label="新增共用模块的工作事项" @click="emit('insert', entry.index, 'dimension')"><Plus :size="16" /></button></td>

@@ -45,6 +45,7 @@
   padding: 0.7rem 0.55rem;
   text-align: left;
   vertical-align: middle;
+  overflow-wrap: anywhere;
 }
 
 .daily-task-card__table th {
@@ -71,7 +72,7 @@
 .daily-task-card__actions {
   width: 7.5rem;
   text-align: center !important;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .daily-task-card__content {

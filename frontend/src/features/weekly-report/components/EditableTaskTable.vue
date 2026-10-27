@@ -1,4 +1,6 @@
 <script setup lang="ts" generic="T extends EditableTask">
+import { vResizableColumns } from "@/shared/table/resizable-columns"
+import { useTaskTableResizeKey } from "@/features/weekly-report/useTaskTableResizeKey"
 import { computed, ref } from "vue"
 import { Plus } from "lucide-vue-next"
 import type { DirectoryUserOption } from "@/features/directory/types"
@@ -18,6 +20,7 @@ const props = withDefaults(defineProps<{
   fields: EditableTaskField[]
   users: DirectoryUserOption[]
   offset: number
+  templateCode?: string
   totalTasks?: number
   deliveryMode?: boolean
   recruitmentMode?: boolean
@@ -26,6 +29,7 @@ const props = withDefaults(defineProps<{
   scopeField?: "customer_name" | "dimension"
   templates?: readonly TaskTemplateOption[]
 }>(), { scopeField: "customer_name", templates: () => deliveryTaskTemplates })
+const resizeKey = useTaskTableResizeKey("weekly", () => props.templateCode)
 const emit = defineEmits<{
   addBlank: []
   patch: [key: string, value: Partial<EditableTask>]
@@ -96,8 +100,8 @@ function spanRows(index: number, field: "customer_name" | "dimension" | "task_na
 </script>
 <template>
   <div class="editable-table-wrap">
-    <table class="editable-task-table" :class="{ 'delivery-mode': deliveryMode || recruitmentMode || salesMode }">
-      <thead><tr><th class="serial-col">序号</th><th v-if="!deliveryMode" class="customer-col">{{ displayScopeLabel }}</th><th class="task-col">工作任务</th><th v-for="field in fields" :key="field.code" class="value-col" :class="{ 'multiline-col': textFields.includes(field.code) }">{{ field.label }}</th><th class="date-col">更新时间</th><th class="actions-col">操作</th></tr></thead>
+    <table v-resizable-columns="resizeKey" class="editable-task-table" :class="{ 'delivery-mode': deliveryMode || recruitmentMode || salesMode }">
+      <thead><tr><th class="serial-col" data-column-key="serial">序号</th><th :data-column-key="scopeField" v-if="!deliveryMode" class="customer-col">{{ displayScopeLabel }}</th><th class="task-col" data-column-key="task_name">工作任务</th><th :data-column-key="field.code" v-for="field in fields" :key="field.code" class="value-col" :class="{ 'multiline-col': textFields.includes(field.code) }">{{ field.label }}</th><th class="date-col" data-column-key="updated_at">更新时间</th><th class="actions-col" data-column-key="actions">操作</th></tr></thead>
       <tbody>
         <tr v-for="(entry, index) in entries" :key="entry.task.client_key" :class="{ 'blank-row': !entry.task.task_name }">
           <td class="serial-col">{{ offset + index + 1 }}</td>

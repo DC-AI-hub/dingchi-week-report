@@ -1,0 +1,12 @@
+table[data-resizable-columns] { isolation: isolate; }
+table[data-resizable-columns] th,
+table[data-resizable-columns] td { border-right: 1px solid var(--line, #d6e3f2) !important; }
+table[data-resizable-columns] th:last-child,
+table[data-resizable-columns] td:last-child { border-right: 0 !important; }
+.column-resize-handle { position: absolute; top: 0; right: 0; bottom: 0; z-index: 2; width: 8px; cursor: col-resize; touch-action: none; user-select: none; }
+.column-resize-handle::after { position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; background: var(--accent, #2f80ed); opacity: 0; content: ""; }
+.column-resize-handle:hover::after,
+.column-resize-handle:focus-visible::after { opacity: 1; }
+.column-resize-handle:focus-visible { outline: 1px solid var(--accent, #2f80ed); outline-offset: -2px; }
+table.is-resizing-columns,
+table.is-resizing-columns * { cursor: col-resize !important; user-select: none !important; }

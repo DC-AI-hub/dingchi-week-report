@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { vResizableColumns } from "@/shared/table/resizable-columns"
+import { useTaskTableResizeKey } from "@/features/weekly-report/useTaskTableResizeKey"
 import FullscreenPanel from "@/components/layout/FullscreenPanel.vue"
 import MonthlyPlanFieldDialog from "./MonthlyPlanFieldDialog.vue"
 import MonthlyPlanTaskCells from "./MonthlyPlanTaskCells.vue"
@@ -28,8 +30,7 @@ import ScrollableTabs from "@/components/navigation/ScrollableTabs.vue"
 import TemplateDimensionCell from "@/features/weekly-report/components/TemplateDimensionCell.vue"
 import TemplateTaskCell from "@/features/weekly-report/components/TemplateTaskCell.vue"
 import { previewTaskTemplate } from "@/features/weekly-report/task-texts"
-import type { TaskTemplateOption } from "@/features/weekly-report/task-editing"
-import type { EditableTask } from "@/features/weekly-report/task-editing"
+import type { TaskTemplateOption, EditableTask } from "@/features/weekly-report/task-editing"
 import TaskTextFieldDialog from "@/features/weekly-report/delivery-specialist/components/TaskTextFieldDialog.vue"
 const MonthlyPlanTaskDialog = defineAsyncComponent(() => import("./MonthlyPlanTaskDialog.vue"))
 const props = defineProps<{
@@ -44,7 +45,7 @@ const props = defineProps<{
 const emit = defineEmits<{ "update:tasks": [tasks: MonthlyPlanTask[]]; retry: [] }>()
 const { users, columnsOpen, selected, availableFields, selectedFields, fieldError, reloadFields } = useMonthlyTaskFields(() => props.templateCode === "human_resources_v1" ? undefined : props.templateCode)
 const dynamicTemplate = computed(() => isSupportedTemplate(props.templateCode))
-const page = ref(1)
+const page = ref(1), resizeKey = useTaskTableResizeKey("monthly", () => props.templateCode)
 const pageSize = 10
 const editorOpen = ref(false)
 const quickFillOpen = ref(false)
@@ -184,8 +185,7 @@ function addPlans(customer: string, indexes: number[]) {
 <template>
   <HumanResourcesMonthlyPlanPanel v-if="templateCode === 'human_resources_v1'" v-bind="props" @update:tasks="emit('update:tasks', $event)" @retry="emit('retry')" />
   <FullscreenPanel v-else-if="readonly || isSupportedTemplate(templateCode)" title="月度计划" class="dashboard-card monthly-task-panel">
-    <template #tabs>
-      <span>{{ monthKey }}</span>
+    <template #tabs><span>{{ monthKey }}</span>
       <ScrollableTabs v-if="deliveryTemplate && customers.length" v-model="activeCustomer" :items="customers" class="monthly-customer-tabs" />
     </template>
     <template #actions>
@@ -203,8 +203,8 @@ function addPlans(customer: string, indexes: number[]) {
     <template v-else>
       <p v-if="dynamicTemplate && fieldError" role="alert">{{ fieldError }} <button type="button" class="ghost-button" @click="reloadFields">重试</button></p>
       <div class="monthly-task-table-wrap">
-        <table class="monthly-task-table" :class="{ 'delivery-table': editableTemplate, 'delivery-monthly-table': deliveryTemplate }" :style="dynamicTemplate ? { minWidth: `${600 + selectedFields.length * 210}px` } : undefined">
-          <thead><tr><th scope="col" class="serial">序号</th><th v-if="scopeLabel && !deliveryTemplate" scope="col" class="customer">{{ scopeLabel }}</th><th scope="col">工作任务</th><template v-if="dynamicTemplate"><th v-for="field in selectedFields" :key="field.code" scope="col">{{ field.label }}</th><th scope="col">更新时间</th></template><template v-else><th scope="col">工作内容</th><th scope="col">输出成果</th><th scope="col" class="planned-date">计划完成时间</th></template><th v-if="!readonly" scope="col" class="actions">操作</th></tr></thead>
+        <table v-resizable-columns="resizeKey" class="monthly-task-table" :class="{ 'delivery-table': editableTemplate, 'delivery-monthly-table': deliveryTemplate }" :style="dynamicTemplate ? { minWidth: `${600 + selectedFields.length * 210}px` } : undefined">
+          <thead><tr><th scope="col" class="serial" data-column-key="serial">序号</th><th data-column-key="scope_name" v-if="scopeLabel && !deliveryTemplate" scope="col" class="customer">{{ scopeLabel }}</th><th scope="col" data-column-key="task_name">工作任务</th><template v-if="dynamicTemplate"><th :data-column-key="field.code" v-for="field in selectedFields" :key="field.code" scope="col">{{ field.label }}</th><th scope="col" data-column-key="updated_at">更新时间</th></template><template v-else><th scope="col" data-column-key="work_content">工作内容</th><th scope="col" data-column-key="output_description">输出成果</th><th scope="col" class="planned-date" data-column-key="planned_date">计划完成时间</th></template><th v-if="!readonly" scope="col" class="actions" data-column-key="actions">操作</th></tr></thead>
           <tbody>
             <tr v-for="(task, index) in entries" :key="task.id">
               <td class="serial">{{ (page - 1) * pageSize + index + 1 }}</td>

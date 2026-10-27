@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { vResizableColumns } from "@/shared/table/resizable-columns"
+import { useTaskTableResizeKey } from "@/features/weekly-report/useTaskTableResizeKey"
 import FullscreenPanel from "@/components/layout/FullscreenPanel.vue"
 import MonthlyPlanTaskCells from "@/features/monthly-plan/components/MonthlyPlanTaskCells.vue"
 import MonthlyPlanFieldDialog from "@/features/monthly-plan/components/MonthlyPlanFieldDialog.vue"
@@ -18,6 +20,7 @@ import { humanResourcesMonthlyTaskSampleFields } from "../samples"
 import TaskQuickFillDialog from "./TaskQuickFillDialog.vue"
 import TaskTextFieldDialog from "./TaskTextFieldDialog.vue"
 const props = defineProps<{ tasks: MonthlyPlanTask[]; monthKey: string; templateCode?: string; readonly?: boolean; disabled?: boolean; isLoading?: boolean; errorMessage?: string }>()
+const resizeKey = useTaskTableResizeKey("monthly", () => "human_resources_v1")
 const emit = defineEmits<{ "update:tasks": [tasks: MonthlyPlanTask[]]; retry: [] }>()
 const { users, columnsOpen, selected, availableFields, selectedFields, fieldError, reloadFields } = useMonthlyTaskFields(() => props.templateCode || "human_resources_v1")
 const rows = computed(() => expandMonthlyTasks(props.tasks))
@@ -84,7 +87,7 @@ function saveText(value: string, index?: number) {
     </template>
     <div v-if="isLoading" class="monthly-task-empty">正在加载月度计划…</div>
     <div v-else-if="errorMessage" class="monthly-task-empty"><p>{{ errorMessage }}</p><button class="ghost-button" type="button" @click="emit('retry')">重试</button></div>
-    <template v-else><p v-if="fieldError" role="alert">{{ fieldError }} <button class="ghost-button" type="button" @click="reloadFields">重试</button></p><div class="monthly-task-table-wrap"><table class="monthly-task-table delivery-table" :style="{ minWidth: `${800 + selectedFields.length * 210}px` }"><thead><tr><th class="serial">序号</th><th class="customer">模块</th><th>工作事项</th><th v-for="field in selectedFields" :key="field.code">{{ field.label }}</th><th>更新时间</th><th v-if="!readonly" class="actions">操作</th></tr></thead><tbody>
+    <template v-else><p v-if="fieldError" role="alert">{{ fieldError }} <button class="ghost-button" type="button" @click="reloadFields">重试</button></p><div class="monthly-task-table-wrap"><table v-resizable-columns="resizeKey" class="monthly-task-table delivery-table" :style="{ minWidth: `${800 + selectedFields.length * 210}px` }"><thead><tr><th class="serial" data-column-key="serial">序号</th><th data-column-key="scope_name" class="customer">模块</th><th data-column-key="task_name">工作事项</th><th :data-column-key="field.code" v-for="field in selectedFields" :key="field.code">{{ field.label }}</th><th data-column-key="updated_at">更新时间</th><th v-if="!readonly" class="actions" data-column-key="actions">操作</th></tr></thead><tbody>
       <tr v-for="(task, index) in entries" :key="task.id"><td class="serial">{{ (page - 1) * pageSize + index + 1 }}</td>
         <td v-if="monthlyRowSpan(entries, index, 'scope')" :rowspan="monthlyRowSpan(entries, index, 'scope')" class="shared-monthly-cell"><span v-if="blocked" class="monthly-task-plain">{{ task.scope_name || '—' }}</span><TemplateTaskCell v-else-if="task.dimension_source === 'template'" label="模块" :task="{ task_name: task.scope_name || '', task_template: task.dimension_template, task_values: task.dimension_values }" @patch="patch(task.id, { scope_name: $event.task_name, dimension_values: $event.task_values })" /><button v-else class="monthly-task-text-cell" type="button" @click="editing = { task, field: 'scope_name' }">{{ task.scope_name || '点击填写模块' }}</button><button v-if="!blocked" class="cell-insert" type="button" aria-label="新增共用模块的工作事项" @click="insert(task.id, 'scope')"><Plus :size="16" /></button></td>
         <td v-if="monthlyRowSpan(entries, index, 'task')" :rowspan="monthlyRowSpan(entries, index, 'task')" class="shared-monthly-cell"><span v-if="blocked" class="monthly-task-plain">{{ task.task_source === 'template' ? previewTaskTemplate(task.task_template || '', task.task_values || []) : task.work_task || '—' }}</span><TemplateTaskCell v-else-if="task.task_source === 'template'" label="工作事项" :task="{ task_name: task.work_task, task_template: task.task_template, task_values: task.task_values }" @patch="patch(task.id, { work_task: $event.task_name, task_values: $event.task_values })" /><button v-else class="monthly-task-text-cell" type="button" @click="editing = { task, field: 'work_task' }">{{ task.work_task || '点击填写工作事项' }}</button><button v-if="!blocked" class="cell-insert" type="button" aria-label="新增共用工作事项的工作内容" @click="insert(task.id, 'task')"><Plus :size="16" /></button></td>

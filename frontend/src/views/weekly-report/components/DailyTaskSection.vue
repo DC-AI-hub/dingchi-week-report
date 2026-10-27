@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue"
+import { vResizableColumns } from "@/shared/table/resizable-columns"
+import { useTaskTableResizeKey } from "@/features/weekly-report/useTaskTableResizeKey"
 
 import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
@@ -24,6 +26,7 @@ const emit = defineEmits<{
   "update:dailyTasks": [value: DailyWorkTask[]]
 }>()
 
+const resizeKey = useTaskTableResizeKey("daily", () => undefined)
 const items = ref<DailyWorkTask[]>([])
 const dialogOpen = ref(false)
 const editingTask = ref<DailyWorkTask | null>(null)
@@ -111,14 +114,14 @@ function displayDate(value: string) {
       </button>
     </div>
     <div class="daily-task-card__table-wrap">
-      <table class="daily-task-card__table">
+      <table v-resizable-columns="resizeKey" data-resize-fit="true" class="daily-task-card__table">
         <thead>
           <tr>
-            <th class="daily-task-card__serial">序号</th>
-            <th class="daily-task-card__date">日期</th>
-            <th>主要工作内容</th>
-            <th class="daily-task-card__updated">更新日期</th>
-            <th v-if="canManage" class="daily-task-card__actions">操作</th>
+            <th data-column-key="serial" class="daily-task-card__serial">序号</th>
+            <th data-column-key="work_date" class="daily-task-card__date">日期</th>
+            <th data-column-key="work_content">主要工作内容</th>
+            <th data-column-key="updated_at" class="daily-task-card__updated">更新日期</th>
+            <th v-if="canManage" data-column-key="actions" class="daily-task-card__actions">操作</th>
           </tr>
         </thead>
         <tbody>

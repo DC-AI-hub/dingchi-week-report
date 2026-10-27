@@ -46,7 +46,7 @@ const { assignCustomer, addTemplates, filteredTaskEntries, quickFillOpen, column
         <input v-model="plannedDateFilter" type="date" aria-label="按计划完成时间筛选" />
       </label>
     </div>
-    <DeliveryEditableTaskTable delivery-mode :total-tasks="tasks.length" @add-blank="insertTask(-1)" :entries="pagedTaskEntries" :fields="selectedFields" :users="users" :templates="templates" :offset="(taskPage - 1) * taskPageSize" @patch="patchTask" @insert="(index, shared) => insertTask(index, shared === 'dimension' || shared === 'customer_name' ? undefined : shared)" @remove="removeTask" />
+    <DeliveryEditableTaskTable :template-code="columnPreferenceKey" delivery-mode :total-tasks="tasks.length" @add-blank="insertTask(-1)" :entries="pagedTaskEntries" :fields="selectedFields" :users="users" :templates="templates" :offset="(taskPage - 1) * taskPageSize" @patch="patchTask" @insert="(index, shared) => insertTask(index, shared === 'dimension' || shared === 'customer_name' ? undefined : shared)" @remove="removeTask" />
     <ReportPagination
       :page="taskPage"
       :page-size="taskPageSize"

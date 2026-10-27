@@ -28,7 +28,7 @@ const sampleFields = computed(() => props.templateCode === "innovation_sales_v1"
       <select v-model="customerFilter" :aria-label="`按${scopeLabel}筛选`"><option value="">全部{{ scopeLabel }}</option><option v-for="dimension in customerOptions" :key="dimension" :value="dimension">{{ dimension }}</option></select>
       <label><span>计划完成时间</span><input v-model="plannedDateFilter" type="date" aria-label="按计划完成时间筛选" /></label>
     </div>
-    <EditableTaskTable sales-mode scope-field="customer_name" :scope-label="scopeLabel" :total-tasks="tasks.length" @add-blank="insertTask(-1)" :entries="pagedTaskEntries" :fields="selectedFields" :users="users" :offset="(taskPage - 1) * pageSize" :templates="templates" @patch="patchTask" @remove="removeTask" @insert="insertTask" />
+    <EditableTaskTable :template-code="templateCode" sales-mode scope-field="customer_name" :scope-label="scopeLabel" :total-tasks="tasks.length" @add-blank="insertTask(-1)" :entries="pagedTaskEntries" :fields="selectedFields" :users="users" :offset="(taskPage - 1) * pageSize" :templates="templates" @patch="patchTask" @remove="removeTask" @insert="insertTask" />
     <PaginationBar :page="taskPage" :page-size="pageSize" :total="filteredTaskEntries.length" :total-pages="totalPages" @change="taskPage = $event" />
   </FullscreenPanel>
   <TaskQuickFillDialog :open="quickFillOpen" :customer-label="scopeLabel" sales :templates="templates" @close="quickFillOpen = false" @confirm="addTemplates" />

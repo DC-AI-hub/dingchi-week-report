@@ -24,7 +24,7 @@ const { quickFillOpen, columnsOpen, users, dimensionFilter, plannedDateFilter, t
       <select v-model="dimensionFilter" aria-label="按维度筛选"><option value="">全部维度</option><option v-for="dimension in dimensionOptions" :key="dimension" :value="dimension">{{ dimension }}</option></select>
       <label><span>计划完成时间</span><input v-model="plannedDateFilter" type="date" aria-label="按计划完成时间筛选" /></label>
     </div>
-    <EditableTaskTable recruitment-mode scope-field="dimension" :total-tasks="tasks.length" @add-blank="insertTask(-1)" :entries="pagedTaskEntries" :fields="selectedFields" :users="users" :offset="(taskPage - 1) * pageSize" :templates="recruitmentTaskTemplates" @patch="patchTask" @remove="removeTask" @insert="insertTask" />
+    <EditableTaskTable template-code="recruitment_v1" recruitment-mode scope-field="dimension" :total-tasks="tasks.length" @add-blank="insertTask(-1)" :entries="pagedTaskEntries" :fields="selectedFields" :users="users" :offset="(taskPage - 1) * pageSize" :templates="recruitmentTaskTemplates" @patch="patchTask" @remove="removeTask" @insert="insertTask" />
     <PaginationBar :page="taskPage" :page-size="pageSize" :total="filteredTaskEntries.length" :total-pages="totalPages" @change="taskPage = $event" />
   </FullscreenPanel>
   <TaskQuickFillDialog :open="quickFillOpen" recruitment :templates="recruitmentTaskTemplates" @close="quickFillOpen = false" @confirm="addTemplates" />
