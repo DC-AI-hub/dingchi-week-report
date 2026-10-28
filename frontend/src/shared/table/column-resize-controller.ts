@@ -127,6 +127,7 @@ export class ColumnResizeController {
     this.drag = new AbortController()
     const signal = this.drag.signal
     this.table.classList.add("is-resizing-columns")
+    document.documentElement.classList.add("is-resizing-table-columns")
     const move = (next: PointerEvent) => {
       if (next.pointerId !== event.pointerId) return
       this.columns.forEach((item, index) => { item.width = baseline[index]! })
@@ -148,6 +149,7 @@ export class ColumnResizeController {
   private endDrag() {
     this.drag?.abort(); this.drag = null
     this.table.classList.remove("is-resizing-columns")
+    document.documentElement.classList.remove("is-resizing-table-columns")
     this.signature = ""; this.schedule()
   }
   private keyboardResize(event: KeyboardEvent, column: ColumnLayout) {
@@ -159,6 +161,7 @@ export class ColumnResizeController {
     saveColumnWidth(this.key(), column.key, column.width)
   }
   destroy() {
+    if (this.drag) this.endDrag()
     this.drag?.abort(); this.handlesLifetime.abort(); this.lifetime.abort(); this.observer.disconnect(); this.sizeObserver.disconnect()
     cancelAnimationFrame(this.frame)
     this.table.querySelectorAll(".column-resize-handle").forEach(handle => handle.remove())

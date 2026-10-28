@@ -15,6 +15,7 @@
   --text-strong: #102b59;
   --muted: #6e82a6;
   --line: rgba(59, 121, 211, 0.16);
+  --table-column-divider: #aac0dc;
   --accent: #2f80ed;
   --accent-dark: #1f63c7;
   --accent-light: #76b9ff;
@@ -36,6 +37,7 @@
   --text-strong: #f4f8ff;
   --muted: #a6b9d8;
   --line: rgba(178, 211, 255, 0.16);
+  --table-column-divider: #627fa5;
   --accent: #76b9ff;
   --accent-dark: #9dcdff;
   --accent-light: #a7d4ff;
