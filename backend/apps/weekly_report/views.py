@@ -10,9 +10,10 @@ from django.http import FileResponse, HttpRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from apps.accounts.services.auth import AuthenticationError, require_request_user
+from apps.accounts.services.auth import AuthenticationError
 from apps.core.http import api_error, api_success, log_unhandled_exception
 
+from .request_context import require_report_user
 from .services.daily_tasks import (
     create_daily_task,
     delete_daily_task,
@@ -55,6 +56,8 @@ def _error(exc: Exception) -> JsonResponse:
         return api_error(exc.code, str(exc), status=401)
     if isinstance(exc, ReportNotFoundError):
         return api_error(exc.code, str(exc), status=404)
+    if isinstance(exc, PermissionError):
+        return api_error("FORBIDDEN", str(exc), status=403)
     if isinstance(exc, ReportPermissionError):
         return api_error(exc.code, str(exc), status=403)
     if isinstance(exc, ReportConflictError):
@@ -82,7 +85,7 @@ def dashboard_view(request: HttpRequest) -> JsonResponse:
     失败：401 AUTHENTICATION_FAILED；追踪：响应带 X-Trace-ID；字段只增不改。
     """
     try:
-        user, role_code = require_request_user(request)
+        user, role_code = require_report_user(request)
         return api_success(
             dashboard_summary(
                 user=user,
@@ -103,7 +106,7 @@ def dashboard_next_week_view(request: HttpRequest) -> JsonResponse:
     该周期没有周报时返回空数组，不会读取更远周期的数据。
     """
     try:
-        user, role_code = require_request_user(request)
+        user, role_code = require_report_user(request)
         return api_success(
             dashboard_next_week(
                 user=user,
@@ -125,7 +128,7 @@ def template_view(request: HttpRequest, template_code: str) -> JsonResponse:
     失败：401；响应带 X-Trace-ID，模板新增字段向后兼容。
     """
     try:
-        require_request_user(request)
+        require_report_user(request)
         return api_success(get_template_by_code(template_code))
     except Exception as exc:
         return _error(exc)
@@ -138,7 +141,8 @@ def report_list_view(request: HttpRequest) -> JsonResponse:
 
     方法/路径：GET/POST /api/v1/weekly-reports/；认证：Bearer；
     GET 参数：page、page_size、month_key（YYYY-MM）、period_start、period_end
-    （周期范围上下限）、group_id；
+    （周期范围上下限）、group_id、role_code（可选职位编码，最多64字符，空值不过滤）；
+    职位条件只缩小已授权数据范围，分页与total均在筛选后计算，不影响填写职位。
     team 角色额外支持 employee_scope=self/team。POST 参数为周报 JSON。
     可选 monthly_plan_tasks 随周报保存当月共用工作任务；详见 docs/monthly-plan-tasks-api.md。
     所有模板允许草稿 items 必填文本为空、planned_completion_date 为 null；
@@ -153,7 +157,7 @@ def report_list_view(request: HttpRequest) -> JsonResponse:
     失败：400/401/403/404/409；响应带 X-Trace-ID。
     """
     try:
-        user, role_code = require_request_user(request)
+        user, role_code = require_report_user(request)
         if request.method == "POST":
             return api_success(
                 create_or_update_report(
@@ -178,6 +182,7 @@ def report_list_view(request: HttpRequest) -> JsonResponse:
                 group_id=request.GET.get("group_id"),
                 employee_id=request.GET.get("employee_id"),
                 employee_scope=request.GET.get("employee_scope"),
+                filter_role_code=request.GET.get("role_code"),
             )
         )
     except Exception as exc:
@@ -194,7 +199,7 @@ def monthly_plan_view(request: HttpRequest, month_key: str) -> JsonResponse:
     成功响应为月度计划；失败：400/401/403；响应带 X-Trace-ID，逻辑 ID 均序列化为字符串。
     """
     try:
-        user, role_code = require_request_user(request)
+        user, role_code = require_report_user(request)
         if request.method == "PUT":
             payload = _json_payload(request)
             return api_success(
@@ -231,7 +236,7 @@ def report_detail_view(request: HttpRequest, report_id: str) -> JsonResponse:
     失败：400/401/403/404/409；响应带 X-Trace-ID。
     """
     try:
-        user, role_code = require_request_user(request)
+        user, role_code = require_report_user(request)
         if request.method == "PATCH":
             return api_success(
                 create_or_update_report(
@@ -263,7 +268,7 @@ def report_submit_view(request: HttpRequest, report_id: str) -> JsonResponse:
     所有模板提交前全量校验业务必填字段及模板占位值，缺失返回400 INVALID_REQUEST。
     """
     try:
-        user, role_code = require_request_user(request)
+        user, role_code = require_report_user(request)
         return api_success(
             submit_report(user=user, role_code=role_code, report_id=int(report_id))
         )
@@ -284,7 +289,7 @@ def daily_task_list_view(request: HttpRequest, report_id: str) -> JsonResponse:
     响应带 X-Trace-ID，页面不依赖数据库实现细节。
     """
     try:
-        user, role_code = require_request_user(request)
+        user, role_code = require_report_user(request)
         parsed_report_id = int(report_id)
         if request.method == "POST":
             return api_success(
@@ -316,7 +321,7 @@ def daily_task_detail_view(
     日报记录或 {id, deleted: true}。失败：400/401/403/404/409；响应带 X-Trace-ID。
     """
     try:
-        user, role_code = require_request_user(request)
+        user, role_code = require_report_user(request)
         parsed_report_id = int(report_id)
         parsed_task_id = int(daily_task_id)
         if request.method == "PATCH":
@@ -352,7 +357,7 @@ def pending_attachment_upload_view(request: HttpRequest) -> JsonResponse:
     失败：400/401；响应带 X-Trace-ID，不要求周报或工作任务预先存在。
     """
     try:
-        user, _role_code = require_request_user(request)
+        user, _role_code = require_report_user(request)
         return api_success(
             upload_pending_report_attachment(
                 user=user,
@@ -377,7 +382,7 @@ def attachment_download_view(
     失败：401/403/404；响应带 X-Trace-ID，不暴露宿主机存储路径。
     """
     try:
-        user, role_code = require_request_user(request)
+        user, role_code = require_report_user(request)
         attachment = get_report_attachment_for_download(
             user=user,
             role_code=role_code,
@@ -408,7 +413,7 @@ def attachment_delete_view(request: HttpRequest, attachment_id: str) -> JsonResp
     {id, deleted:true}；仅周报本人且周报未提交时允许操作。
     """
     try:
-        user, role_code = require_request_user(request)
+        user, role_code = require_report_user(request)
         return api_success(
             delete_report_attachment(
                 user=user,
@@ -433,7 +438,7 @@ def report_copy_view(request: HttpRequest, report_id: str) -> JsonResponse:
     统一 JSON 包络与 X-Trace-ID；新增接口向后兼容，重复调用返回 409。
     """
     try:
-        user, role_code = require_request_user(request)
+        user, role_code = require_report_user(request)
         return api_success(
             copy_report(user=user, role_code=role_code, report_id=int(report_id)), status=201,
         )

@@ -33,7 +33,7 @@ async function openRequested(){
  catch(cause){if(String(route.query.approval_id)===id)list.error.value=cause instanceof Error?cause.message:'审批记录加载失败。'}
 }
 watch(()=>route.query.approval_id,()=>void openRequested())
-watch(()=>auth.activeRole?.role_code,closeViewing)
+watch(()=>auth.effectiveRole?.role_code,closeViewing)
 function search() { list.filters.page = 1; void list.load() }
 function page(value: number) { list.filters.page = value; void list.load() }
 function selectTab(tab: "mine" | "members" | "approvals") {
@@ -43,7 +43,7 @@ function selectTab(tab: "mine" | "members" | "approvals") {
 async function remove() { const id = deleting.value; deleting.value = ""; await list.action(id, "delete", deletingChange.value) }
 onMounted(async()=>{
  const tab=route.query.tab
- if(tab==='approvals' || (tab==='mine' && auth.activeRole?.scope!=='all') || (tab==='members' && auth.activeRole?.scope!=='self'))list.activeTab.value=tab
+ if(tab==='approvals' || (tab==='mine' && (auth.effectiveRole?.scope!=='all' || auth.reportingRoles.length)) || (tab==='members' && auth.effectiveRole?.scope!=='self'))list.activeTab.value=tab
  await list.initialize();await openRequested()
 })
 </script>

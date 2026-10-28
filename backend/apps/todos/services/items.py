@@ -2,6 +2,8 @@ import json
 
 from django.db import transaction
 
+from apps.accounts.public import assigned_role_codes
+
 from .. import dao
 
 
@@ -64,7 +66,7 @@ def list_items(user_id, role_code, page=1):
 
 @transaction.atomic
 def mark_read(user_id, role_code, item_id):
-    return serialize(dao.mark_read(user_id, role_code, item_id))
+    return serialize(dao.mark_read(user_id, assigned_role_codes(user_id), item_id))
 
 
 @transaction.atomic

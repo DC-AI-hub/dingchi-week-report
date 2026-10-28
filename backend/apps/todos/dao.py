@@ -50,7 +50,11 @@ def read_history_cutoff():
 
 def paginated_items(recipient_id, role_code, page):
     rows = (
-        TodoItem.objects.filter(recipient_id=recipient_id, role_code=role_code, status="pending")
+        TodoItem.objects.filter(
+            recipient_id=recipient_id,
+            role_code__in=[role_code] if isinstance(role_code, str) else role_code,
+            status="pending",
+        )
         .filter(Q(read_at__isnull=True) | Q(created_at__gte=read_history_cutoff()))
         .annotate(
             read_priority=Case(
@@ -66,12 +70,19 @@ def paginated_items(recipient_id, role_code, page):
 
 def unread_count(recipient_id, role_code):
     return TodoItem.objects.filter(
-        recipient_id=recipient_id, role_code=role_code, status="pending", read_at__isnull=True
+        recipient_id=recipient_id,
+        role_code__in=[role_code] if isinstance(role_code, str) else role_code,
+        status="pending",
+        read_at__isnull=True,
     ).count()
 
 
 def mark_read(recipient_id, role_code, item_id):
-    rows = TodoItem.objects.filter(id=item_id, recipient_id=recipient_id, role_code=role_code)
+    rows = TodoItem.objects.filter(
+        id=item_id,
+        recipient_id=recipient_id,
+        role_code__in=[role_code] if isinstance(role_code, str) else role_code,
+    )
     if not rows.exists():
         raise LookupError("待办事项不存在。")
     rows.filter(read_at__isnull=True).update(read_at=timezone.now(), updated_at=timezone.now())

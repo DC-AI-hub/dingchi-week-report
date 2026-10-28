@@ -14,7 +14,7 @@ const { authStore, dashboardStore, summary, tasks, nextWeekTasks, currentTasks, 
 
 <template>
   <div class="leader-home-page">
-    <LeaderHomeHeader :period="summary.period" :role-name="roleNameMap[authStore.activeRole?.role_code || ''] || authStore.activeRole?.role_name || '领导视角'" :user-name="authStore.user?.display_name || ''" @update:start="handlePeriodChange" />
+    <LeaderHomeHeader :period="summary.period" :role-name="roleNameMap[authStore.effectiveRole?.role_code || ''] || authStore.effectiveRole?.role_name || '领导视角'" :user-name="authStore.user?.display_name || ''" @update:start="handlePeriodChange" />
     <NoticeBridge :warning-message="dashboardStore.errorMessage" />
 
     <div v-if="dashboardStore.isLoading" class="leader-state">正在加载领导首页数据…</div>

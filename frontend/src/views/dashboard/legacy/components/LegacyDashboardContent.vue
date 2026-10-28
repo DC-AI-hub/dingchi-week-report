@@ -25,7 +25,7 @@ const { authStore, dashboardStore, summary, workTasks, scopeLabel, customerDistr
       <div class="hero-period">
         <span>本周周期</span>
         <strong>{{ formatPeriod(summary.period.start) }} - {{ formatPeriod(summary.period.end) }}</strong>
-        <small>{{ scopeLabel }} · {{ authStore.activeRole?.role_name || "周报成员" }}</small>
+        <small>{{ scopeLabel }} · {{ authStore.effectiveRole?.role_name || "周报成员" }}</small>
       </div>
     </section>
 

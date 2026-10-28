@@ -9,7 +9,7 @@ import { type ChangeDetail } from "@/features/monthly-plan/types"
 import PlanDetailHeading from "./components/PlanDetailHeading.vue"
 import ApprovalTimeline from "./components/ApprovalTimeline.vue"
 const auth=useAuthStore(),router=useRouter(),busy=ref(false)
-const canChange=computed(()=>detail.value?.plan.can_create_change && detail.value.plan.employee_id===auth.user?.id && detail.value.plan.role_code===auth.activeRole?.role_code)
+const canChange=computed(()=>detail.value?.plan.can_create_change && detail.value.plan.employee_id===auth.user?.id && auth.roles.some(role=>role.role_code===detail.value?.plan.role_code))
 async function beginChange(){if(!detail.value)return;busy.value=true;try{const data=await createPlanChange(detail.value.plan.id);await router.push({name:"monthly-plan-change-edit",params:{changeId:data.change.id},query:{tab:route.query.tab}})}catch(cause){error.value=cause instanceof Error?cause.message:"申请变更失败。"}finally{busy.value=false}}
 const route=useRoute(),detail=ref<ChangeDetail|null>(null),error=ref('')
 const flow=computed(()=>detail.value?{...detail.value.plan,...detail.value.change}:null)

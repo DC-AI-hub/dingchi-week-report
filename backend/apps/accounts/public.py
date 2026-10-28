@@ -64,3 +64,8 @@ def account_role_name(role_code):
 def account_role_names(codes):
     """批量返回职位编码与名称，供业务列表展示使用。"""
     return role_names(codes)
+
+
+def assigned_role_codes(user_id):
+    """当前有效职位集合；读取、审批聚合不得包含已撤销职位。"""
+    return [role.role_code for role in get_user_roles(user_id)]

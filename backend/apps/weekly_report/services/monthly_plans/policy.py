@@ -1,4 +1,4 @@
-from apps.accounts.public import account_role_scope, approval_managers, visible_user_ids
+from apps.accounts.public import approval_managers, visible_user_ids
 
 from ... import monthly_plan_management_dao as dao
 from .versions import assigned_root_ids
@@ -13,8 +13,6 @@ def readable_plan(user, role_code, plan_id, *, lock=False):
     if plan is None or plan.status == "deleted":
         raise PlanNotFound("月度计划不存在或已删除。")
     visible = int(plan.employee_id) in visible_user_ids(user, role_code)
-    if account_role_scope(role_code) == "self" and plan.role_code != role_code:
-        visible = False
     if not visible and int(plan.id) not in assigned_root_ids(user.id, role_code):
         raise PermissionError("无权查看该月度计划。")
     return plan

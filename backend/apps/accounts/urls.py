@@ -11,6 +11,7 @@ urlpatterns = [
     path("auth/change-password/", views.change_password_view, name="change-password"),
     path("auth/logout/", views.logout_view, name="logout"),
     path("roles/", views.roles_view, name="roles"),
+    path("roles/options/", views.role_options_view, name="role-options"),
     path("roles/new/", views.role_create_view, name="role-create"),
     path("roles/<str:role_id>/", views.role_detail_view, name="role-detail"),
     path("groups/", views.groups_view, name="groups"),

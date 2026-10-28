@@ -7,15 +7,15 @@ import type { ApprovalRecord, PlanContext, PlanFilters, PlanList, PlanListView }
 export function useMonthlyPlanList() {
   const auth=useAuthStore(),todos=useTodoStore()
   const pendingCount=computed(()=>todos.loaded?todos.data.pending_approval_count:(context.value?.pending_approval_count || 0))
-  const activeTab=ref<PlanListView>(auth.activeRole?.scope==='all'?'members':'mine')
+  const activeTab=ref<PlanListView>(auth.effectiveRole?.scope==='all' && !auth.reportingRoles.length?'members':'mine')
   const hasApprovalTasks=ref(false)
   const appliedStatus=ref('')
   const tabs=computed(()=>[
-    ...(auth.activeRole?.scope!=='all'?[{value:'mine' as const,label:'我的月度计划'}]:[]),
-    ...(auth.activeRole?.scope!=='self'?[{value:'members' as const,label:'团队月度计划'}]:[]),
+    ...((auth.effectiveRole?.scope!=='all' || auth.reportingRoles.length)?[{value:'mine' as const,label:'我的月度计划'}]:[]),
+    ...(auth.effectiveRole?.scope!=='self'?[{value:'members' as const,label:'团队月度计划'}]:[]),
     ...((hasApprovalTasks.value || pendingCount.value>0)?[{value:'approvals' as const,label:'待审批'}]:[]),
   ])
-  const filters = reactive<PlanFilters>({ month_key: "", status: "", employee_id: "", group_id: "", page: 1, page_size: 10 })
+  const filters = reactive<PlanFilters>({ role_code: "", month_key: "", status: "", employee_id: "", group_id: "", page: 1, page_size: 10 })
   const data = ref<PlanList>({ items: [], approvals: [], page: 1, page_size: 10, total: 0, total_pages: 0 })
   const context = ref<PlanContext | null>(null)
   const error = ref("")
@@ -50,7 +50,7 @@ export function useMonthlyPlanList() {
   function selectTab(tab:PlanListView) {
     if(activeTab.value===tab)return
     activeTab.value=tab
-    filters.page=1;filters.status='';filters.employee_id='';filters.group_id=''
+    filters.page=1;filters.role_code='';filters.status='';filters.employee_id='';filters.group_id=''
     void load()
   }
   async function decide(record:ApprovalRecord,reject:boolean,reason:string) {
@@ -60,10 +60,10 @@ export function useMonthlyPlanList() {
     catch(cause){error.value=cause instanceof Error?cause.message:'审批失败。';return false}
     finally{busy.value=false}
   }
-  watch(()=>[auth.user?.id,auth.activeRole?.role_code],()=>{
+  watch(()=>[auth.user?.id,auth.effectiveRole?.role_code],()=>{
     version++;context.value=null;hasApprovalTasks.value=false;error.value='';busy.value=false;appliedStatus.value=''
     data.value={items:[],approvals:[],page:1,page_size:10,total:0,total_pages:0}
-    activeTab.value=auth.activeRole?.scope==='all'?'members':'mine';filters.page=1
+    activeTab.value=auth.effectiveRole?.scope==='all' && !auth.reportingRoles.length?'members':'mine';filters.page=1
     if(auth.isAuthenticated)void initialize()
   })
   async function action(id: string, mode: "submit" | "delete", change=false) {

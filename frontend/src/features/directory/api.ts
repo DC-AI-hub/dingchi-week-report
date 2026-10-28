@@ -6,6 +6,7 @@ import type {
   DeleteRoleResult,
   DirectoryGroup,
   DirectoryRole,
+  DirectoryRoleOption,
   DirectoryUser,
   DirectoryUserOption,
   GroupMutationPayload,
@@ -138,4 +139,11 @@ export function updateUser(id: string, payload: Partial<UserMutationPayload>): P
  */
 export function deleteUser(id: string): Promise<DeleteDirectoryResult> {
   return request<DeleteDirectoryResult>({ method: "DELETE", url: `/v1/users/${id}/` })
+}
+
+/** 职位筛选选项：GET /v1/roles/options/；无参数，返回启用职位编码/名称items。
+ * 所有登录用户可读，不授予管理权限；错误401/500，Bearer和X-Trace-ID统一携带，兼容新增接口。
+ */
+export function listRoleOptions(): Promise<{ items: DirectoryRoleOption[] }> {
+  return request({ method: "GET", url: "/v1/roles/options/" })
 }

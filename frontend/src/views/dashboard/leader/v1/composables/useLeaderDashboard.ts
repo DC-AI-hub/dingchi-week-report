@@ -113,7 +113,7 @@ export function useLeaderDashboard() {
   ])
 
   onMounted(() => { void dashboardStore.load() })
-  watch(() => authStore.activeRole?.role_code, () => { void dashboardStore.load() })
+  watch(() => authStore.effectiveRole?.role_code, () => { void dashboardStore.load() })
 
   function handlePeriodChange(periodStart: string) {
     void dashboardStore.load(periodStart)

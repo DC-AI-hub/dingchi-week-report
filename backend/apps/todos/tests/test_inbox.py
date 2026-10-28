@@ -181,56 +181,38 @@ def test_change_deep_link_and_publish_failure_roll_back_todo(people, monkeypatch
     assert read.gate(owner, "delivery", "2026-10")["plan"]["summary"] == "原目标"
 
 
-def test_role_isolation_for_lists_read_and_business_actions(people, client):
+def test_multi_role_inbox_and_approvals_aggregate_without_switching(people, client):
     owner, first, *_ = people
     UserRole.objects.create(user_id=owner.id, role_id=Role.objects.get(role_code="manager").id)
     for role in ["delivery", "manager"]:
-        publish(
-            recipient_id=owner.id,
-            role_code=role,
-            source="other",
-            dedupe_key="same-event",
-            title="角色提醒",
-            target={"kind": "other"},
-        )
+        publish(recipient_id=owner.id, role_code=role, source="other", dedupe_key="same-event",
+                title="职位提醒", target={"kind": "other"})
     own = inbox.list_for_user(owner, "delivery")
-    other = inbox.list_for_user(owner, "manager")
-    assert own["total"] == 1 and other["total"] == 1
-    assert own["items"][0]["id"] != other["items"][0]["id"]
-    with pytest.raises(LookupError):
-        items.mark_read(owner.id, "delivery", int(other["items"][0]["id"]))
+    assert own["total"] == inbox.list_for_user(owner, "manager")["total"] == 2
+    assert {item["role_code"] for item in own["items"]} == {"delivery", "manager"}
     items.mark_read(owner.id, "delivery", int(own["items"][0]["id"]))
     assert inbox.list_for_user(owner, "manager")["unread_count"] == 1
-    assert inbox.list_for_user(owner, "delivery")["unread_count"] == 0
     with patch("apps.todos.views.require_user", return_value=(owner, "delivery")):
-        response = client.get("/api/v1/todos/", {"role_code": "manager"})
-        assert response.json()["data"]["role_code"] == "delivery"
-        assert client.post(f"/api/v1/todos/{other['items'][0]['id']}/read/").status_code == 404
-    main = create(people)
-    plan_id = int(main["plan"]["id"])
+        assert client.post(f"/api/v1/todos/{own['items'][1]['id']}/read/").status_code == 200
+    with pytest.raises(LookupError):
+        items.mark_read(first.id, "manager", int(own["items"][0]["id"]))
+    plan_id = int(create(people)["plan"]["id"])
     record = write.submit(owner, "delivery", plan_id)["approvals"][0]
-    assert record["steps"][0]["approver_role_code"] == "manager"
-    assert pending_monthly_count(first.id, "delivery") == 0
-    assert pending_monthly_count(first.id, "manager") == 1
-    assert read.list_plans(first, "delivery", {"view": "approvals"})["total"] == 0
-    assert not read.context(first, "delivery")["has_approval_tasks"]
-    with pytest.raises(PermissionError):
-        approval_read.detail_assigned(first, "delivery", int(record["id"]))
-    with pytest.raises(PermissionError):
-        write.decide(first, "delivery", plan_id, {"action": "approve"})
+    assert pending_monthly_count(first.id, "delivery") == 1
+    assert read.list_plans(first, "delivery", {"view": "approvals"})["total"] == 1
+    assert read.context(first, "delivery")["has_approval_tasks"]
+    assert approval_read.detail_assigned(first, "delivery", int(record["id"]))["can_approve"]
+    write.decide(first, "delivery", plan_id, {"action": "approve"})
 
 
-def test_weekly_reminders_are_isolated_by_current_role(people):
+def test_weekly_reminders_aggregate_with_independent_read_state(people):
     owner = people[0]
     UserRole.objects.create(user_id=owner.id, role_id=Role.objects.get(role_code="manager").id)
-    a = inbox.list_for_user(owner, "delivery")
-    b = inbox.list_for_user(owner, "manager")
-    assert a["total"] == b["total"] == 1
-    assert a["items"][0]["role_code"] == "delivery"
-    assert b["items"][0]["role_code"] == "manager"
-    items.mark_read(owner.id, "delivery", int(a["items"][0]["id"]))
+    data = inbox.list_for_user(owner, "delivery")
+    assert data["total"] == inbox.list_for_user(owner, "manager")["total"] == 2
+    assert {item["role_code"] for item in data["items"]} == {"delivery", "manager"}
+    items.mark_read(owner.id, "delivery", int(data["items"][0]["id"]))
     assert inbox.list_for_user(owner, "manager")["unread_count"] == 1
-    assert inbox.list_for_user(owner, "delivery")["unread_count"] == 0
 
 
 def test_role_backfill_keeps_read_state(people):
@@ -257,4 +239,4 @@ def test_role_backfill_keeps_read_state(people):
     item.refresh_from_db()
     assert item.role_code == "manager" and item.read_at
     assert pending_monthly_count(first.id, "manager") == 1
-    assert inbox.list_for_user(first, "delivery")["total"] == 0
+    assert inbox.list_for_user(first, "delivery")["total"] == 1

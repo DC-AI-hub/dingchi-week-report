@@ -15,6 +15,8 @@ from django.conf import settings
 from django.db import connection
 from django.utils import timezone
 
+from apps.core.models import Attachment
+
 
 def _fetch(sql: str, params: list[Any]) -> list[dict[str, Any]]:
     with connection.cursor() as cursor:
@@ -335,3 +337,9 @@ def move_daily_task_dates(report_id, offset):
     for row in WeeklyReportDailyTask.objects.filter(report_id=report_id):
         row.work_date += offset
         row.save(update_fields=["work_date", "updated_at"])
+
+
+def attachment_report_id(attachment_id):
+    return Attachment.objects.filter(
+        id=attachment_id, attachment_type="weekly_report"
+    ).values_list("relation_id", flat=True).first()

@@ -3,9 +3,10 @@
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.http import require_GET
 
-from apps.accounts.services.auth import AuthenticationError, require_request_user
+from apps.accounts.services.auth import AuthenticationError
 from apps.core.http import api_error, api_success, log_unhandled_exception
 
+from .request_context import require_report_user
 from .services.monthly_plan_tasks import list_monthly_plan_tasks
 
 
@@ -24,12 +25,14 @@ def monthly_plan_task_list_view(request: HttpRequest, month_key: str) -> JsonRes
     保留独立只读接口；写入改用 monthly-plan-management，不允许周报修改审批内容。
     """
     try:
-        user, role_code = require_request_user(request)
+        user, role_code = require_report_user(request)
         return api_success({"items": list_monthly_plan_tasks(
             employee_id=int(user.id), role_code=role_code, month_key=month_key
         )})
     except AuthenticationError as exc:
         return api_error("AUTHENTICATION_FAILED", str(exc), status=401)
+    except PermissionError as exc:
+        return api_error("FORBIDDEN", str(exc), status=403)
     except ValueError as exc:
         return api_error("INVALID_REQUEST", str(exc), status=400)
     except Exception as exc:

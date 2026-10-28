@@ -62,7 +62,7 @@ onMounted(() => {
     <NoticeBridge :warning-message="roleManagement.dictionaryErrorMessage.value" />
 
     <RoleCatalog
-      :active-role-code="authStore.activeRole?.role_code"
+      :active-role-code="authStore.effectiveRole?.role_code"
       :is-loading="roleManagement.isLoading.value"
       :roles="roleManagement.roles.value"
       :scope-options="roleManagement.scopeOptions.value"

@@ -6,6 +6,7 @@
   width: 100%;
   min-width: 720px;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .report-list-table th {
@@ -50,20 +51,17 @@
 }
 
 .date-cell {
-  min-width: 155px;
-  white-space: nowrap;
+  min-width: 0;
+  white-space: normal;
 }
 
 .actions-heading {
-  min-width: 270px;
+  width: 270px;
   text-align: left;
 }
 
 .action-cell {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .table-action {
@@ -94,3 +92,13 @@
   color: var(--muted) !important;
   text-align: center;
 }
+
+.report-list-table td { overflow-wrap: anywhere; }
+.report-list-table th[data-column-key="period"] { width: 240px; }
+.report-list-table th[data-column-key="month_key"] { width: 110px; }
+.report-list-table th[data-column-key="role_code"] { width: 130px; }
+.report-list-table th[data-column-key="status"] { width: 100px; }
+.report-list-table th[data-column-key="updated_at"] { width: 170px; }
+.action-cell > * { display: inline-block; margin: 0.2rem 0.7rem 0.2rem 0; }
+
+.report-list-table th { overflow: hidden; text-overflow: ellipsis; }

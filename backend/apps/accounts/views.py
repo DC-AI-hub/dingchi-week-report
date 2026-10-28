@@ -43,6 +43,7 @@ from .services.organization import (
     update_group,
     update_role,
 )
+from .services.role_options import get_role_options
 
 
 def _json_payload(request: HttpRequest) -> dict[str, Any]:
@@ -396,5 +397,20 @@ def user_update_view(request: HttpRequest, user_id: str) -> JsonResponse:
         if user is None:
             raise UserNotFoundError("用户不存在或已被删除。")
         return api_success(serialize_user(update_user(user=user, payload=_json_payload(request))))
+    except Exception as exc:
+        return _error_from_exception(exc)
+
+
+@require_GET
+def role_options_view(request: HttpRequest) -> JsonResponse:
+    """GET /api/v1/roles/options/：已登录用户的职位筛选字典，无请求参数。
+
+    响应items仅含role_code/role_name字符串，启用项按配置排序；不暴露管理配置。
+    Bearer认证401 AUTHENTICATION_FAILED，未知错误500；幂等、统一包络/X-Trace-ID。
+    独立新增v1接口，不扩大职位管理权限；职位筛选仍与业务数据权限取交集。
+    """
+    try:
+        require_request_user(request)
+        return api_success({"items": get_role_options()})
     except Exception as exc:
         return _error_from_exception(exc)

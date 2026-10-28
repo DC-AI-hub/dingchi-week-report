@@ -55,7 +55,7 @@ export interface PlanDetail { plan: ManagedMonthlyPlan; tasks: MonthlyPlanTask[]
 export interface PlanContext { template_code: string; can_create: boolean; warning: string; managers: {id: string; name: string}[]; pending_approval_count?:number; has_approval_tasks?: boolean }
 export interface PlanInput { month_key: string; summary: string; tasks: MonthlyPlanTask[]; revision?: number }
 export type PlanListView = "mine" | "members" | "approvals"
-export interface PlanFilters { view?: PlanListView; month_key?: string; status?: string; employee_id?: string; group_id?: string; pending_only?: boolean; page?: number; page_size?: number }
+export interface PlanFilters { role_code?: string; view?: PlanListView; month_key?: string; status?: string; employee_id?: string; group_id?: string; pending_only?: boolean; page?: number; page_size?: number }
 export interface PlanList { items: ManagedMonthlyPlan[]; approvals: ApprovalRecord[]; page: number; page_size: number; total: number; total_pages: number; pending_approval_count?:number; has_approval_tasks?: boolean }
 export interface PlanGate { approved: boolean; message: string; plan: ManagedMonthlyPlan | null; tasks: MonthlyPlanTask[] }
 

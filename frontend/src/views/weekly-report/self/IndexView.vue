@@ -35,6 +35,7 @@ const {
         <button class="primary-button" type="button" @click="openCreateReport">填写周报</button>
       </div>
       <ReportFilterBar
+        v-model:role-code="filters.role_code"
         v-model:month-key="filters.month_key"
         v-model:period-start="filters.period_start"
         v-model:period-end="filters.period_end"

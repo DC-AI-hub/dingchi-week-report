@@ -58,7 +58,9 @@ def save_request(request):
 def participant_business_ids(user_id, business_type, pending_only=False, role_code=None):
     step_rows = ApprovalStep.objects.filter(approver_id=user_id)
     if role_code is not None:
-        step_rows = step_rows.filter(approver_role_code=role_code)
+        step_rows = step_rows.filter(
+            approver_role_code__in=[role_code] if isinstance(role_code, str) else role_code
+        )
     if pending_only:
         step_rows = step_rows.filter(status="pending")
     request_ids = list(step_rows.values_list("approval_id", flat=True))
@@ -76,7 +78,9 @@ def assigned_requests(
         approver_id=user_id, status__in=["pending", "approved", "rejected"]
     )
     if role_code is not None:
-        assigned = assigned.filter(approver_role_code=role_code)
+        assigned = assigned.filter(
+            approver_role_code__in=[role_code] if isinstance(role_code, str) else role_code
+        )
     if pending_only:
         assigned = assigned.filter(status="pending")
     ids = list(assigned.values_list("approval_id", flat=True))
@@ -94,7 +98,9 @@ def assigned_requests(
 def pending_requests(user_id, role_code=None):
     steps = ApprovalStep.objects.filter(approver_id=user_id, status="pending")
     if role_code is not None:
-        steps = steps.filter(approver_role_code=role_code)
+        steps = steps.filter(
+            approver_role_code__in=[role_code] if isinstance(role_code, str) else role_code
+        )
     ids = steps.values_list("approval_id", flat=True)
     return list(
         ApprovalRequest.objects.filter(

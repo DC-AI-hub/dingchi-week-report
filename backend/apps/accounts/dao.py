@@ -171,3 +171,12 @@ def _split_group_values(value: Any) -> list[str]:
     if value in (None, ""):
         return []
     return [part for part in str(value).split(",") if part]
+
+
+def list_role_options():
+    """单表读取启用职位的筛选名称，不暴露职位配置或成员。"""
+    return list(
+        Role.objects.filter(status="active")
+        .order_by("sort_order", "id")
+        .values("role_code", "role_name")
+    )

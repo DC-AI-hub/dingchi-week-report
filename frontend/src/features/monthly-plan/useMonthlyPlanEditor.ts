@@ -1,4 +1,5 @@
 import { computed, reactive, ref } from "vue"
+import { setReportRole } from "@/shared/api/report-context"
 import { isSupportedTemplate } from "@/features/weekly-report/template-support"
 import { useUnsavedChanges } from "@/shared/forms/useUnsavedChanges"
 import { getManagedPlan, getPlanContext, saveManagedPlan, submitManagedPlan, getPlanChange,savePlanChange,submitPlanChange } from "./api"
@@ -28,13 +29,13 @@ export function useMonthlyPlanEditor() {
   async function load(id: string, isChange=false) {
     loading.value=true;error.value="";templateUnavailable.value=false;loadFailed.value=false
     try {
-      context.value=await getPlanContext()
-      if (!isSupportedTemplate(context.value.template_code)) { templateUnavailable.value=true;return }
       if(isChange) {setChange(await getPlanChange(id))}
       else if(id) {
         detail.value=await getManagedPlan(id)
         Object.assign(input,{month_key:detail.value.plan.month_key,summary:detail.value.plan.summary,tasks:detail.value.tasks.map(task=>({...task})),revision:detail.value.plan.revision})
       }
+      if(detail.value) setReportRole(detail.value.plan.role_code)
+      context.value=await getPlanContext()
       if (!isSupportedTemplate(templateCode.value)) templateUnavailable.value=true
     } catch(cause) {loadFailed.value=true;error.value=cause instanceof Error?cause.message:"计划加载失败。"}
     finally {loading.value=false}

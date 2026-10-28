@@ -1,0 +1,2 @@
+.position-options { display: grid; gap: 12px; }
+.position-option { display: flex; align-items: center; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }

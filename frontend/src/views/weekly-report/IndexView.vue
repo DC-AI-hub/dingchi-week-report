@@ -10,8 +10,8 @@ import TeamReportsView from "./team/IndexView.vue"
 const authStore = useAuthStore()
 
 const reportPage = computed(() => {
-  const scope = authStore.activeRole?.scope
-  if (scope === "all") return AllReportsView
+  const scope = authStore.effectiveRole?.scope
+  if (scope === "all") return authStore.reportingRoles.length ? TeamReportsView : AllReportsView
   if (scope === "team") return TeamReportsView
   return SelfReportsView
 })

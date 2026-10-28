@@ -162,7 +162,7 @@ export function useTeamDashboard() {
     void dashboardStore.load()
   })
 
-  watch(() => authStore.activeRole?.role_code, () => {
+  watch(() => authStore.effectiveRole?.role_code, () => {
     void dashboardStore.load()
   })
 

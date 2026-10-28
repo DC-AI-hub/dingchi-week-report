@@ -10,8 +10,8 @@ export const useTodoStore=defineStore('todos',()=>{
  function reset(){version++;data.value=empty();error.value='';loaded.value=false;busy.value=false}
  async function load(page=data.value.page){
   if(!auth.isAuthenticated)return
-  const current=++version,user=auth.user?.id,role=auth.activeRole?.role_code;busy.value=true
-  try{const result=await listTodos(page);if(current!==version || user!==auth.user?.id || role!==auth.activeRole?.role_code)return
+  const current=++version,user=auth.user?.id,role=auth.effectiveRole?.role_code;busy.value=true
+  try{const result=await listTodos(page);if(current!==version || user!==auth.user?.id || role!==auth.effectiveRole?.role_code)return
    if(result.role_code!==role)throw new Error("待办职位信息已变更，请刷新后重试。")
    data.value=result;loaded.value=true;error.value=''
    if(result.total_pages && page>result.total_pages)await load(result.total_pages)
@@ -19,11 +19,11 @@ export const useTodoStore=defineStore('todos',()=>{
   finally{if(current===version)busy.value=false}
  }
  async function read(id:string){
-  const user=auth.user?.id,role=auth.activeRole?.role_code,current=version
-  if(data.value.role_code!==role || !data.value.items.some(item=>item.id===id && item.role_code===role))return
-  try{await markTodoRead(id);if(user===auth.user?.id && role===auth.activeRole?.role_code)await load()}
+  const user=auth.user?.id,role=auth.effectiveRole?.role_code,current=version
+  if(data.value.role_code!==role || !data.value.items.some(item=>item.id===id && auth.roles.some(assigned=>assigned.role_code===item.role_code)))return
+  try{await markTodoRead(id);if(user===auth.user?.id && role===auth.effectiveRole?.role_code)await load()}
   catch(cause){if(current===version)error.value=cause instanceof Error?cause.message:'标记已读失败。'}
  }
- watch(()=>[auth.user?.id,auth.activeRole?.role_code],reset,{flush:'sync'})
+ watch(()=>[auth.user?.id,auth.effectiveRole?.role_code],reset,{flush:'sync'})
  return {data,busy,error,loaded,load,read,reset}
 })

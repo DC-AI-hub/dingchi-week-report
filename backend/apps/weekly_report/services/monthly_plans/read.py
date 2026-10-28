@@ -2,6 +2,7 @@ from apps.accounts.public import (
     account_role_name,
     account_role_scope,
     approval_managers,
+    report_roles,
     user_profiles,
     visible_user_ids,
 )
@@ -31,6 +32,7 @@ def serialize_plan(plan, user_id, profiles=None, role_code=None):
         "id": str(plan.id),
         "employee_id": str(plan.employee_id),
         "role_code": plan.role_code,
+        "role_name": account_role_name(plan.role_code),
         "group_id": str(plan.group_id) if plan.group_id else None,
         "month_key": plan.month_key,
         "summary": plan.summary,
@@ -71,6 +73,8 @@ def context(user, role_code):
 
 
 def list_plans(user, role_code, filters):
+    if len(str(filters.get("role_code") or "")) > 64:
+        raise ValueError("职位筛选编码不能超过64字符。")
     visible = visible_user_ids(user, role_code)
     page, size = int(filters.get("page", 1)), int(filters.get("page_size", 10))
     if page < 1 or not 1 <= size <= 100:
@@ -79,13 +83,15 @@ def list_plans(user, role_code, filters):
     scope = account_role_scope(role_code)
     if view not in {"", "mine", "members", "approvals"}:
         raise ValueError("月度计划列表类型无效。")
-    if (view == "mine" and scope == "all") or (view == "members" and scope == "self"):
+    if (view == "mine" and scope == "all" and not report_roles(user.id)) or (
+        view == "members" and scope == "self"
+    ):
         raise PermissionError("当前角色无权访问该月度计划列表。")
     if view == "approvals":
         return list_assigned_approvals(user, role_code, filters, page, size)
     total, items = dao.paginated_plans(
         visible_ids=[user.id] if view == "mine" else visible,
-        own_role=role_code if view == "mine" or scope == "self" else None,
+        own_role=None,
         pending_ids=participated_business_ids(user.id, "monthly_plan", True, role_code=role_code)
         if not view and filters.get("pending_only") == "true"
         else None,

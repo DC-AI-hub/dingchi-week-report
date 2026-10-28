@@ -3,7 +3,7 @@ import json
 from django.db import transaction
 from django.utils import timezone
 
-from apps.accounts.public import approval_role_code, user_profiles
+from apps.accounts.public import approval_role_code, assigned_role_codes, user_profiles
 from apps.todos.public import complete
 
 from . import dao
@@ -46,7 +46,7 @@ def decide_approval(*, request_id, user_id, approve, role_code, reason=""):
     if (
         int(step.approver_id) != int(user_id)
         or step.status != "pending"
-        or step.approver_role_code != role_code
+        or step.approver_role_code not in assigned_role_codes(user_id)
     ):
         raise PermissionError("当前审批尚未轮到你，无权操作。")
     reason = str(reason or "").strip()
@@ -71,7 +71,9 @@ def decide_approval(*, request_id, user_id, approve, role_code, reason=""):
     if request.status != "pending":
         request.completed_at = timezone.now()
     dao.save_request(request)
-    complete(recipient_id=user_id, role_code=role_code, dedupe_key=f"approval:{request.id}")
+    complete(
+        recipient_id=user_id, role_code=step.approver_role_code, dedupe_key=f"approval:{request.id}"
+    )
     if request.status == "pending":
         notify(request, next_step.approver_id)
     return request.status
@@ -85,6 +87,7 @@ def approval_history(business_type, business_id, user_id, role_code=None):
 
 
 def _serialize_request(request, user_id, role_code=None):
+    codes = assigned_role_codes(user_id)
     steps = [
         {
             "approver_id": str(step.approver_id),
@@ -110,14 +113,16 @@ def _serialize_request(request, user_id, role_code=None):
         and any(
             step["status"] == "pending"
             and step["approver_id"] == str(user_id)
-            and role_code == step["approver_role_code"]
+            and step["approver_role_code"] in codes
             for step in steps
         ),
     }
 
 
 def participated_business_ids(user_id, business_type, pending_only=False, role_code=None):
-    return dao.participant_business_ids(user_id, business_type, pending_only, role_code)
+    return dao.participant_business_ids(
+        user_id, business_type, pending_only, assigned_role_codes(user_id)
+    )
 
 
 def assigned_approval_records(
@@ -133,16 +138,24 @@ def assigned_approval_records(
 ):
     """返回已轮到或已由本人处理的审批记录；分页前排除未激活节点，保留已处理历史。"""
     total, requests = dao.assigned_requests(
-        user_id, business_type, business_ids, status, pending_only, page, size, role_code
+        user_id,
+        business_type,
+        business_ids,
+        status,
+        pending_only,
+        page,
+        size,
+        assigned_role_codes(user_id),
     )
     records = []
+    codes = assigned_role_codes(user_id)
     for request in requests:
         record = _serialize_request(request, user_id, role_code)
         own_step = next(
             step
             for step in record["steps"]
             if step["approver_id"] == str(user_id)
-            and step["approver_role_code"] == role_code
+            and step["approver_role_code"] in codes
             and step["status"] in {"pending", "approved", "rejected"}
         )
         records.append(
@@ -171,13 +184,14 @@ def pending_todo_entries(user_id, role_code):
 
 
 def pending_monthly_count(user_id, role_code):
-    return len(dao.pending_requests(user_id, role_code))
+    return len(dao.pending_requests(user_id, assigned_role_codes(user_id)))
 
 
 def assigned_record(user_id, request_id, role_code):
     request = dao.find_request(request_id)
     if not request or not any(
-        int(step.approver_id) == int(user_id) and step.approver_role_code == role_code
+        int(step.approver_id) == int(user_id)
+        and step.approver_role_code in assigned_role_codes(user_id)
         for step in dao.steps(request_id)
     ):
         raise PermissionError("无权查看该审批记录。")

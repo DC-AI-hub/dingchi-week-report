@@ -28,7 +28,7 @@ const isSecondaryPage = computed(() => [
   "monthly-plan-change-edit",
   "monthly-plan-change-detail",
 ].includes(String(route.name)))
-const isSystemAdmin = computed(() => authStore.activeRole?.role_code === "system_admin")
+const isSystemAdmin = computed(() => authStore.effectiveRole?.role_code === "system_admin")
 const secondaryBackLocation = computed(() => {
   if (String(route.name).startsWith("monthly-plan")) {
     const tab = route.query.tab
@@ -38,7 +38,7 @@ const secondaryBackLocation = computed(() => {
     }
   }
   const query: Record<string, string | string[]> = {}
-  for (const key of ["tab", "month_key", "period_start", "period_end", "group_id", "employee_id", "page"]) {
+  for (const key of ["tab", "month_key", "period_start", "period_end", "group_id", "employee_id", "filter_role_code", "page"]) {
     const value = route.query[key]
     if (typeof value === "string") query[key] = value
     else if (Array.isArray(value)) query[key] = value.filter((item): item is string => item !== null)
@@ -48,7 +48,7 @@ const secondaryBackLocation = computed(() => {
 const watermarkText = computed(() => {
   const user = authStore.user
   if (!user) return ""
-  return `${user.display_name || user.username} · ${authStore.activeRole?.role_name || "暂无职位"}`
+  return `${user.display_name || user.username} · ${authStore.roles.map(role => role.role_name).join("、") || "暂无职位"}`
 })
 const headerDate = formatDateTime(new Date())
 // 不同数据范围仍由当前角色和路由权限控制，导航统一使用"周报"作为用户可见名称。

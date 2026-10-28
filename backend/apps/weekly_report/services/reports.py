@@ -176,6 +176,7 @@ def list_visible_reports(
     group_id: Any = None,
     employee_id: Any = None,
     employee_scope: str | None = None,
+    filter_role_code: str | None = None,
 ) -> dict[str, Any]:
     """按当前角色作用域分页查询周报。
 
@@ -185,7 +186,7 @@ def list_visible_reports(
     scope = _role_scope(role_code)
     employee_ids = visible_employee_ids(user, role_code)
     if employee_scope:
-        if scope != "team" or employee_scope not in {"self", "team"}:
+        if scope not in {"team", "all"} or employee_scope not in {"self", "team"}:
             raise ReportError("当前角色不支持该人员范围筛选。")
         if employee_scope == "self":
             employee_ids = [int(user.id)]
@@ -200,7 +201,9 @@ def list_visible_reports(
     parsed_period_start = _parse_optional_date(period_start)
     parsed_period_end = _parse_optional_date(period_end)
     parsed_month_key = _parse_month_key(month_key)
-    role_filter = role_code if scope == "self" or employee_scope == "self" else None
+    role_filter = str(filter_role_code or "").strip() or None
+    if role_filter and len(role_filter) > 64:
+        raise ReportError("职位筛选编码不能超过64字符。")
     if page < 1:
         raise ReportError("页码必须是大于 0 的整数。")
     if page_size < 1 or page_size > 100:
@@ -1362,8 +1365,6 @@ def _get_accessible_report(*, user: UserAccount, role_code: str, report_id: int)
     header = dao.get_report_header(report_id)
     if header is None:
         raise ReportNotFoundError("周报不存在。")
-    if _role_scope(role_code) == "self" and header.get("role_code") != role_code:
-        raise ReportPermissionError("无权查看当前角色之外的周报。")
     if int(header["employee_id"]) not in visible_employee_ids(user, role_code):
         raise ReportPermissionError("无权查看该周报。")
     return _with_report_status(header)

@@ -17,7 +17,7 @@ def test_list_monthly_tasks_only_returns_current_user_role(client):
             employee_id=employee_id, role_code=role, month_key="2026-10",
             value=[{"work_task": f"{employee_id}-{role}"}],
         )
-    with patch("apps.weekly_report.monthly_plan_task_views.require_request_user",
+    with patch("apps.weekly_report.monthly_plan_task_views.require_report_user",
                return_value=(SimpleNamespace(id=101), "delivery_specialist")):
         response = client.get(
             reverse("weekly_report:monthly-plan-tasks", args=["2026-10"]),
@@ -31,7 +31,7 @@ def test_list_monthly_tasks_only_returns_current_user_role(client):
 
 
 def test_list_monthly_tasks_returns_empty_array(client):
-    with patch("apps.weekly_report.monthly_plan_task_views.require_request_user",
+    with patch("apps.weekly_report.monthly_plan_task_views.require_report_user",
                return_value=(SimpleNamespace(id=101), "delivery_specialist")):
         response = client.get(reverse("weekly_report:monthly-plan-tasks", args=["2026-10"]))
     assert response.status_code == 200
@@ -39,7 +39,7 @@ def test_list_monthly_tasks_returns_empty_array(client):
 
 
 def test_list_monthly_tasks_requires_authentication(client):
-    with patch("apps.weekly_report.monthly_plan_task_views.require_request_user",
+    with patch("apps.weekly_report.monthly_plan_task_views.require_report_user",
                side_effect=AuthenticationError("请登录")):
         response = client.get(reverse("weekly_report:monthly-plan-tasks", args=["2026-10"]))
     assert response.status_code == 401
@@ -47,7 +47,7 @@ def test_list_monthly_tasks_requires_authentication(client):
 
 
 def test_list_monthly_tasks_rejects_invalid_month(client):
-    with patch("apps.weekly_report.monthly_plan_task_views.require_request_user",
+    with patch("apps.weekly_report.monthly_plan_task_views.require_report_user",
                return_value=(SimpleNamespace(id=101), "delivery_specialist")):
         response = client.get(reverse("weekly_report:monthly-plan-tasks", args=["2026-13"]))
     assert response.status_code == 400

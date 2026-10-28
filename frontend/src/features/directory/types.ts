@@ -88,3 +88,5 @@ export interface UserMutationPayload {
   role_codes: string[]
   status?: string
 }
+
+export interface DirectoryRoleOption { role_code: string; role_name: string }

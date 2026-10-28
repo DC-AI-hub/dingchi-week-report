@@ -11,16 +11,17 @@ from django.db import IntegrityError
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from apps.accounts.services.auth import AuthenticationError, require_request_user
+from apps.accounts.services.auth import AuthenticationError
 from apps.core.http import api_error, api_success, log_unhandled_exception
 
+from .request_context import require_report_user
 from .services.monthly_plans import approval_read, change_read, change_write, copy, read, write
 from .services.monthly_plans.policy import PlanNotFound
 
 
 def invoke(request, callback):
     try:
-        user, role_code = require_request_user(request)
+        user, role_code = require_report_user(request)
         return api_success(callback(user, role_code))
     except AuthenticationError as exc:
         return api_error(exc.code, str(exc), status=401)
@@ -59,7 +60,12 @@ def gate_view(request, month_key):
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 def list_view(request):
-    """月度计划筛选分页和新增，完整参数及权限契约见 docs/monthly-plan-management-api.md。"""
+    """月度计划筛选分页和新增；GET支持role_code可选职位编码（最多64字符）。
+
+    mine/members/approvals均按申请人的计划职位过滤，空值不过滤；total与分页在筛选后计算。
+    不改变授权范围与审批顺序；非法参数400，认证401，无权403；统一trace，兼容新增参数。
+    其他契约见 docs/monthly-plan-management-api.md。
+    """
     if request.method == "GET":
         return invoke(request, lambda user, role: read.list_plans(user, role, request.GET))
     return invoke(request, lambda user, role: write.save(user, role, payload(request)))

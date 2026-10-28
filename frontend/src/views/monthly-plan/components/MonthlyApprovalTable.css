@@ -12,4 +12,11 @@
 .actions button:disabled { opacity:0.5; cursor:not-allowed; }
 .approval-table .empty { padding:2.8rem 1rem; color:var(--muted); text-align:center; }
 
-.col-month{width:96px}.col-person{width:90px}.col-group{width:110px}.col-kind{width:90px}.col-version{width:60px}.col-status{width:100px}.col-time{width:165px}.col-actions{width:70px}.approval-table td{overflow-wrap:anywhere}.approval-table .summary{line-height:1.7;}
+.approval-table th[data-column-key="month_key"]{width:96px}.approval-table th[data-column-key="employee_name"]{width:90px}.approval-table th[data-column-key="group_name"]{width:110px}.approval-table th[data-column-key="process_type"]{width:90px}.approval-table th[data-column-key="revision"]{width:60px}.approval-table th[data-column-key="status"]{width:100px}.approval-table th[data-column-key="created_at"]{width:165px}.approval-table th[data-column-key="actions"]{width:70px}.approval-table td{overflow-wrap:anywhere}.approval-table .summary{line-height:1.7;}
+
+.approval-table th[data-column-key="role_code"] { width: 130px; }
+
+.approval-table th[data-column-key="my_acted_at"] { width: 165px; }
+.approval-table .date, .approval-table .actions { white-space: normal; }
+
+.approval-table th { overflow: hidden; text-overflow: ellipsis; }

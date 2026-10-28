@@ -1,12 +1,12 @@
 import { computed, onMounted, reactive, ref, watch } from "vue"
 import { useRouter } from "vue-router"
 
-import { isSupportedTemplate } from "@/features/weekly-report/template-support"
 import { useAuthStore } from "@/features/auth/store"
-import { deleteReport, getDailyTasks, submitReport } from "@/features/weekly-report/api"
+import { deleteReport, submitReport } from "@/features/weekly-report/api"
+import { useReportDailyEntry } from "./useReportDailyEntry"
 import { useReportCopy } from "@/features/weekly-report/composables/useReportCopy"
 import { useReportList } from "@/features/weekly-report/composables/useReportList"
-import type { DailyWorkTask, ReportListFilters, WeeklyReport } from "@/features/weekly-report/types"
+import type { ReportListFilters, WeeklyReport } from "@/features/weekly-report/types"
 
 
 export function useOwnReportList() {
@@ -14,6 +14,7 @@ export function useOwnReportList() {
   const router = useRouter()
   const reportList = useReportList()
   const filters = reactive({
+    role_code: "",
     month_key: "",
     period_start: "",
     period_end: "",
@@ -28,9 +29,9 @@ export function useOwnReportList() {
   // 周报页面由当前角色绑定的 report_template_code 在路由目标内部解析，
   // 列表页不再按角色编码硬编码分流。
   const createRouteName = computed(() => "weekly-report-new")
-  const dailyDialogOpen = ref(false)
-  const dailyDialogReport = ref<WeeklyReport | null>(null)
-  const dailyDialogTasks = ref<DailyWorkTask[]>([])
+  const daily = useReportDailyEntry(message => { reportList.errorMessage.value = message })
+  const { open: dailyDialogOpen, report: dailyDialogReport, tasks: dailyDialogTasks,
+    show: openDailyDialog, close: closeDailyDialog, saved: onDailySaved } = daily
   const confirmDialogOpen = ref(false)
   const confirmDialogBusy = ref(false)
   const confirmDialogAction = ref<"delete" | "submit">("submit")
@@ -40,15 +41,12 @@ export function useOwnReportList() {
   const { busy: copyBusy, message: copyMessage, title: copyTitle } = reportCopy
 
   function openCreateReport() {
-    if (!isSupportedTemplate(authStore.activeRole?.report_template_code?.trim())) {
-      templateWarningOpen.value = true
-      return
-    }
     void router.push({ name: createRouteName.value })
   }
 
   function queryFilters(): ReportListFilters {
     return {
+      role_code: filters.role_code || undefined,
       month_key: filters.month_key || undefined,
       period_start: filters.period_start || undefined,
       period_end: filters.period_end || undefined,
@@ -66,6 +64,7 @@ export function useOwnReportList() {
   }
 
   function resetFilters() {
+    filters.role_code = ""
     filters.month_key = ""
     filters.period_start = ""
     filters.period_end = ""
@@ -86,29 +85,6 @@ export function useOwnReportList() {
 
   function canFillDaily(report: WeeklyReport) {
     return canSubmit(report)
-  }
-
-  async function openDailyDialog(report: WeeklyReport) {
-    try {
-      const response = await getDailyTasks(report.id)
-      dailyDialogReport.value = report
-      dailyDialogTasks.value = response.items
-      dailyDialogOpen.value = true
-    } catch (error) {
-      reportList.errorMessage.value = error instanceof Error ? error.message : "日报加载失败。"
-    }
-  }
-
-  function closeDailyDialog() {
-    dailyDialogOpen.value = false
-    dailyDialogReport.value = null
-    dailyDialogTasks.value = []
-  }
-
-  function onDailySaved(task: DailyWorkTask) {
-    const index = dailyDialogTasks.value.findIndex((item) => item.id === task.id)
-    if (index === -1) dailyDialogTasks.value = [...dailyDialogTasks.value, task]
-    else dailyDialogTasks.value.splice(index, 1, task)
   }
 
   async function removeReport(report: WeeklyReport) {
@@ -155,7 +131,7 @@ export function useOwnReportList() {
   }
 
   onMounted(() => void loadReports())
-  watch(() => authStore.activeRole?.role_code, () => {
+  watch(() => authStore.effectiveRole?.role_code, () => {
     reportList.resetPage()
     void loadReports()
   })

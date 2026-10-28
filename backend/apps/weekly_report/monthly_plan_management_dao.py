@@ -30,7 +30,7 @@ def paginated_plans(
             rows = rows.exclude(employee_id=exclude_employee)
         if own_role:
             rows = rows.filter(role_code=own_role)
-    for field in ["month_key", "employee_id", "group_id"]:
+    for field in ["month_key", "employee_id", "group_id", "role_code"]:
         if filters.get(field):
             rows = rows.filter(**{field: filters[field]})
     if filters.get("status"):
@@ -43,7 +43,7 @@ def paginated_plans(
 
 def approval_plans(ids, filters):
     rows = MonthlyPlan.objects.filter(id__in=ids)
-    for field in ["month_key", "employee_id", "group_id"]:
+    for field in ["month_key", "employee_id", "group_id", "role_code"]:
         if filters.get(field):
             rows = rows.filter(**{field: filters[field]})
     return list(rows)

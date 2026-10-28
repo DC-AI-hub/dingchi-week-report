@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue"
 
+import RoleFilterSelect from "@/features/directory/components/RoleFilterSelect.vue"
 import PersonSelect from "@/features/directory/components/PersonSelect.vue"
 import GroupTreeSelect from "@/features/directory/components/GroupTreeSelect.vue"
 import type { DirectoryGroup, DirectoryUserOption } from "@/features/directory/types"
@@ -10,6 +11,7 @@ withDefaults(
     monthKey: string
     periodStart: string
     periodEnd: string
+    roleCode?: string
     groupId?: string
     groupOptions?: DirectoryGroup[]
     showGroup?: boolean
@@ -17,13 +19,14 @@ withDefaults(
     employeeId?: string
     userOptions?: DirectoryUserOption[]
   }>(),
-  { groupId: "", groupOptions: () => [], showGroup: false, showPerson:false, employeeId:"",userOptions:()=>[] },
+  { roleCode: "", groupId: "", groupOptions: () => [], showGroup: false, showPerson:false, employeeId:"",userOptions:()=>[] },
 )
 
 const emit = defineEmits<{
   "update:monthKey": [value: string]
   "update:periodStart": [value: string]
   "update:periodEnd": [value: string]
+  "update:roleCode": [value: string]
   "update:groupId": [value: string]
   "update:employeeId": [value:string]
   search: []
@@ -114,6 +117,7 @@ function updatePeriodStart(value: string) {
         />
       </div>
     </label>
+    <label class="role-filter">职位<RoleFilterSelect :model-value="roleCode" @update:model-value="emit('update:roleCode', $event)" /></label>
     <label v-if="showGroup" class="group-filter">
       分组
       <GroupTreeSelect

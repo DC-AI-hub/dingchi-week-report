@@ -1,4 +1,8 @@
-import { http, request } from "@/shared/api/http"
+/** v1多职位兼容扩展：列表聚合账号可见的所有职位；新增通过X-Report-Role指定本人有效填写职位。
+ * 本模块统一附加填写上下文，已有记录由后端按所属职位校验；未分配职位403，未认证401；Bearer/trace保持不变。
+ */
+import { http } from "@/shared/api/http"
+import { reportRequest as request } from "@/shared/api/report-context"
 
 import type {
   ReportListFilters,
@@ -28,7 +32,8 @@ export function getReportTemplate(templateCode: string): Promise<ReportTemplate>
 /**
  * 分页查询当前角色可见的周报摘要。
  * 方法/路径：GET /v1/weekly-reports/；认证：Bearer；幂等：是。
- * 请求参数：page/page_size 为正整数（默认 1/10）；period_start、period_end 为
+ * 请求参数：role_code为可选职位编码（最多64字符，空值全部），只与原有权限取交集；筛选后分页与统计total。
+ * page/page_size 为正整数（默认 1/10）；period_start、period_end 为
  * YYYY-MM-DD 周期范围上下限，month_key 为 YYYY-MM 所属月度；team 角色可传 employee_scope=self/team；团队和全员角色可传
  * group_id 字符串筛选分组；employee_id 字符串筛选指定人员（服务端仍按当前角色可见范围校验）。响应 data.items 为周报数组，并返回 page、page_size、total、
  * total_pages；ID 为字符串，失败 400/401/403/404，统一客户端携带 trace_id。

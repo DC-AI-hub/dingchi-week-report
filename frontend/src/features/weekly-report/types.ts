@@ -185,6 +185,7 @@ export interface ReportListResponse {
 }
 
 export interface ReportListFilters {
+  role_code?: string
   page?: number
   page_size?: number
   period_start?: string

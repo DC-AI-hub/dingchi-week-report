@@ -163,10 +163,20 @@ def resolve_request_user(request: Any) -> tuple[UserAccount | None, str | None]:
 
 
 def require_request_user(request: Any) -> tuple[UserAccount, str]:
+    """验证原会话，按有效职位合并数据范围；填写职位由报告业务单独校验。
+
+    all/team/self的数据集合嵌套，取最大范围即可合并；管理入口仍要求实际分配system_admin。
+    不修改Token或用户默认职位，保留旧会话契约。
+    """
     user, role_code = resolve_request_user(request)
     if user is None or role_code is None:
         raise AuthenticationError("请先登录后再访问该资源。")
-    return user, role_code
+    roles = get_user_roles(user.id)
+    priority = {"self": 0, "team": 1, "all": 2}
+    role = max(
+        roles, key=lambda item: (item.role_code == "system_admin", priority.get(item.scope, 0))
+    )
+    return user, role.role_code
 
 
 def switch_role(*, user: UserAccount, role_code: str) -> dict[str, Any]:

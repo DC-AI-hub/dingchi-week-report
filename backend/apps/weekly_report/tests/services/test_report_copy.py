@@ -184,7 +184,7 @@ def test_http_copy_contract_and_duplicate_conflict(source, monkeypatch):
     from apps.weekly_report import views
 
     monkeypatch.setattr(
-        views, "require_request_user", lambda request: (SimpleNamespace(id=42), "delivery")
+        views, "require_report_user", lambda request: (SimpleNamespace(id=42), "delivery")
     )
     request = RequestFactory().post(f"/api/v1/weekly-reports/{source.id}/copy/")
     match = resolve(request.path)
@@ -206,7 +206,7 @@ def test_http_unapproved_plan_returns_user_warning(source, monkeypatch):
 
     MonthlyPlan.objects.update(status="pending")
     monkeypatch.setattr(
-        views, "require_request_user", lambda request: (SimpleNamespace(id=42), "delivery")
+        views, "require_report_user", lambda request: (SimpleNamespace(id=42), "delivery")
     )
     response = views.report_copy_view(RequestFactory().post("/"), str(source.id))
     assert response.status_code == 400

@@ -47,7 +47,7 @@ onMounted(() => {
   void dashboardStore.load()
 })
 
-watch(() => authStore.activeRole?.role_code, () => {
+watch(() => authStore.effectiveRole?.role_code, () => {
   void dashboardStore.load()
 })
 
@@ -61,7 +61,7 @@ function handlePeriodChange(periodStart: string) {
     <section class="personal-hero">
       <PersonalHomeHeader
         :period="summary.period"
-        :role-name="authStore.activeRole?.role_name || '个人视角'"
+        :role-name="authStore.effectiveRole?.role_name || '个人视角'"
         :user-name="authStore.user?.display_name || ''"
         @update:start="handlePeriodChange"
       />

@@ -11,18 +11,18 @@ import { useTodoPosition } from "./useTodoPosition"
 const auth=useAuthStore(),todos=useTodoStore(),router=useRouter(),position=useTodoPosition(),open=ref(false),going=ref(false)
 let timer:ReturnType<typeof setInterval>|undefined
 function refresh(){if(!document.hidden)void todos.load()}
-watch(()=>[auth.user?.id,auth.activeRole?.role_code],()=>{open.value=false;todos.reset();refresh()},{immediate:true})
+watch(()=>[auth.user?.id,auth.effectiveRole?.role_code],()=>{open.value=false;todos.reset();refresh()},{immediate:true})
 onMounted(()=>{timer=setInterval(refresh,30000);window.addEventListener('focus',refresh)})
 onUnmounted(()=>{clearInterval(timer);window.removeEventListener('focus',refresh)})
 async function go(item:TodoItem){
- if(item.role_code!==auth.activeRole?.role_code){todos.error='当前职位已切换，请刷新待办后重试。';return}
+ if(!auth.roles.some(role=>role.role_code===item.role_code)){todos.error='此待办所属职位已不可用，请刷新后重试。';return}
  going.value=true
  try{
   if(item.target.kind==='monthly_plan_approval'){
    const failure=await router.push({name:'monthly-plans',query:{tab:'approvals',approval_id:item.target.approval_id}})
    if(!isNavigationFailure(failure))open.value=false
   }else if(item.target.kind==='weekly_report'){
-   const failure=await router.push({name:'weekly-report-new'})
+   const failure=await router.push({name:'weekly-report-new',query:{role_code:item.role_code}})
    if(!isNavigationFailure(failure))open.value=false
   }else todos.error='此待办暂不支持自动跳转。'
  }catch(cause){todos.error=cause instanceof Error?cause.message:'跳转失败。'}finally{going.value=false}

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { vResizableColumns } from "@/shared/table/resizable-columns"
+import { useUserTableResizeKey } from "@/features/auth/useUserTableResizeKey"
 import { RouterLink, type LocationQueryRaw } from "vue-router"
 
 import { getReportRoleName } from "@/features/weekly-report/constants"
@@ -67,21 +69,22 @@ function editRoute(report: WeeklyReport) {
     query: props.returnQuery,
   }
 }
+const resizeKey = useUserTableResizeKey(() => `weekly-report:${props.scope}`)
 </script>
 
 <template>
   <div class="report-list-table-wrap">
-    <table class="report-list-table">
+    <table v-resizable-columns="resizeKey" class="report-list-table">
       <thead>
         <tr>
-          <th>周报周期</th>
-          <th>所属月度</th>
-          <th v-if="scope !== 'self'">填写人</th>
-          <th>职位</th>
-          <th v-if="scope !== 'self'">分组</th>
-          <th>状态</th>
-          <th>更新时间</th>
-          <th v-if="hasActions()" class="actions-heading">操作</th>
+          <th data-column-key="period">周报周期</th>
+          <th data-column-key="month_key">所属月度</th>
+          <th v-if="scope !== 'self'" data-column-key="employee_name">填写人</th>
+          <th data-column-key="role_code">职位</th>
+          <th v-if="scope !== 'self'" data-column-key="group_name">分组</th>
+          <th data-column-key="status">状态</th>
+          <th data-column-key="updated_at">更新时间</th>
+          <th v-if="hasActions()" class="actions-heading" data-column-key="actions">操作</th>
         </tr>
       </thead>
       <tbody>

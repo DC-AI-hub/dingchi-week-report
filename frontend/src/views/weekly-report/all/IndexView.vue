@@ -18,6 +18,7 @@ const reportList = useReportList()
 const directory=useDirectoryFilterOptions()
 const {groups,users}=directory
 const filters = reactive({
+  role_code: "",
   month_key: "",
   period_start: "",
   period_end: "",
@@ -34,6 +35,7 @@ const totalPages = computed(() => reportList.totalPages.value)
 
 function queryFilters(): ReportListFilters {
   return {
+    role_code: filters.role_code || undefined,
     month_key: filters.month_key || undefined,
     period_start: filters.period_start || undefined,
     period_end: filters.period_end || undefined,
@@ -47,6 +49,7 @@ function queryValue(value: unknown) {
 }
 
 function syncRouteFilters() {
+  filters.role_code = queryValue(route.query.filter_role_code)
   filters.month_key = queryValue(route.query.month_key)
   filters.period_start = queryValue(route.query.period_start)
   filters.period_end = queryValue(route.query.period_end)
@@ -65,6 +68,7 @@ function search() {
 }
 
 function resetFilters() {
+  filters.role_code = ""
   filters.month_key = ""
   filters.period_start = ""
   filters.period_end = ""
@@ -86,7 +90,7 @@ onMounted(() => {
   syncRouteFilters()
   void Promise.all([loadReports(), directory.load()])
 })
-watch(() => authStore.activeRole?.role_code, () => {
+watch(() => authStore.effectiveRole?.role_code, () => {
   reportList.resetPage()
   void loadReports()
 })
@@ -106,6 +110,7 @@ watch(() => route.query, () => {
         <h1>全员周报</h1>
       </div>
       <ReportFilterBar
+        v-model:role-code="filters.role_code"
         v-model:month-key="filters.month_key"
         v-model:period-start="filters.period_start"
         v-model:period-end="filters.period_end"

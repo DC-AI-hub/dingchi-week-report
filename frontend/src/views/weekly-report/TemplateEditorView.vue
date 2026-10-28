@@ -4,6 +4,7 @@ import { useRoute, useRouter } from "vue-router"
 
 import { useAuthStore } from "@/features/auth/store"
 import AlertDialog from "@/components/feedback/AlertDialog.vue"
+import { getReportRole, setReportRole } from "@/shared/api/report-context"
 import { ApiError } from "@/shared/api/errors"
 import { TEMPLATE_UNAVAILABLE_MESSAGE } from "@/features/weekly-report/template-support"
 import { getReportDetail, getReportTemplate } from "@/features/weekly-report/api"
@@ -25,9 +26,10 @@ async function loadTemplateCode() {
     if (reportId.value) {
       // 编辑历史/当前周报时严格使用周报保存的模板编码，避免角色后来换绑模板造成页面错乱。
       const detail = await getReportDetail(reportId.value)
+      setReportRole(detail.report.role_code)
       templateCode.value = detail.report.template_code
     } else {
-      const roleTemplateCode = authStore.activeRole?.report_template_code || ""
+      const roleTemplateCode = authStore.reportingRoles.find(role => role.role_code === getReportRole())?.report_template_code || ""
       const routeTemplateCode = String(route.query.template_code || "").trim()
       if (routeTemplateCode && routeTemplateCode !== roleTemplateCode) {
         throw new Error(TEMPLATE_UNAVAILABLE_MESSAGE)

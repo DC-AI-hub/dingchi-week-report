@@ -215,12 +215,13 @@ def test_gate_uses_exact_role_month_and_not_first_approved_month(people):
             ensure_approved(SimpleNamespace(id=owner.id), "another_role", "2026-10")
 
 
-def test_self_scope_detail_cannot_read_other_role_plan(people):
+def test_self_scope_views_all_own_roles_but_cannot_edit_under_wrong_role(people):
     data = create(people)
     Role.objects.create(role_code="another_self", role_name="another", scope="self")
-    assert read.list_plans(people[0], "another_self", {})["total"] == 0
+    assert read.list_plans(people[0], "another_self", {})["total"] == 1
+    assert read.detail(people[0], "another_self", int(data["plan"]["id"]))["can_edit"] is False
     with pytest.raises(PermissionError):
-        read.detail(people[0], "another_self", int(data["plan"]["id"]))
+        write.submit(people[0], "another_self", int(data["plan"]["id"]))
 
 
 def test_personal_members_and_assigned_approval_tabs(people):

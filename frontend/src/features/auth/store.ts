@@ -28,6 +28,11 @@ export const useAuthStore = defineStore("auth", () => {
   const user = computed<UserAccount | null>(() => session.value?.user || null)
   const roles = computed<Role[]>(() => session.value?.roles || [])
   const activeRole = computed<Role | null>(() => session.value?.active_role || null)
+  const effectiveRole = computed<Role | null>(() => {
+    const priority: Record<string, number> = { self: 0, team: 1, all: 2 }
+    return [...roles.value].sort((a, b) => Number(b.role_code === "system_admin") - Number(a.role_code === "system_admin") || (priority[b.scope] || 0) - (priority[a.scope] || 0))[0] || null
+  })
+  const reportingRoles = computed(() => roles.value.filter(role => role.scope !== "all" && Boolean(role.report_template_code?.trim())))
   const isAuthenticated = computed(() => Boolean(token.value && user.value))
 
   function setSession(value: Session) {
@@ -108,6 +113,8 @@ export const useAuthStore = defineStore("auth", () => {
     user,
     roles,
     activeRole,
+    effectiveRole,
+    reportingRoles,
     isAuthenticated,
     bootstrap,
     setSession,

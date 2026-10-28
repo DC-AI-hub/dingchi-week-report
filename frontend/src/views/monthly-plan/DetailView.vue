@@ -10,7 +10,7 @@ import PlanDetailHeading from "./components/PlanDetailHeading.vue"
 import PlanChangeHistory from "./components/PlanChangeHistory.vue"
 import ApprovalTimeline from "./components/ApprovalTimeline.vue"
 const auth=useAuthStore()
-const editableChange=computed(()=>{const plan=detail.value?.plan;return plan && plan.employee_id===auth.user?.id && plan.role_code===auth.activeRole?.role_code ? plan.children?.find(child=>["draft","rejected"].includes(child.status)) : undefined})
+const editableChange=computed(()=>{const plan=detail.value?.plan;return plan && plan.employee_id===auth.user?.id && auth.roles.some(role=>role.role_code===plan.role_code) ? plan.children?.find(child=>["draft","rejected"].includes(child.status)) : undefined})
 const router=useRouter(),busy=ref(false)
 async function beginChange(){if(!detail.value)return;busy.value=true;try{const data=await createPlanChange(detail.value.plan.id);await router.push({name:'monthly-plan-change-edit',params:{changeId:data.change.id},query:{tab:route.query.tab}})}catch(cause){error.value=cause instanceof Error?cause.message:'申请变更失败。'}finally{busy.value=false}}
 const route=useRoute(),detail=ref<PlanDetail|null>(null),error=ref('')

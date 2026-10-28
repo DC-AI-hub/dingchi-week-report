@@ -6,9 +6,9 @@ import { useAuthStore } from "@/features/auth/store"
 const authStore = useAuthStore()
 // 首页按数据范围解析版本：个人、团队、领导版分别维护，其他范围使用兼容入口。
 // 新增首页版本时只在对应目录增加入口，不把不同版本的页面逻辑混在这里。
-const isPersonal = computed(() => authStore.activeRole?.scope === "self")
-const isTeam = computed(() => authStore.activeRole?.scope === "team")
-const isLeader = computed(() => authStore.activeRole?.scope === "all")
+const isPersonal = computed(() => authStore.effectiveRole?.scope === "self")
+const isTeam = computed(() => authStore.effectiveRole?.scope === "team")
+const isLeader = computed(() => authStore.effectiveRole?.scope === "all")
 const PersonalHomeV1 = defineAsyncComponent(() => import("./personal/v1/IndexView.vue"))
 const TeamHomeV1 = defineAsyncComponent(() => import("./team/v1/IndexView.vue"))
 const LeaderHomeV1 = defineAsyncComponent(() => import("./leader/v1/IndexView.vue"))

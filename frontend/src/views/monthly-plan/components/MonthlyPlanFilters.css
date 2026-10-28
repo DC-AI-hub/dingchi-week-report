@@ -8,3 +8,6 @@
   .monthly-filters { gap:10px; }
   .monthly-filters label:not(.pending) { flex:1 1 140px; min-width:0; }
 }
+
+.monthly-filters .group-filter { width: 180px; }
+.monthly-filters .group-filter :deep(.group-tree-select__trigger) { min-height: 40px; padding: 0.5rem 0.65rem; border-radius: 9px; background: #fff; font-size: inherit; }

@@ -1,221 +1,22 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from "vue"
-import { useRoute, useRouter } from "vue-router"
-import type { LocationQueryRaw } from "vue-router"
-
-import { listGroups } from "@/features/directory/api"
-import type { DirectoryGroup } from "@/features/directory/types"
-import { useAuthStore } from "@/features/auth/store"
-import { deleteReport, submitReport } from "@/features/weekly-report/api"
-import { useReportList } from "@/features/weekly-report/composables/useReportList"
-import type { ReportListFilters, WeeklyReport } from "@/features/weekly-report/types"
 import AlertDialog from "@/components/feedback/AlertDialog.vue"
 import ConfirmDialog from "@/components/feedback/ConfirmDialog.vue"
 import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
-
 import ReportFilterBar from "../components/ReportFilterBar.vue"
 import ReportListTable from "../components/ReportListTable.vue"
 import ReportPagination from "../components/ReportPagination.vue"
-
-type ReportTab = "self" | "team"
-
-const authStore = useAuthStore()
-const route = useRoute()
-const router = useRouter()
-const reportList = useReportList()
-const activeTab = ref<ReportTab>("self")
-const groups = ref<DirectoryGroup[]>([])
-const confirmDialogOpen = ref(false)
-const confirmDialogBusy = ref(false)
-const confirmDialogAction = ref<"delete" | "submit">("submit")
-const confirmDialogReport = ref<WeeklyReport | null>(null)
-const templateWarningOpen = ref(false)
-const filters = reactive({
-  month_key: "",
-  period_start: "",
-  period_end: "",
-  group_id: "",
-  employee_id: "",
-})
-const reports = computed(() => reportList.reports.value)
-const isLoading = computed(() => reportList.isLoading.value)
-const errorMessage = computed(() => reportList.errorMessage.value)
-const page = computed(() => reportList.page.value)
-const pageSize = computed(() => reportList.pageSize.value)
-const total = computed(() => reportList.total.value)
-const totalPages = computed(() => reportList.totalPages.value)
-const createRouteName = computed(() => "weekly-report-new")
-const returnQuery = computed<LocationQueryRaw>(() => ({
-  tab: activeTab.value,
-  month_key: filters.month_key || undefined,
-  period_start: filters.period_start || undefined,
-  period_end: filters.period_end || undefined,
-  group_id: filters.group_id || undefined,
-  employee_id: filters.employee_id || undefined,
-  page: String(page.value),
-}))
-
-function openCreateReport() {
-  if (!authStore.activeRole?.report_template_code?.trim()) {
-    templateWarningOpen.value = true
-    return
-  }
-  void router.push({ name: createRouteName.value, query: returnQuery.value })
-}
-
-function queryFilters(): ReportListFilters {
-  return {
-    month_key: filters.month_key || undefined,
-    period_start: filters.period_start || undefined,
-    period_end: filters.period_end || undefined,
-    group_id: filters.group_id || undefined,
-    employee_id: filters.employee_id || undefined,
-    employee_scope: activeTab.value,
-  }
-}
-
-function queryValue(value: unknown) {
-  return Array.isArray(value) ? String(value[0] || "") : String(value || "")
-}
-
-function syncRouteFilters() {
-  filters.month_key = queryValue(route.query.month_key)
-  filters.period_start = queryValue(route.query.period_start)
-  filters.period_end = queryValue(route.query.period_end)
-  filters.group_id = queryValue(route.query.group_id)
-  filters.employee_id = queryValue(route.query.employee_id)
-
-  const requestedTab = queryValue(route.query.tab)
-  const currentEmployeeId = String(authStore.user?.id || "")
-  if (requestedTab === "self" || requestedTab === "team") activeTab.value = requestedTab
-  else if (filters.employee_id && filters.employee_id === currentEmployeeId) activeTab.value = "self"
-  else if (filters.employee_id || filters.group_id) activeTab.value = "team"
-
-  const requestedPage = Number(queryValue(route.query.page))
-  if (Number.isInteger(requestedPage) && requestedPage > 0) reportList.setPage(requestedPage)
-  else reportList.resetPage()
-}
-
-function currentListState() {
-  return JSON.stringify([
-    activeTab.value,
-    filters.month_key,
-    filters.period_start,
-    filters.period_end,
-    filters.group_id,
-    filters.employee_id,
-    page.value,
-  ])
-}
-
-async function loadReports() {
-  if (!authStore.isAuthenticated) return
-  await reportList.load(queryFilters())
-}
-
-async function loadGroups() {
-  try {
-    groups.value = (await listGroups()).items
-  } catch (error) {
-    reportList.errorMessage.value = error instanceof Error ? error.message : "分组加载失败。"
-  }
-}
-
-function search() {
-  reportList.resetPage()
-  void router.replace({ query: returnQuery.value })
-  void loadReports()
-}
-
-function resetFilters() {
-  filters.month_key = ""
-  filters.period_start = ""
-  filters.period_end = ""
-  filters.group_id = ""
-  filters.employee_id = ""
-  search()
-}
-
-function switchTab(tab: ReportTab) {
-  if (activeTab.value === tab) return
-  activeTab.value = tab
-  // 清除首页跳转带入的目标人员/分组，避免切换到“我的周报”后仍沿用团队筛选。
-  filters.employee_id = ""
-  if (tab === "self") filters.group_id = ""
-  reportList.resetPage()
-  void router.replace({ query: returnQuery.value })
-  void loadReports()
-}
-
-function canEdit(report: WeeklyReport) {
-  return activeTab.value === "self" && report.status !== "completed" && report.employee_id === authStore.user?.id
-}
-
-function canDelete(report: WeeklyReport) {
-  return canEdit(report)
-}
-
-function canSubmit(report: WeeklyReport) {
-  return activeTab.value === "self" && report.status === "in_progress" && report.employee_id === authStore.user?.id
-}
-
-async function removeReport(report: WeeklyReport) {
-  confirmDialogAction.value = "delete"
-  confirmDialogReport.value = report
-  confirmDialogOpen.value = true
-}
-
-async function submitOwnReport(report: WeeklyReport) {
-  confirmDialogAction.value = "submit"
-  confirmDialogReport.value = report
-  confirmDialogOpen.value = true
-}
-
-function closeConfirmDialog() {
-  if (confirmDialogBusy.value) return
-  confirmDialogOpen.value = false
-  confirmDialogReport.value = null
-}
-
-async function confirmReportAction() {
-  const report = confirmDialogReport.value
-  if (!report) return
-  confirmDialogBusy.value = true
-  try {
-    if (confirmDialogAction.value === "delete") await deleteReport(report.id)
-    else await submitReport(report.id)
-    confirmDialogBusy.value = false
-    closeConfirmDialog()
-    reportList.resetPage()
-    await loadReports()
-  } catch (error) {
-    reportList.errorMessage.value = error instanceof Error
-      ? error.message
-      : confirmDialogAction.value === "delete" ? "删除周报失败。" : "提交周报失败。"
-  } finally {
-    confirmDialogBusy.value = false
-  }
-}
-
-function changePage(page: number) {
-  reportList.setPage(page)
-  void router.replace({ query: returnQuery.value })
-  void loadReports()
-}
-
-onMounted(() => {
-  syncRouteFilters()
-  void Promise.all([loadReports(), loadGroups()])
-})
-watch(() => authStore.activeRole?.role_code, () => {
-  reportList.resetPage()
-  void loadReports()
-})
-watch(() => route.query, () => {
-  const previousState = currentListState()
-  syncRouteFilters()
-  if (currentListState() !== previousState) void loadReports()
-}, { deep: true })
+import DailyTaskDialog from "../components/DailyTaskDialog.vue"
+import { useTeamReportList } from "./composables/useTeamReportList"
+const {
+  activeTab, reports, isLoading, errorMessage, groups,
+  filters, returnQuery, page, pageSize, total,
+  totalPages, openCreateReport, switchTab, resetFilters, search,
+  canEdit, canSubmit, canDelete, removeReport, submitOwnReport,
+  changePage, confirmDialogOpen, confirmDialogBusy, confirmDialogAction, closeConfirmDialog,
+  confirmReportAction, authStore, reportCopy, copyBusy, copyMessage,
+  copyTitle, dailyDialogOpen, dailyDialogReport, dailyDialogTasks, openDailyDialog,
+  closeDailyDialog, onDailySaved
+} = useTeamReportList()
 </script>
 
 <template>
@@ -250,6 +51,7 @@ watch(() => route.query, () => {
         </button>
       </div>
       <ReportFilterBar
+        v-model:role-code="filters.role_code"
         v-model:month-key="filters.month_key"
         v-model:period-start="filters.period_start"
         v-model:period-end="filters.period_end"
@@ -267,6 +69,11 @@ watch(() => route.query, () => {
         :can-edit="canEdit"
         :can-submit="canSubmit"
         :can-delete="canDelete"
+        :can-copy="report => activeTab === 'self' && report.employee_id === authStore.user?.id"
+        :copy-busy="copyBusy"
+        :can-fill-daily="canSubmit"
+        @copy="reportCopy.copy"
+        @daily-task="openDailyDialog"
         :empty-message="activeTab === 'self' ? '暂无个人周报' : '暂无团队成员周报'"
         @delete="removeReport"
         @submit="submitOwnReport"
@@ -292,12 +99,8 @@ watch(() => route.query, () => {
       @close="closeConfirmDialog"
       @confirm="confirmReportAction"
     />
-    <AlertDialog
-      :open="templateWarningOpen"
-      title="无法填写周报"
-      message="当前职位未配置周报模板，无法填写周报。"
-      @close="templateWarningOpen = false"
-    />
+    <AlertDialog :open="Boolean(copyMessage)" :title="copyTitle" :message="copyMessage" @close="copyMessage = ''" />
+    <DailyTaskDialog :open="dailyDialogOpen" :report="dailyDialogReport" :existing-tasks="dailyDialogTasks" @close="closeDailyDialog" @saved="onDailySaved" />
   </div>
 </template>
 

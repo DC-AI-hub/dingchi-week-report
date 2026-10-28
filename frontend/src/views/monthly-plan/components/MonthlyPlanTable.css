@@ -13,7 +13,7 @@
 
 .tree-toggle{border:0;background:transparent;color:#287ad4;cursor:pointer;padding:4px 8px 4px 0;font-size:16px}.change-row td:first-child{padding-left:26px;}
 
-.col-month{width:130px}.col-person{width:90px}.col-group{width:110px}.col-status{width:100px}.col-time{width:165px}.col-actions{width:220px}.monthly-table td{overflow-wrap:anywhere}.monthly-table .summary{line-height:1.7;}
+.monthly-table th[data-column-key="month_key"]{width:130px}.monthly-table th[data-column-key="employee_name"]{width:90px}.monthly-table th[data-column-key="group_name"]{width:110px}.monthly-table th[data-column-key="status"]{width:100px}.monthly-table th[data-column-key="updated_at"]{width:165px}.monthly-table th[data-column-key="actions"]{width:220px}.monthly-table td{overflow-wrap:anywhere}.monthly-table .summary{line-height:1.7;}
 
 .monthly-table .is-pending,
 .monthly-table .is-pending:hover { background:transparent; }
@@ -28,3 +28,7 @@
 .monthly-table .is-pending:hover td { background:rgba(255, 232, 176, 0.62); }
 
 .monthly-table.is-personal { min-width:890px; }
+
+.monthly-table th[data-column-key="role_code"] { width: 130px; }
+
+.monthly-table th { overflow: hidden; text-overflow: ellipsis; }

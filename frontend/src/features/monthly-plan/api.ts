@@ -1,10 +1,14 @@
-import { request } from "@/shared/api/http"
+/** v1多职位兼容扩展：列表/审批聚合全部可见职位，返回role_code/role_name。
+ * 新增、context、gate通过X-Report-Role指定本人填写职位；已有记录使用记录职位，审批按本人当前节点。
+ * 字符串ID、分页、Bearer及trace保持兼容；非法职位403，无模板400；不切换登录会话。
+ */
+import { reportRequest as request } from "@/shared/api/report-context"
 import type { ChangeDetail, PlanContext, PlanDetail, PlanFilters, PlanGate, PlanInput, PlanList } from "./types"
 
 const base = "/v1/monthly-plan-management/"
 /** 查询本人当前角色的模板及按顺序审批人；GET context/，无参数；Bearer/X-Trace-ID；返回告警和可创建状态，401认证失败。 */
 export function getPlanContext(): Promise<PlanContext> { return request<PlanContext>({ method: "GET", url: base + "context/" }).then(context => ({...context, warning: context.warning.replaceAll("角色", "职位")})) }
-/** 月度计划筛选分页：GET；view=mine/members/approvals，月份、状态、人员/分组ID、pending_only及分页；审批视图按每次提交分页，返回本人分配的审批记录及has_approval_tasks；400/401/403。 */
+/** 月度计划筛选分页：GET；view=mine/members/approvals，月份、状态、职位role_code（可选字符串最多64字符，空值全部）、人员/分组ID、pending_only及分页；审批视图按每次提交分页，返回本人分配的审批记录及has_approval_tasks；400/401/403。 */
 export function listMonthlyPlans(params: PlanFilters): Promise<PlanList> { return request({ method: "GET", url: base, params }) }
 /** 读取指定计划、任务、审批快照及变更历史；GET {id}/，ID为字符串；可见范围及审批人鉴权；401/403/404，统一trace。 */
 export function getManagedPlan(id: string): Promise<PlanDetail> { return request({ method: "GET", url: base + id + "/" }) }
