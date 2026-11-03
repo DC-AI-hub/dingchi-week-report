@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CustomerSelect from "@/features/directory/components/CustomerSelect.vue"
 import { computed } from "vue"
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
 import type { DictionaryItem } from "@/features/dictionary"
@@ -32,6 +33,7 @@ const groupName = computed(() => props.groupOptions.find(item => item.group_code
         <div><dt>数据范围</dt><dd>{{ scopeName }}</dd></div>
         <div><dt>周报模板</dt><dd>{{ templateName }}</dd></div>
         <div><dt>状态</dt><dd>{{ role.status === 'active' ? '启用' : '停用' }}</dd></div>
+        <div class="detail-description"><dt>负责的客户</dt><dd><CustomerSelect :model-value="role.customer_ids || []" disabled /></dd></div>
         <div class="detail-description"><dt>描述</dt><dd>{{ role.description || '未填写' }}</dd></div>
       </dl>
     </div>

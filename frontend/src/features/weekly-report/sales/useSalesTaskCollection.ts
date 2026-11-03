@@ -3,21 +3,25 @@ import { listUserOptions } from "@/features/directory/api"
 import type { DirectoryUserOption } from "@/features/directory/types"
 import type { EditableTask } from "../task-editing"
 import { expandTemplateTasks } from "../task-groups"
-import { itoSalesTaskTemplates } from "../ito-sales/task-templates"
-import { innovationSalesTaskTemplates } from "../innovation-sales/task-templates"
-import { emptyItoSalesTask, itoSalesTaskFieldDefinitions, type ItoSalesTaskDraft, type ItoSalesTaskFieldDefinition, type ItoSalesTaskColumn } from "../ito-sales/types"
+import {emptyTask,taskFieldDefinitions,type TaskDraft,type TaskFieldDefinition,type TaskColumn} from "../task-draft"
+import type {TaskTemplateOption} from "../task-editing"
+import type {ExamplePreviewField} from "@/components/feedback/ExamplePreviewButton.vue"
 import { insertChild, patchSharedTasks, templateTask, type SharedTaskField } from "../task-groups"
 
 export interface SalesCollectionProps {
+  templates: readonly TaskTemplateOption[]
+  sampleContent?:string
+  sampleFields?:readonly ExamplePreviewField[]
+  taskFactory?: (owner?:string)=>TaskDraft
   templateCode: "ito_sales_v1" | "innovation_sales_v1"
   title: string
-  tasks: ItoSalesTaskDraft[]
+  tasks: TaskDraft[]
   defaultOwnerId?: string
   ownerName?: string
-  fieldDefinitions?: ItoSalesTaskFieldDefinition[]
+  fieldDefinitions?: TaskFieldDefinition[]
 }
-export function useSalesTaskCollection(props: SalesCollectionProps, emit: (event: "update:tasks", tasks: ItoSalesTaskDraft[]) => void) {
-  const templates = computed(() => props.templateCode === "innovation_sales_v1" ? innovationSalesTaskTemplates : itoSalesTaskTemplates)
+export function useSalesTaskCollection(props: SalesCollectionProps, emit: (event: "update:tasks", tasks: TaskDraft[]) => void) {
+  const templates = computed(() => props.templates)
   const quickFillOpen = ref(false)
   const columnsOpen = ref(false)
   const users = ref<DirectoryUserOption[]>([])
@@ -26,14 +30,14 @@ export function useSalesTaskCollection(props: SalesCollectionProps, emit: (event
   const taskPage = ref(1)
   const pageSize = 10
   const insertedKeys = ref(new Set<string>())
-  const selectedColumns = ref<ItoSalesTaskColumn[]>([])
+  const selectedColumns = ref<TaskColumn[]>([])
   const customerOptions = computed(() => [...new Set(props.tasks.map(task => task.customer_name).filter(Boolean))])
   const filteredTaskEntries = computed(() => props.tasks.map((task, index) => ({ task, index })).filter(({ task }) =>
     insertedKeys.value.has(task.client_key) || ((!customerFilter.value || task.customer_name === customerFilter.value) && (!plannedDateFilter.value || task.planned_completion_date === plannedDateFilter.value)),
   ))
   const totalPages = computed(() => Math.max(1, Math.ceil(filteredTaskEntries.value.length / pageSize)))
   const pagedTaskEntries = computed(() => filteredTaskEntries.value.slice((taskPage.value - 1) * pageSize, taskPage.value * pageSize))
-  const availableFields = computed(() => (props.fieldDefinitions?.length ? props.fieldDefinitions : itoSalesTaskFieldDefinitions)
+  const availableFields = computed(() => (props.fieldDefinitions?.length ? props.fieldDefinitions : taskFieldDefinitions)
     .filter(field => field.code !== "customer_name" && field.code !== "task_name").sort((a, b) => a.sort_order - b.sort_order))
   const selectedFields = computed(() => availableFields.value.filter(field => selectedColumns.value.includes(field.code)))
   const storageKey = `weekly-report:visible-columns:${props.templateCode}:weekly:all-fields-v4`
@@ -47,7 +51,7 @@ export function useSalesTaskCollection(props: SalesCollectionProps, emit: (event
   watch([customerFilter, plannedDateFilter], () => { insertedKeys.value.clear(); taskPage.value = 1 })
   watch(totalPages, value => { taskPage.value = Math.min(taskPage.value, value) })
   watch(customerOptions, values => { if (!values.includes(customerFilter.value)) customerFilter.value = "" })
-  function newTask() { return { ...emptyItoSalesTask(props.ownerName), owner_id: props.defaultOwnerId || null } }
+  function newTask() { return { ...(props.taskFactory || emptyTask)(props.ownerName), owner_id: props.defaultOwnerId || null } }
   async function showTask(key: string) {
     await nextTick()
     taskPage.value = Math.floor(Math.max(0, filteredTaskEntries.value.findIndex(entry => entry.task.client_key === key)) / pageSize) + 1

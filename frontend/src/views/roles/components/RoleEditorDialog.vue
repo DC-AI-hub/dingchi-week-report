@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CustomerSelect from "@/features/directory/components/CustomerSelect.vue"
 import { computed, nextTick, reactive, ref, watch } from "vue"
 
 import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
@@ -33,6 +34,7 @@ const emit = defineEmits<{
 }>()
 
 const emptyForm = (): RoleMutationPayload => ({
+  customer_ids: [],
   role_code: "",
   role_name: "",
   scope: props.scopeOptions[0]?.dict_code || "",
@@ -70,6 +72,7 @@ watch(
 
 function toForm(role: DirectoryRole): RoleMutationPayload {
   return {
+    customer_ids: [...(role.customer_ids || [])],
     role_code: role.role_code,
     role_name: role.role_name,
     scope: role.scope,
@@ -81,6 +84,7 @@ function toForm(role: DirectoryRole): RoleMutationPayload {
 
 function submitForm() {
   const payload: RoleMutationPayload = {
+    customer_ids: [...(form.customer_ids || [])],
     role_code: form.role_code.trim(),
     role_name: form.role_name.trim(),
     scope: form.scope,
@@ -190,6 +194,10 @@ function submitForm() {
           />
         </label>
 
+        <div class="customer-field">
+          <span>负责的客户</span>
+          <CustomerSelect v-model="form.customer_ids" :disabled="isSaving" />
+        </div>
         <label class="description-field">
           <span>职位说明</span>
           <textarea

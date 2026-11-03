@@ -106,3 +106,11 @@ SELECT * FROM `todo_item`;
 
 -- 独立月报审批人，按选择顺序查看。
 SELECT * FROM `user_monthly_approver` ORDER BY user_id, sort_order;
+
+-- 多职位客户配置及统一填报。
+SELECT * FROM `role_customer`;
+SELECT * FROM `user_role_customer`;
+SELECT * FROM `report_submission`;
+SELECT * FROM `report_submission_change`;
+
+SELECT * FROM user_report_share;

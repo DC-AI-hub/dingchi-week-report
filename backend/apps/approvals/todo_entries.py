@@ -15,7 +15,11 @@ def entry(request, role_code, applicant_name=None):
         )
     applicant_name = applicant_name or "未知提交人"
     month = json.loads(request.snapshot_json).get("month_key", "")
-    label = "月度计划变更" if request.business_type == "monthly_plan_change" else "月度计划"
+    label = (
+        "月度计划变更"
+        if request.business_type in {"monthly_plan_change", "monthly_submission_change"}
+        else "月度计划"
+    )
     return {
         "role_code": role_code,
         "dedupe_key": f"approval:{request.id}",
@@ -29,7 +33,12 @@ def entry(request, role_code, applicant_name=None):
 
 
 def notify(request, approver_id):
-    if request.business_type in {"monthly_plan", "monthly_plan_change"}:
+    if request.business_type in {
+        "monthly_plan",
+        "monthly_plan_change",
+        "monthly_submission",
+        "monthly_submission_change",
+    }:
         publish(
             recipient_id=approver_id,
             source="approval",

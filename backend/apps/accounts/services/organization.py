@@ -17,9 +17,11 @@ from ..dao import (
     insert_role,
     list_roles,
     role_code_exists,
+    role_has_users,
     save_role,
 )
 from ..models import OrganizationGroup, Role, UserAccount, UserGroupMembership
+from .customer_assignments import set_role_customers
 
 _logger = logging.getLogger(__name__)
 _role_code_pattern = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -70,7 +72,7 @@ def create_role(*, payload: Mapping[str, Any]) -> Role:
     _validate_role_group_code(role_group_code)
     if role_code_exists(role_code):
         raise RoleConflictError("角色编码已存在，请使用其他编码。")
-    return insert_role(
+    role = insert_role(
         role_code=role_code,
         role_name=role_name,
         scope=scope,
@@ -79,11 +81,13 @@ def create_role(*, payload: Mapping[str, Any]) -> Role:
         role_group_code=role_group_code,
         sort_order=_parse_sort_order(payload.get("sort_order", 0)),
     )
+    set_role_customers(role.id, payload.get("customer_ids", []))
+    return role
 
 
 @transaction.atomic
 def update_role(*, role_id: int, payload: Mapping[str, Any]) -> Role:
-    role = find_role_by_id(role_id)
+    role = find_role_by_id(role_id, lock=True)
     if role is None:
         raise RoleNotFoundError("角色不存在或已被删除。")
 
@@ -92,9 +96,7 @@ def update_role(*, role_id: int, payload: Mapping[str, Any]) -> Role:
     report_template_code = str(
         payload.get("report_template_code", role.report_template_code) or ""
     ).strip()
-    role_group_code = str(
-        payload.get("role_group_code", role.role_group_code) or ""
-    ).strip()
+    role_group_code = str(payload.get("role_group_code", role.role_group_code) or "").strip()
     description = str(payload.get("description", role.description) or "").strip()
     _validate_role_fields(
         role_code=role.role_code,
@@ -129,13 +131,15 @@ def update_role(*, role_id: int, payload: Mapping[str, Any]) -> Role:
         if role.sort_order != sort_order:
             role.sort_order = sort_order
             update_fields.append("sort_order")
+    if "customer_ids" in payload:
+        set_role_customers(role.id, payload["customer_ids"])
     return save_role(role, update_fields=update_fields) if update_fields else role
 
 
 @transaction.atomic
 def delete_role(*, role_id: int, acting_role_code: str) -> Role:
     """Soft-delete one role and disable its logical user assignments."""
-    role = find_role_by_id(role_id)
+    role = find_role_by_id(role_id, lock=True)
     if role is None:
         raise RoleNotFoundError("角色不存在或已被删除。")
     if role.role_code == "system_admin":
@@ -143,8 +147,11 @@ def delete_role(*, role_id: int, acting_role_code: str) -> Role:
     if role.role_code == acting_role_code:
         raise RoleConflictError("当前正在使用的角色不能删除，请先切换到其他角色。")
 
+    if role_has_users(int(role.id)):
+        raise RoleConflictError("该职位已挂载用户，不支持删除，请先调整用户职位。")
     role.status = "deleted"
-    save_role(role, update_fields=["status"])
+    role.deletion_key = role.id
+    save_role(role, update_fields=["status", "deletion_key"])
     assignment_count = deactivate_role_assignments(int(role.id))
     _logger.info(
         "Role soft-deleted",
@@ -204,9 +211,10 @@ def create_group(*, payload: Mapping[str, Any]) -> OrganizationGroup:
         raise GroupConflictError("分组编码已存在，请使用其他编码。")
     parent_group_id = payload.get("parent_group_id")
     parsed_parent_id = int(parent_group_id) if parent_group_id else None
-    if parsed_parent_id is not None and not OrganizationGroup.objects.filter(
-        id=parsed_parent_id, status="active"
-    ).exists():
+    if (
+        parsed_parent_id is not None
+        and not OrganizationGroup.objects.filter(id=parsed_parent_id, status="active").exists()
+    ):
         raise GroupConflictError("上级分组不存在或已停用。")
     return OrganizationGroup.objects.create(
         group_code=group_code,
@@ -225,9 +233,10 @@ def update_group(*, group: OrganizationGroup, payload: Mapping[str, Any]) -> Org
         parsed_parent_id = int(payload["parent_group_id"]) if payload["parent_group_id"] else None
         if parsed_parent_id == int(group.id):
             raise GroupConflictError("分组不能将自己设置为上级分组。")
-        if parsed_parent_id is not None and not OrganizationGroup.objects.filter(
-            id=parsed_parent_id, status="active"
-        ).exists():
+        if (
+            parsed_parent_id is not None
+            and not OrganizationGroup.objects.filter(id=parsed_parent_id, status="active").exists()
+        ):
             raise GroupConflictError("上级分组不存在或已停用。")
         if parsed_parent_id is not None and _is_descendant(
             group_id=int(group.id), candidate_parent_id=parsed_parent_id

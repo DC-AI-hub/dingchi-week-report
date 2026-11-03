@@ -185,6 +185,8 @@ export interface ReportListResponse {
 }
 
 export interface ReportListFilters {
+  view?: "shared"
+  employee_name?: string
   role_code?: string
   page?: number
   page_size?: number

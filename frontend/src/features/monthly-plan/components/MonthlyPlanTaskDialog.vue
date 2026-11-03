@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import {inject} from "vue"
+import {customerScopeKey} from "@/features/submissions/customer-scope"
+const customerScope=inject(customerScopeKey,undefined)
 import { computed, nextTick, ref, watch } from "vue"
 import { isSupportedTemplate } from "@/features/weekly-report/template-support"
 
@@ -7,11 +10,10 @@ import { monthlyPlanScopeLabel, usesConfiguredCustomers } from "@/features/weekl
 import { clearFieldValidity, reportFormValidity } from "@/utils/form-validation"
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
 import type { MonthlyPlanTask, MonthlyPlanTaskPayload } from "@/features/weekly-report/monthly-plan/types"
-import TaskTemplatePopover from "@/features/weekly-report/delivery-specialist/components/TaskTemplatePopover.vue"
-import { deliveryTaskTemplates } from "@/features/weekly-report/delivery-specialist/task-templates"
-import { recruitmentMonthlyTaskTemplates } from "@/features/weekly-report/recruitment/task-templates"
+import TaskTemplatePopover from "@/features/weekly-report/components/TaskTemplatePopover.vue"
+import type {TaskTemplateOption} from "@/features/weekly-report/task-editing"
 
-const props = defineProps<{ open: boolean; task: MonthlyPlanTask | null; readonly?: boolean; templateCode?: string }>()
+const props = defineProps<{ open: boolean; task: MonthlyPlanTask | null; readonly?: boolean; templateCode?: string;templates?:readonly TaskTemplateOption[] }>()
 const emit = defineEmits<{ close: []; save: [task: MonthlyPlanTaskPayload, action: "close" | "next"] }>()
 const customerSelect = ref<InstanceType<typeof DeliveryCustomerSelect> | null>(null)
 const scopeLabel = computed(() => monthlyPlanScopeLabel(props.templateCode || ""))
@@ -25,7 +27,7 @@ const pickerOpen = ref(false)
 const pickerTrigger = ref<HTMLButtonElement | null>(null)
 const anchor = ref<HTMLElement | null>(null)
 const selectedTemplate = ref("")
-const templates = computed(() => props.templateCode === "recruitment_v1" ? recruitmentMonthlyTaskTemplates : deliveryTaskTemplates)
+const templates = computed(() => props.templates || [])
 function togglePicker() {
   anchor.value = formElement.value?.closest<HTMLElement>('[role="dialog"]') || null
   pickerOpen.value = !pickerOpen.value
@@ -35,7 +37,7 @@ async function fillTemplate(index: number) {
   if (!template) return
   workTask.value = template.task
   workContent.value = template.work
-  if (props.templateCode === "recruitment_v1" && !customerName.value.trim()) customerName.value = recruitmentMonthlyTaskTemplates[index]?.dimension || ""
+  if (props.templateCode === "recruitment_v1" && !customerName.value.trim()) customerName.value = templates.value[index]?.dimension || ""
   selectedTemplate.value = String(index)
   pickerOpen.value = false
   await nextTick()
@@ -47,7 +49,7 @@ watch(() => [props.open, props.task] as const, () => {
   pickerOpen.value = false
   selectedTemplate.value = ""
   if (!props.open) return
-  customerName.value = props.task?.scope_name || ""
+  customerName.value = props.task?.scope_name || customerScope?.name.value || ""
   workTask.value = props.task?.work_task || ""
   workContent.value = props.task?.work_content || ""
   if (!props.readonly) void nextTick(() => input.value?.focus())
@@ -80,10 +82,10 @@ function save(action: "close" | "next") {
       <template v-if="scopeLabel">
         <label for="monthly-plan-customer">{{ scopeLabel }}<span v-if="!readonly" class="required"> *</span></label>
         <DeliveryCustomerSelect v-if="configuredCustomers" ref="customerSelect" v-model="customerName" :readonly="readonly" required />
-        <input v-else id="monthly-plan-customer" v-model="customerName" maxlength="255" :readonly="readonly" :required="!readonly" :placeholder="`请输入${scopeLabel}`" />
+        <input class="user-content" v-else id="monthly-plan-customer" v-model="customerName" maxlength="255" :readonly="readonly" :required="!readonly" :placeholder="`请输入${scopeLabel}`" />
       </template>
       <div class="monthly-task-field-heading"><label for="monthly-plan-work-task">工作任务<span v-if="!readonly" class="required"> *</span></label><button v-if="!readonly && ['delivery_specialist_v1', 'recruitment_v1'].includes(templateCode || '')" ref="pickerTrigger" class="monthly-template-button" type="button" :aria-expanded="pickerOpen" aria-haspopup="dialog" @click="togglePicker">选择模板</button></div>
-      <textarea
+      <textarea class="user-content"
         id="monthly-plan-work-task"
         ref="input"
         v-model="workTask"
@@ -93,7 +95,7 @@ function save(action: "close" | "next") {
         placeholder="请输入本月计划开展的工作任务"
       />
       <label for="monthly-plan-work-content">工作内容</label>
-      <textarea id="monthly-plan-work-content" v-model="workContent" rows="6" maxlength="10000" :readonly="readonly" placeholder="请输入工作内容" />
+      <textarea class="user-content" id="monthly-plan-work-content" v-model="workContent" rows="6" maxlength="10000" :readonly="readonly" placeholder="请输入工作内容" />
     </form>
     <template #actions>
       <button class="ghost-button" type="button" @click="emit('close')">

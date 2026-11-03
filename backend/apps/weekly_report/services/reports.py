@@ -19,7 +19,7 @@ from django.utils import timezone
 from django.utils.text import get_valid_filename
 
 from apps.accounts.models import Role, UserAccount
-from apps.accounts.public import visible_user_ids
+from apps.accounts.public import shared_report_owner_ids, visible_user_ids
 from apps.core.models import Attachment
 from apps.dictionary.public import list_active_dictionary_items
 from apps.todos.public import complete as complete_todo
@@ -40,10 +40,12 @@ from ..models import (
 from ..templates import ROLE_TEMPLATES, get_default_task_fields, get_default_template
 from .dashboard_submissions import member_report_summaries
 from .dashboard_tasks import group_work_tasks, output_distribution, task_trend
+from .monthly_attachment_access import authorize_monthly_file
 from .monthly_plan_tasks import (
     list_monthly_plan_tasks,
 )
 from .monthly_plans.policy import ensure_approved
+from .submission_scope import check_part, sync_legacy
 
 
 class ReportError(ValueError):
@@ -223,7 +225,8 @@ def list_visible_reports(
 
 
 def create_or_update_report(
-    *, user: UserAccount, role_code: str, payload: Mapping[str, Any], report_id: int | None = None
+    *, user: UserAccount, role_code: str, payload: Mapping[str, Any], report_id: int | None = None,
+    allow_past_period: bool = False,
 ) -> dict[str, Any]:
     if _role_scope(role_code) == "all":
         raise ReportPermissionError("全员数据角色仅支持查看周报。")
@@ -237,7 +240,7 @@ def create_or_update_report(
         raise ReportError("周报周期必须从周一开始。")
     if period_end != period_start + timedelta(days=6):
         raise ReportError("周报周期结束日期必须是开始日期后的周日。")
-    if report_id is None and period_start < current_start:
+    if report_id is None and period_start < current_start and not allow_past_period:
         raise ReportError("只能新增当前周报周期或未来周报周期。")
     report = _load_editable_report(
         user=user,
@@ -336,6 +339,7 @@ def create_or_update_report(
             role_code=role_code,
             dedupe_key=f"weekly:{role_code}:{report.period_start}",
         )
+    sync_legacy(report, "weekly")
     return get_report_detail(user=user, role_code=role_code, report_id=int(report.id))
 
 
@@ -360,6 +364,9 @@ def delete_report(*, user: UserAccount, role_code: str, report_id: int) -> dict[
         ):
             _delete_attachment_record(attachment)
         report_id_text = str(report.id)
+        check_part(report)
+        report.status = "deleted"
+        sync_legacy(report, "weekly")
         report.delete()
     return {"id": report_id_text, "deleted": True}
 
@@ -403,8 +410,10 @@ def submit_report(*, user: UserAccount, role_code: str, report_id: int) -> dict[
         report = WeeklyReport.objects.select_for_update().filter(id=report_id).first()
         if report is None:
             raise ReportNotFoundError("周报不存在。")
+        check_part(report)
         if int(report.employee_id) != int(user.id) or report.role_code != role_code:
             raise ReportPermissionError("只能提交当前角色下自己的周报。")
+        check_part(report)
         effective_status = _effective_report_status(report.status, report.period_start)
         if effective_status != REPORT_STATUS_IN_PROGRESS:
             raise ReportError("仅进行中的周报可以提交。")
@@ -418,6 +427,7 @@ def submit_report(*, user: UserAccount, role_code: str, report_id: int) -> dict[
             raise ReportError("提交失败：\n" + "\n".join(errors))
         report.status = REPORT_STATUS_COMPLETED
         report.save(update_fields=["status", "updated_at"])
+        sync_legacy(report, "weekly")
     return {"id": str(report.id), "status": REPORT_STATUS_COMPLETED, "submitted": True}
 
 
@@ -495,6 +505,7 @@ def get_report_attachment_for_download(
     if attachment is None or attachment.attachment_type not in {
         "weekly_report",
         "weekly_report_pending",
+        "monthly_plan",
     }:
         raise ReportNotFoundError("附件不存在。")
 
@@ -506,11 +517,12 @@ def get_report_attachment_for_download(
             raise ReportNotFoundError("附件文件不存在。")
         return attachment
 
-    _get_accessible_report(
-        user=user,
-        role_code=role_code,
-        report_id=int(attachment.relation_id),
-    )
+    if attachment.attachment_type == "monthly_plan":
+        authorize_monthly_file(user, role_code, attachment.relation_id)
+    else:
+        _get_accessible_report(
+            user=user, role_code=role_code, report_id=int(attachment.relation_id)
+        )
     storage_key = str(attachment.storage_key or "").strip()
     if not storage_key or not default_storage.exists(storage_key):
         raise ReportNotFoundError("附件文件不存在。")
@@ -1347,6 +1359,7 @@ def _load_editable_report(
         report = WeeklyReport.objects.filter(id=report_id).first()
         if report is None:
             raise ReportNotFoundError("周报不存在。")
+        check_part(report)
         if int(report.employee_id) != int(user.id) or report.role_code != role_code:
             raise ReportPermissionError("只能编辑当前角色下自己的周报。")
         if _effective_report_status(report.status, report.period_start) == REPORT_STATUS_COMPLETED:
@@ -1365,7 +1378,8 @@ def _get_accessible_report(*, user: UserAccount, role_code: str, report_id: int)
     header = dao.get_report_header(report_id)
     if header is None:
         raise ReportNotFoundError("周报不存在。")
-    if int(header["employee_id"]) not in visible_employee_ids(user, role_code):
+    if (int(header["employee_id"]) not in visible_employee_ids(user, role_code)
+        and int(header["employee_id"]) not in shared_report_owner_ids(user.id)):
         raise ReportPermissionError("无权查看该周报。")
     return _with_report_status(header)
 

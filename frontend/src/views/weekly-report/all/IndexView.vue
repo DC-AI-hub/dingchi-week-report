@@ -10,7 +10,7 @@ import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 
 import ReportFilterBar from "../components/ReportFilterBar.vue"
 import ReportListTable from "../components/ReportListTable.vue"
-import ReportPagination from "../components/ReportPagination.vue"
+import ReportPagination from "@/features/weekly-report/components/ReportPagination.vue"
 
 const authStore = useAuthStore()
 const route = useRoute()
@@ -124,6 +124,7 @@ watch(() => route.query, () => {
         @search="search"
       />
       <ReportListTable
+        @restored="changePage(page)"
         :reports="reports"
         scope="all"
         :is-loading="isLoading"

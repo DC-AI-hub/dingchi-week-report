@@ -5,9 +5,12 @@ import { useRouter } from "vue-router"
 import { useAppStore } from "@/app/stores/app"
 import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import { useAuthStore } from "@/features/auth/store"
+import ContentFontControl from "@/features/preferences/components/ContentFontControl.vue"
+import {useContentTypography} from "@/features/preferences/useContentTypography"
 import ChangePasswordDialog from "./ChangePasswordDialog.vue"
 
 const appStore = useAppStore()
+useContentTypography()
 const authStore = useAuthStore()
 const router = useRouter()
 const menuElement = ref<HTMLElement | null>(null)
@@ -83,6 +86,8 @@ onBeforeUnmount(() => {
           <span class="profile-section-label">职位</span>
           <p class="profile-role-text">{{ roleNames }}</p>
         </div>
+
+        <ContentFontControl />
 
         <NoticeBridge :warning-message="authStore.errorMessage" />
 

@@ -15,14 +15,14 @@ watch(()=>[auth.user?.id,auth.effectiveRole?.role_code],()=>{open.value=false;to
 onMounted(()=>{timer=setInterval(refresh,30000);window.addEventListener('focus',refresh)})
 onUnmounted(()=>{clearInterval(timer);window.removeEventListener('focus',refresh)})
 async function go(item:TodoItem){
- if(!auth.roles.some(role=>role.role_code===item.role_code)){todos.error='此待办所属职位已不可用，请刷新后重试。';return}
+ if(item.source!=='weekly_report' && !auth.roles.some(role=>role.role_code===item.role_code)){todos.error='此待办所属职位已不可用，请刷新后重试。';return}
  going.value=true
  try{
   if(item.target.kind==='monthly_plan_approval'){
    const failure=await router.push({name:'monthly-plans',query:{tab:'approvals',approval_id:item.target.approval_id}})
    if(!isNavigationFailure(failure))open.value=false
   }else if(item.target.kind==='weekly_report'){
-   const failure=await router.push({name:'weekly-report-new',query:{role_code:item.role_code}})
+   const failure=await router.push({name:'weekly-report-new',query:{period_start:item.target.period_start}})
    if(!isNavigationFailure(failure))open.value=false
   }else todos.error='此待办暂不支持自动跳转。'
  }catch(cause){todos.error=cause instanceof Error?cause.message:'跳转失败。'}finally{going.value=false}

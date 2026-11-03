@@ -1,29 +1,32 @@
 <script setup lang="ts">
+import CustomerTabsHeader from "@/features/submissions/components/CustomerTabsHeader.vue"
+import {inject} from "vue"
+import {customerScopeKey} from "@/features/submissions/customer-scope"
+const customerScope=inject(customerScopeKey,undefined)
 import DeliveryCustomerSelect from "./DeliveryCustomerSelect.vue"
 import ScrollableTabs from "@/components/navigation/ScrollableTabs.vue"
 import FullscreenPanel from "@/components/layout/FullscreenPanel.vue"
 import ExamplePreviewButton from "@/components/feedback/ExamplePreviewButton.vue"
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
-import { deliveryWeeklyTaskSample, deliveryWeeklyTaskSampleFields } from "@/features/weekly-report/delivery-specialist/samples"
-import type { DeliveryTaskDraft } from "@/features/weekly-report/delivery-specialist/types"
+import type { TaskDraft } from "@/features/weekly-report/task-draft"
 import DeliveryQuickFillDialog from "@/features/weekly-report/components/TaskQuickFillDialog.vue"
 import DeliveryEditableTaskTable from "@/features/weekly-report/components/EditableTaskTable.vue"
 import ReportPagination from "@/components/navigation/PaginationBar.vue"
 import { useTaskCollection, type DeliveryTaskCollectionProps } from "@/features/weekly-report/composables/useDeliveryTaskCollection"
 const props = withDefaults(defineProps<DeliveryTaskCollectionProps>(), {
   includeCustomer: true,
-  sampleContent: deliveryWeeklyTaskSample,
-  sampleFields: () => deliveryWeeklyTaskSampleFields,
+  sampleContent: "",
+  sampleFields: () => [],
   columnPreferenceKey: "delivery_specialist_v1",
 })
-const emit = defineEmits<{ "update:tasks": [tasks: DeliveryTaskDraft[]] }>()
+const emit = defineEmits<{ "update:tasks": [tasks: TaskDraft[]] }>()
 const { assignCustomer, addTemplates, filteredTaskEntries, quickFillOpen, columnsOpen, users, customerFilter, plannedDateFilter, taskPage, taskPageSize, showCustomer, editableDelivery, customerOptions, selectedColumns, availableFields, selectedFields, totalTaskPages, pagedTaskEntries, addTask, removeTask, patchTask, insertTask } = useTaskCollection(props, emit)
 </script>
 
 <template>
   <FullscreenPanel :title="title" class="dashboard-card task-section">
-    <template #tabs>
-      <ScrollableTabs v-if="editableDelivery && customerOptions.length" v-model="customerFilter"
+    <template #tabs><CustomerTabsHeader />
+      <ScrollableTabs v-if="!customerScope?.enabled.value && editableDelivery && customerOptions.length" v-model="customerFilter"
         :items="customerOptions.map(customer => ({ id: customer, name: customer || '未选择客户' }))" />
     </template>
     <template #actions>

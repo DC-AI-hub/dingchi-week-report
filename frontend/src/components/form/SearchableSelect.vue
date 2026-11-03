@@ -21,6 +21,7 @@ const props = withDefaults(
     optionsDisabled?: boolean
     showSelectionOrder?: boolean
     teleportMenu?: boolean
+    menuClass?: string
   }>(),
   {
     multiple: false,
@@ -60,7 +61,7 @@ async function positionMenu() {
     bottom: "auto", width: `${width}px`, maxHeight: `${maxHeight}px`, zIndex: "1200",
   }
 }
-watch([isOpen, query, () => props.options], positionMenu)
+watch([isOpen, query, () => props.options, () => props.modelValue], positionMenu)
 onMounted(() => { window.addEventListener("resize", positionMenu); window.addEventListener("scroll", positionMenu, true) })
 onBeforeUnmount(() => { window.removeEventListener("resize", positionMenu); window.removeEventListener("scroll", positionMenu, true) })
 
@@ -106,6 +107,7 @@ function openList() {
   nextTick(() => inputRef.value?.focus())
 }
 
+// 控件及候选项的 click 阻止外层 label 默认激活首个“移除”按钮。
 function handleControlMouseDown(event: MouseEvent) {
   if (props.disabled) return
   // 点击已选名称或控件空白处时，保留输入框焦点，避免浏览器默认聚焦
@@ -165,8 +167,9 @@ function handleFocusOut() {
     class="searchable-select"
     :class="{ 'searchable-select--disabled': disabled }"
     @focusout="handleFocusOut"
+    @click.prevent
   >
-    <div class="searchable-select__control" @mousedown="handleControlMouseDown">
+    <div class="searchable-select__control" @mousedown="handleControlMouseDown" @click.prevent>
       <div v-if="multiple" class="searchable-select__chips">
         <span v-for="(option, index) in selectedOptions" :key="option.value" class="searchable-select__chip">
           {{ showSelectionOrder ? `${index + 1}. ` : "" }}{{ option.label }}
@@ -206,7 +209,7 @@ function handleFocusOut() {
       </button>
     </div>
     <Teleport to="body" :disabled="!teleportMenu">
-    <div v-if="isOpen" ref="menuRef" class="searchable-select__menu" :style="teleportMenu ? floatingStyle : undefined" role="listbox">
+    <div v-if="isOpen" ref="menuRef" class="searchable-select__menu" :class="menuClass" :style="teleportMenu ? floatingStyle : undefined" role="listbox">
       <template v-for="group in optionGroups" :key="group.name">
       <div v-if="group.name" class="searchable-select__group">{{ group.name }}</div>
       <button
@@ -219,7 +222,7 @@ function handleFocusOut() {
         :aria-selected="isSelected(option.value)"
         :disabled="option.disabled || optionsDisabled"
         @mousedown.prevent
-        @click="selectOption(option)"
+        @click.stop.prevent="selectOption(option)"
       >
         <span>
           <strong :title="option.label">{{ option.label }}</strong>

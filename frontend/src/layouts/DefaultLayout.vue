@@ -27,6 +27,7 @@ const isSecondaryPage = computed(() => [
   "monthly-plan-detail",
   "monthly-plan-change-edit",
   "monthly-plan-change-detail",
+  "monthly-plan-change-new",
 ].includes(String(route.name)))
 const isSystemAdmin = computed(() => authStore.effectiveRole?.role_code === "system_admin")
 const secondaryBackLocation = computed(() => {

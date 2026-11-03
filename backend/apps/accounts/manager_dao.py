@@ -64,4 +64,8 @@ def role_name(role_code):
 
 
 def role_names(codes):
-    return dict(Role.objects.filter(role_code__in=codes).values_list("role_code", "role_name"))
+    return dict(
+        Role.objects.filter(role_code__in=codes)
+        .order_by("-deletion_key")
+        .values_list("role_code", "role_name")
+    )

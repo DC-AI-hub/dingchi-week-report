@@ -1,7 +1,7 @@
 import { computed, reactive, ref, watch } from "vue"
 import { useTodoStore } from "@/features/todos/store"
 import { useAuthStore } from "@/features/auth/store"
-import { copyManagedPlan, decideManagedPlan, decidePlanChange,deletePlanChange,submitPlanChange,createPlanChange, deleteManagedPlan, getPlanContext, listMonthlyPlans, submitManagedPlan } from "./api"
+import { copyManagedPlan, decideManagedPlan, decidePlanChange,deletePlanChange,submitPlanChange, deleteManagedPlan, getPlanContext, listMonthlyPlans, submitManagedPlan } from "./api"
 import type { ApprovalRecord, PlanContext, PlanFilters, PlanList, PlanListView } from "./types"
 
 export function useMonthlyPlanList() {
@@ -13,6 +13,7 @@ export function useMonthlyPlanList() {
   const tabs=computed(()=>[
     ...((auth.effectiveRole?.scope!=='all' || auth.reportingRoles.length)?[{value:'mine' as const,label:'我的月度计划'}]:[]),
     ...(auth.effectiveRole?.scope!=='self'?[{value:'members' as const,label:'团队月度计划'}]:[]),
+    {value:'shared' as const,label:'共享月度计划'},
     ...((hasApprovalTasks.value || pendingCount.value>0)?[{value:'approvals' as const,label:'待审批'}]:[]),
   ])
   const filters = reactive<PlanFilters>({ role_code: "", month_key: "", status: "", employee_id: "", group_id: "", page: 1, page_size: 10 })
@@ -50,7 +51,7 @@ export function useMonthlyPlanList() {
   function selectTab(tab:PlanListView) {
     if(activeTab.value===tab)return
     activeTab.value=tab
-    filters.page=1;filters.role_code='';filters.status='';filters.employee_id='';filters.group_id=''
+    filters.employee_name='';filters.page=1;filters.role_code='';filters.status='';filters.employee_id='';filters.group_id=''
     void load()
   }
   async function decide(record:ApprovalRecord,reject:boolean,reason:string) {
@@ -76,12 +77,7 @@ export function useMonthlyPlanList() {
     } catch (cause) { error.value = cause instanceof Error ? cause.message : "操作失败。" }
     finally { busy.value = false }
   }
-  async function beginChange(id:string) {
-    busy.value=true;error.value=''
-    try {return (await createPlanChange(id)).change.id}
-    catch(cause){error.value=cause instanceof Error?cause.message:'申请变更失败。';return ''}
-    finally{busy.value=false}
-  }
+  async function beginChange(id:string) { return id }
   async function copyPlan(id: string) {
     busy.value = true; error.value = ""
     try { const result = await copyManagedPlan(id); await load(); return result.plan.id }

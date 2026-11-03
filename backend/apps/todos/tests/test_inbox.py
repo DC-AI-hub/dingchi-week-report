@@ -185,8 +185,14 @@ def test_multi_role_inbox_and_approvals_aggregate_without_switching(people, clie
     owner, first, *_ = people
     UserRole.objects.create(user_id=owner.id, role_id=Role.objects.get(role_code="manager").id)
     for role in ["delivery", "manager"]:
-        publish(recipient_id=owner.id, role_code=role, source="other", dedupe_key="same-event",
-                title="职位提醒", target={"kind": "other"})
+        publish(
+            recipient_id=owner.id,
+            role_code=role,
+            source="other",
+            dedupe_key="same-event",
+            title="职位提醒",
+            target={"kind": "other"},
+        )
     own = inbox.list_for_user(owner, "delivery")
     assert own["total"] == inbox.list_for_user(owner, "manager")["total"] == 2
     assert {item["role_code"] for item in own["items"]} == {"delivery", "manager"}
@@ -205,14 +211,14 @@ def test_multi_role_inbox_and_approvals_aggregate_without_switching(people, clie
     write.decide(first, "delivery", plan_id, {"action": "approve"})
 
 
-def test_weekly_reminders_aggregate_with_independent_read_state(people):
+def test_weekly_reminders_share_one_read_state_across_positions(people):
     owner = people[0]
     UserRole.objects.create(user_id=owner.id, role_id=Role.objects.get(role_code="manager").id)
     data = inbox.list_for_user(owner, "delivery")
-    assert data["total"] == inbox.list_for_user(owner, "manager")["total"] == 2
-    assert {item["role_code"] for item in data["items"]} == {"delivery", "manager"}
+    assert data["total"] == inbox.list_for_user(owner, "manager")["total"] == 1
+    assert data["items"][0]["role_code"] == ""
     items.mark_read(owner.id, "delivery", int(data["items"][0]["id"]))
-    assert inbox.list_for_user(owner, "manager")["unread_count"] == 1
+    assert inbox.list_for_user(owner, "manager")["unread_count"] == 0
 
 
 def test_role_backfill_keeps_read_state(people):
@@ -240,3 +246,54 @@ def test_role_backfill_keeps_read_state(people):
     assert item.role_code == "manager" and item.read_at
     assert pending_monthly_count(first.id, "manager") == 1
     assert inbox.list_for_user(first, "delivery")["total"] == 1
+
+
+def test_weekly_multi_position_deduplicates_and_preserves_read_state(people):
+    import json
+
+    owner = people[0]
+    role = Role.objects.create(
+        role_code="extra",
+        role_name="额外职位",
+        scope="self",
+        report_template_code="delivery_specialist_v1",
+    )
+    UserRole.objects.create(user_id=owner.id, role_id=role.id)
+    start = timezone.localdate() - timedelta(days=timezone.localdate().weekday())
+    old = []
+    for code in ["delivery", "extra"]:
+        old.append(
+            TodoItem.objects.create(
+                recipient_id=owner.id,
+                role_code=code,
+                source="weekly_report",
+                dedupe_key=f"weekly:{code}:{start}",
+                title="旧提醒",
+                target_json=json.dumps(
+                    {"kind": "weekly_report", "period_start": str(start), "role_code": code}
+                ),
+            )
+        )
+    old[0].read_at = timezone.now()
+    old[0].save()
+    data = inbox.list_for_user(owner, "delivery")
+    assert data["total"] == 1 and data["unread_count"] == 0
+    assert data["items"][0]["target"] == {"kind": "weekly_report", "period_start": str(start)}
+    assert inbox.list_for_user(owner, "extra")["items"][0]["id"] == data["items"][0]["id"]
+    assert (
+        TodoItem.objects.filter(
+            recipient_id=owner.id, source="weekly_report", status="pending"
+        ).count()
+        == 1
+    )
+    items.mark_read(owner.id, "extra", int(data["items"][0]["id"]))
+    WeeklyReport.objects.create(
+        employee_id=owner.id,
+        role_code="delivery",
+        template_code="delivery_specialist_v1",
+        month_key=start.strftime("%Y-%m"),
+        period_start=start,
+        period_end=start + timedelta(days=6),
+        as_of_date=start,
+    )
+    assert inbox.list_for_user(owner, "extra")["total"] == 0

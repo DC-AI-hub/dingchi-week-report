@@ -2,7 +2,7 @@ import { computed, ref, watch } from "vue"
 import { listUserOptions } from "@/features/directory/api"
 import type { DirectoryUserOption } from "@/features/directory/types"
 import { getReportTemplate } from "@/features/weekly-report/api"
-import { type DeliveryTaskFieldDefinition } from "@/features/weekly-report/delivery-specialist/types"
+import { type TaskFieldDefinition } from "@/features/weekly-report/task-draft"
 import { monthlyTaskFieldDefinitions, type MonthlyTaskFieldDefinition } from "./task-field-definitions"
 
 /** 与对应周任务共用字段定义；月度计划使用独立的展示偏好。 */
@@ -13,7 +13,7 @@ export function useMonthlyTaskFields(templateCode: () => string | undefined) {
   const selected = ref<string[]>([])
   const error = ref("")
   const storageKey = computed(() => `monthly-plan:visible-columns:${templateCode()}:v1`)
-  const availableFields = computed(() => fields.value.filter((field): field is DeliveryTaskFieldDefinition => !["customer_name", "dimension", "task_name"].includes(field.code)).sort((a, b) => a.sort_order - b.sort_order))
+  const availableFields = computed(() => fields.value.filter((field): field is TaskFieldDefinition => !["customer_name", "dimension", "task_name"].includes(field.code)).sort((a, b) => a.sort_order - b.sort_order))
   const selectedFields = computed(() => availableFields.value.filter(field => selected.value.includes(field.code)))
   let version = 0
   async function load() {

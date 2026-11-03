@@ -377,8 +377,8 @@ def attachment_download_view(
     """鉴权下载系统附件。
 
     方法/路径：GET /api/v1/attachments/{attachment_id}/download/；认证：Bearer；
-    参数：路径 attachment_id 为附件逻辑 ID。当前支持周报附件，登录用户当前角色必须
-    对附件所属周报具有查看权限。成功响应为二进制文件流并保留原始文件名；
+    参数：路径 attachment_id 为附件逻辑 ID。支持周报及月度计划附件，登录用户必须
+    对所属记录可见或参与其审批；本人未绑定的上传附件也可下载。成功响应为二进制文件流并保留原始文件名；
     失败：401/403/404；响应带 X-Trace-ID，不暴露宿主机存储路径。
     """
     try:

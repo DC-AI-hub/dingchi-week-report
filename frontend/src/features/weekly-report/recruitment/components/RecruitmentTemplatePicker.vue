@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue"
-import TaskTemplatePopover from "@/features/weekly-report/delivery-specialist/components/TaskTemplatePopover.vue"
+import TaskTemplatePopover from "@/features/weekly-report/components/TaskTemplatePopover.vue"
 import { recruitmentTaskTemplates } from "../task-templates"
 const emit = defineEmits<{ select: [index: number] }>()
 const open = ref(false)

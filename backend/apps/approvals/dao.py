@@ -106,7 +106,12 @@ def pending_requests(user_id, role_code=None):
         ApprovalRequest.objects.filter(
             id__in=list(ids),
             status="pending",
-            business_type__in=["monthly_plan", "monthly_plan_change"],
+            business_type__in=[
+                "monthly_plan",
+                "monthly_plan_change",
+                "monthly_submission",
+                "monthly_submission_change",
+            ],
         )
     )
 

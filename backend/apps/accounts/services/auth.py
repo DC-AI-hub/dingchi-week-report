@@ -7,17 +7,21 @@ from typing import Any
 
 from django.conf import settings
 from django.contrib.auth.hashers import constant_time_compare
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.core.authentication.token import create_access_token
 from apps.core.security.passwords import CryptoPayloadError, decrypt_client_password
 
+from ..customer_assignment_dao import role_customer_ids
 from ..manager_dao import ordered_manager_ids
 from ..models import Role, UserAccount, UserGroupMembership, UserManager, UserRole
 from ..monthly_approver_dao import has_applicants, ordered_ids
+from ..report_share_dao import recipients as shared_recipients
+from .customer_assignments import set_user_customers, user_assignments
 from .managers import set_managers
 from .monthly_approvers import set_monthly_approvers
+from .report_sharing import set_shared_users
 
 
 class AuthenticationError(ValueError):
@@ -187,6 +191,17 @@ def switch_role(*, user: UserAccount, role_code: str) -> dict[str, Any]:
 
 
 def create_user(*, payload: Mapping[str, Any]) -> UserAccount:
+    """并发新增仍由数据库唯一约束兜底，返回可识别的账号冲突。"""
+    try:
+        return _create_user(payload=payload)
+    except IntegrityError as exc:
+        username = str(payload.get("username") or "").strip()
+        if UserAccount.objects.filter(username=username).exclude(status="deleted").exists():
+            raise UserConflictError("登录账号已存在，请使用其他账号。") from exc
+        raise
+
+
+def _create_user(*, payload: Mapping[str, Any]) -> UserAccount:
     """Create a user and logical role memberships in one transaction."""
     username = str(payload.get("username") or "").strip()
     display_name = str(payload.get("display_name") or "").strip()
@@ -206,6 +221,13 @@ def create_user(*, payload: Mapping[str, Any]) -> UserAccount:
     group_id = _optional_int(payload.get("group_id"))
     manager_id = _optional_int(payload.get("manager_id"))
     with transaction.atomic():
+        roles = list(
+            Role.objects.select_for_update().filter(role_code__in=role_codes, status="active")
+        )
+        if len(roles) != len(set(role_codes)):
+            raise ValueError("存在不可用的角色编码。")
+        if UserAccount.objects.filter(username=username).exclude(status="deleted").exists():
+            raise UserConflictError("登录账号已存在，请使用其他账号。")
         employee_no = _next_employee_no()
         user = UserAccount.objects.create(
             username=username,
@@ -228,8 +250,10 @@ def create_user(*, payload: Mapping[str, Any]) -> UserAccount:
             set_managers(int(user.id), [manager_id])
         if "monthly_approver_ids" in payload:
             set_monthly_approvers(int(user.id), payload["monthly_approver_ids"])
+        set_shared_users(user.id, payload.get("shared_user_ids", []))
         for index, role in enumerate(roles):
             UserRole.objects.create(user_id=user.id, role_id=role.id, is_default=index == 0)
+        set_user_customers(user.id, payload.get("role_customer_ids", {}))
     return user
 
 
@@ -262,6 +286,8 @@ def update_user(*, user: UserAccount, payload: Mapping[str, Any]) -> UserAccount
     if user.is_super:
         raise UserConflictError("超级管理员账号只能通过数据库维护。")
     allowed = {"display_name", "email", "phone", "group_id", "manager_id", "avatar_color", "status"}
+    if "status" in payload and payload["status"] not in {"active", "inactive"}:
+        raise ValueError("账号状态只能是在职或停用。")
     for field in allowed:
         if field in payload:
             value = payload[field]
@@ -283,9 +309,13 @@ def update_user(*, user: UserAccount, payload: Mapping[str, Any]) -> UserAccount
         user.manager_id = ids[0] if ids else None
     if "monthly_approver_ids" in payload:
         set_monthly_approvers(int(user.id), payload["monthly_approver_ids"])
+    if "shared_user_ids" in payload:
+        set_shared_users(user.id, payload["shared_user_ids"])
     if "role_codes" in payload:
         role_codes = _normalise_role_codes(payload.get("role_codes"))
-        roles = list(Role.objects.filter(role_code__in=role_codes, status="active"))
+        roles = list(
+            Role.objects.select_for_update().filter(role_code__in=role_codes, status="active")
+        )
         if len(roles) != len(set(role_codes)):
             raise ValueError("存在不可用的角色编码。")
         with transaction.atomic():
@@ -296,6 +326,8 @@ def update_user(*, user: UserAccount, payload: Mapping[str, Any]) -> UserAccount
                     role_id=role.id,
                     defaults={"status": "active", "is_default": index == 0},
                 )
+    if "role_customer_ids" in payload or "role_codes" in payload:
+        set_user_customers(user.id, payload.get("role_customer_ids"))
     return user
 
 
@@ -317,7 +349,8 @@ def delete_user(*, user_id: int, acting_user_id: int) -> UserAccount:
     if has_applicants(user.id):
         raise UserConflictError("该用户仍为月报审批人，请先调整月报审批人配置。")
     user.status = "deleted"
-    user.save(update_fields=["status", "updated_at"])
+    user.deletion_key = user.id
+    user.save(update_fields=["status", "deletion_key", "updated_at"])
     UserRole.objects.filter(user_id=user.id, status="active").update(
         status="inactive", is_default=False
     )
@@ -328,6 +361,7 @@ def delete_user(*, user_id: int, acting_user_id: int) -> UserAccount:
 def serialize_user(user: UserAccount) -> dict[str, Any]:
     return {
         "id": str(user.id),
+        "role_customer_ids": user_assignments(user.id),
         "username": user.username,
         "employee_no": user.employee_no,
         "display_name": user.display_name,
@@ -335,6 +369,7 @@ def serialize_user(user: UserAccount) -> dict[str, Any]:
         "phone": user.phone,
         "manager_ids": [str(value) for value in ordered_manager_ids(int(user.id))],
         "monthly_approver_ids": [str(value) for value in ordered_ids(int(user.id))],
+        "shared_user_ids": [str(value) for value in shared_recipients(int(user.id))],
         "manager_id": str(user.manager_id) if user.manager_id is not None else None,
         "group_id": str(user.group_id) if user.group_id is not None else None,
         "avatar_color": user.avatar_color,
@@ -347,6 +382,7 @@ def serialize_role(role: Role) -> dict[str, Any]:
         "id": str(role.id),
         "role_code": role.role_code,
         "role_name": role.role_name,
+        "customer_ids": [str(value) for value in role_customer_ids(role.id)],
         "scope": role.scope,
         "description": role.description,
         "report_template_code": role.report_template_code,

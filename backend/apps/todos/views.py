@@ -1,3 +1,7 @@
+"""待办v1兼容扩展：周报提醒按人员+周期合并，role_code为空表示跨职位。
+周报target包含kind和period_start，不再携带职位；审批待办保留职位及原权限。
+已读、总数及分页统一按合并后的待办计算，既有重复周报提醒保留历史并完成。
+"""
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 

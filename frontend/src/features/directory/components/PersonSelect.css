@@ -1,7 +1,7 @@
 :deep(.searchable-select__control) { min-height:40px; border-color:#d7e6f8; border-radius:9px; background:#fff; }
 :deep(.searchable-select__control:focus-within) { border-color:var(--accent); box-shadow:0 0 0 3px rgba(47,128,237,.1); }
 
-:deep(.searchable-select__group) {
+:global(.person-select-menu .searchable-select__group) {
   margin:6px 0 4px;
   padding:8px 10px;
   border-left:3px solid #4287d7;
@@ -12,21 +12,16 @@
   font-weight:750;
   line-height:1.4;
 }
-:deep(.searchable-select__group:first-child) { margin-top:0; }
-:deep(.searchable-select__option) { padding:9px 10px 9px 24px; border-radius:6px; }
-:deep(.searchable-select__option strong) { color:#17335f; font-weight:600; }
-:deep(.searchable-select__option small) { color:#607695; font-size:0.72rem; }
-:deep(.searchable-select__option:hover),
-:deep(.searchable-select__option--selected) { background:#edf5ff; }
+:global(.person-select-menu .searchable-select__group:first-child) { margin-top:0; }
+:global(.person-select-menu .searchable-select__option) { padding:9px 10px 9px 24px; border-radius:6px; }
+:global(.person-select-menu .searchable-select__option strong) { color:#17335f; font-weight:600; }
+:global(.person-select-menu .searchable-select__option small) { color:#607695; font-size:0.72rem; }
+:global(.person-select-menu .searchable-select__option:hover),
+:global(.person-select-menu .searchable-select__option--selected) { background:#edf5ff; }
 
-:deep(.searchable-select__menu) {
+:global(.person-select-menu) {
   box-sizing:border-box;
-  left:var(--person-menu-offset,0px);
-  right:auto;
-  width:max-content;
-  min-width:100%;
-  max-width:calc(100vw - 24px);
   overflow-x:hidden;
 }
-:deep(.searchable-select__option strong),
-:deep(.searchable-select__option small) { white-space:nowrap; overflow-wrap:normal; text-overflow:ellipsis; }
+:global(.person-select-menu .searchable-select__option strong),
+:global(.person-select-menu .searchable-select__option small) { white-space:nowrap; overflow-wrap:normal; text-overflow:ellipsis; }

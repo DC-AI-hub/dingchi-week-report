@@ -1,12 +1,32 @@
 from django.urls import path
 
 from . import monthly_plan_management_views as monthly_views
-from . import views
+from . import submission_views, views
 from .monthly_plan_task_views import monthly_plan_task_list_view
 
 app_name = "weekly_report"
 
 urlpatterns = [
+    path("report-submissions/approvals/<str:approval_id>/", submission_views.approval_resource),
+    path(
+        "report-submissions/approvals/<str:approval_id>/decide/",
+        submission_views.approval_resource,
+        {"action": "decide"},
+    ),
+    path("report-submissions/changes/<str:change_id>/", submission_views.change_resource),
+    path(
+        "report-submissions/changes/<str:change_id>/submit/",
+        submission_views.change_resource,
+        {"action": "submit"},
+    ),
+    path(
+        "report-submissions/<str:kind>/context/", submission_views.resource, {"action": "context"}
+    ),
+    path("report-submissions/<str:kind>/", submission_views.resource),
+    path("report-submissions/<str:kind>/<str:submission_id>/", submission_views.resource),
+    path(
+        "report-submissions/<str:kind>/<str:submission_id>/<str:action>/", submission_views.resource
+    ),
     path(
         "monthly-plan-management/<str:plan_id>/copy/", monthly_views.copy_view, name="monthly-copy"
     ),

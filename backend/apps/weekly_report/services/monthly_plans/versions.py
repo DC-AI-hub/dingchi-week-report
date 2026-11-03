@@ -1,5 +1,6 @@
 import json
 
+from apps.accounts.public import account_role_name
 from apps.approvals.public import approval_history, participated_business_ids
 
 from ... import monthly_plan_change_dao as changes
@@ -8,6 +9,8 @@ from ..monthly_plan_tasks import list_monthly_plan_tasks
 
 def live_snapshot(plan):
     return {
+        "role_code": plan.role_code,
+        "role_name": account_role_name(plan.role_code),
         "summary": plan.summary,
         "template_code": plan.template_code,
         "month_key": plan.month_key,
@@ -47,7 +50,13 @@ def approved_versions(plan, user_id):
         key=lambda record: (record["completed_at"] or record["created_at"], int(record["id"]))
     )
     return [
-        {**record, "version": index + 1, "process_type": "initial" if index == 0 else "change"}
+        {
+            **record,
+            "version": index + 1,
+            "process_type": "initial" if index == 0 else "change",
+            "role_code": record["snapshot"].get("role_code") or plan.role_code,
+            "role_name": record["snapshot"].get("role_name") or account_role_name(plan.role_code),
+        }
         for index, record in enumerate(records)
     ][::-1]
 

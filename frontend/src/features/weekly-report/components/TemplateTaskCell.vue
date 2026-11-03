@@ -15,7 +15,7 @@ function change(index: number, event: Event) {
 }
 </script>
 <template>
-  <div class="template-task-text" tabindex="0" :aria-label="`编辑${label}占位值`">
+  <div class="template-task-text user-content" tabindex="0" :aria-label="`编辑${label}占位值`">
     <span class="template-task-preview">{{ preview }}</span>
     <span class="template-task-editor"><template v-for="(part, index) in parts" :key="index"><span>{{ part }}</span><input v-if="index < parts.length - 1" :value="task.task_values?.[index] || ''" maxlength="256" :aria-label="`${label}第${index + 1}个占位值`" placeholder="?" @input="change(index, $event)" /></template></span>
   </div>

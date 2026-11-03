@@ -4,8 +4,8 @@ import ConfirmDialog from "@/components/feedback/ConfirmDialog.vue"
 import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import ReportFilterBar from "../components/ReportFilterBar.vue"
 import ReportListTable from "../components/ReportListTable.vue"
-import ReportPagination from "../components/ReportPagination.vue"
-import DailyTaskDialog from "../components/DailyTaskDialog.vue"
+import ReportPagination from "@/features/weekly-report/components/ReportPagination.vue"
+import DailyTaskDialog from "@/features/weekly-report/components/DailyTaskDialog.vue"
 import { useOwnReportList } from "@/features/weekly-report/composables/useOwnReportList"
 import { TEMPLATE_UNAVAILABLE_MESSAGE } from "@/features/weekly-report/template-support"
 
@@ -43,6 +43,7 @@ const {
         @search="search"
       />
       <ReportListTable
+        @restored="changePage(page)"
         :reports="reports"
         scope="self"
         :is-loading="isLoading"

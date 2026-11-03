@@ -1,18 +1,15 @@
 import { ref } from "vue"
-import { getDailyTasks } from "../api"
+import { useRouter } from "vue-router"
 import type { DailyWorkTask, WeeklyReport } from "../types"
 
 export function useReportDailyEntry(onError: (message: string) => void) {
   const open = ref(false)
   const report = ref<WeeklyReport | null>(null)
   const tasks = ref<DailyWorkTask[]>([])
-  async function show(value: WeeklyReport) {
-    try {
-      const response = await getDailyTasks(value.id)
-      report.value = value
-      tasks.value = response.items
-      open.value = true
-    } catch (cause) { onError(cause instanceof Error ? cause.message : "日报加载失败。") }
+  const router=useRouter()
+  async function show(value:WeeklyReport){
+    try{await router.push({name:"weekly-report-edit",params:{reportId:value.id},query:{section:"daily"}})}
+    catch(cause){onError(cause instanceof Error?cause.message:"填写页面打开失败。")}
   }
   function close() { open.value = false; report.value = null; tasks.value = [] }
   function saved(task: DailyWorkTask) {

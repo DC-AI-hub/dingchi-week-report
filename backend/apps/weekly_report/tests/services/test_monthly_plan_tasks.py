@@ -20,7 +20,7 @@ pytestmark = pytest.mark.django_db
     [
         ("delivery_specialist_v1", "customer_name", "客户"),
         ("delivery_assistant_v1", "customer_name", "客户"),
-        ("ito_sales_v1", "customer_name", "客户"),
+        ("ito_sales_v1", "customer_name", "维度"),
         ("innovation_sales_v1", "customer_name", "客户"),
         ("recruitment_v1", "dimension", "维度"),
     ],
@@ -368,3 +368,47 @@ def test_monthly_grouped_fields_must_be_consistent():
     rows[1]["scope_name"] = "另一个客户"
     with pytest.raises(ValueError, match="客户/维度内容不一致"):
         validate_tasks(rows)
+
+
+@pytest.mark.parametrize("template,label", [
+    ("delivery_specialist_v1", "客户"), ("delivery_assistant_v1", "客户"),
+    ("recruitment_v1", "维度"), ("ito_sales_v1", "维度"),
+    ("innovation_sales_v1", "客户"), ("human_resources_v1", "模块"),
+    ("functional_group_v1", "客户"),
+])
+def test_task_validation_feedback_identifies_row_scope_field_and_system_issue(template, label):
+    task = {"scope_name": "中信证券", "work_task": "新增需求", "task_source": "template",
+            "task_template": "", "task_values": []}
+    with pytest.raises(ValueError) as error:
+        validate_tasks([{"scope_name": "正常", "work_task": "正常任务"}, task], template)
+    message = str(error.value)
+    assert "第2条" in message and f"{label}「中信证券」" in message
+    assert "新增需求" in message and "系统错误" in message and "模板原文缺失" in message
+    assert "重新选择模板" in message
+
+
+@pytest.mark.parametrize("patch,reason", [
+    ({"work_content": "长" * 10001}, "主要工作内容"),
+    ({"output_description": "长" * 10001}, "输出成果"),
+    ({"planned_date": "2026-02-30"}, "计划完成时间"),
+    ({"work_task": ""}, "工作任务不能为空"),
+])
+def test_task_content_feedback_identifies_customer_and_invalid_field(patch, reason):
+    with pytest.raises(ValueError) as error:
+        validate_tasks([{"scope_name": "港交所", "work_task": "任务", **patch}],
+                       "delivery_specialist_v1")
+    message = str(error.value)
+    assert "第1条" in message and "客户「港交所」" in message
+    assert "填写内容校验不通过" in message and reason in message
+    assert "系统错误" not in message
+
+
+def test_template_fill_feedback_distinguishes_broken_structure_and_oversized_input():
+    task = {"scope_name": "其他", "work_task": "任务", "task_source": "template",
+            "task_template": "目标？", "task_values": None}
+    with pytest.raises(ValueError, match="系统错误.*填充值数据缺失或格式异常"):
+        validate_tasks([task])
+    task["task_values"] = ["长" * 257]
+    with pytest.raises(ValueError, match="填写内容校验不通过.*256") as error:
+        validate_tasks([task])
+    assert "系统错误" not in str(error.value)

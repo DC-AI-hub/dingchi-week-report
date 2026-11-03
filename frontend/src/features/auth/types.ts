@@ -1,4 +1,5 @@
 export interface Role {
+  customer_ids?: string[]
   id: string
   role_code: string
   role_name: string
@@ -10,6 +11,7 @@ export interface Role {
 }
 
 export interface UserAccount {
+  role_customer_ids?: Record<string, string[]>
   id: string
   username: string
   employee_no: string

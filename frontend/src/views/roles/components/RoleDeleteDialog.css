@@ -34,14 +34,6 @@
   white-space: nowrap;
 }
 
-.delete-content p.delete-note {
-  padding: 0.72rem 0.8rem;
-  border-radius: 10px;
-  color: #a84343;
-  background: #fff2f1;
-  font-size: 0.75rem;
-}
-
 .danger-button {
   min-height: 44px;
   padding: 0.7rem 1.2rem;

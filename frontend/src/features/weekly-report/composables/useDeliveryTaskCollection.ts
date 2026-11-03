@@ -4,38 +4,37 @@ import { type ExamplePreviewField } from "@/components/feedback/ExamplePreviewBu
 import { listUserOptions } from "@/features/directory/api"
 import type { DirectoryUserOption } from "@/features/directory/types"
 import {
-  deliveryTaskFieldDefinitions,
-  emptyDeliveryTask,
-  type DeliveryTaskColumn,
-  type DeliveryTaskDraft,
-  type DeliveryTaskFieldDefinition,
-} from "@/features/weekly-report/delivery-specialist/types"
+  taskFieldDefinitions,
+  emptyTask,
+  type TaskColumn,
+  type TaskDraft,
+  type TaskFieldDefinition,
+} from "@/features/weekly-report/task-draft"
 import type { TaskTemplateOption } from "@/features/weekly-report/task-editing"
-import { deliveryTaskTemplates } from "@/features/weekly-report/delivery-specialist/task-templates"
 import { expandTemplateTasks } from "../task-groups"
 
 export interface DeliveryTaskCollectionProps {
 
   title: string
   mode: "monthly" | "weekly"
-  tasks: DeliveryTaskDraft[]
+  tasks: TaskDraft[]
   defaultOwnerId?: string; ownerName?: string
   /** 后端按角色返回的列配置；未返回时使用 Excel 顺序的内置配置。 */
-  fieldDefinitions?: DeliveryTaskFieldDefinition[]
+  fieldDefinitions?: TaskFieldDefinition[]
   /** 客户是交付专员模板专属字段；职能组模板不展示客户列。 */
   includeCustomer?: boolean
   sampleContent?: string
   sampleFields?: ReadonlyArray<ExamplePreviewField>
   templates?: readonly TaskTemplateOption[]
-  taskFactory?: (ownerName?: string) => DeliveryTaskDraft
+  taskFactory?: (ownerName?: string) => TaskDraft
   reportId?: string
   /** 不同周报模板使用独立的列偏好，避免共用组件时互相覆盖。 */
   columnPreferenceKey?: string
 }
 
-export function useTaskCollection(props: DeliveryTaskCollectionProps, emit: (event: "update:tasks", tasks: DeliveryTaskDraft[]) => void) {
-  const createTask = (ownerName?: string) => (props.taskFactory || emptyDeliveryTask)(ownerName)
-  const templates = computed(() => props.templates || deliveryTaskTemplates)
+export function useTaskCollection(props: DeliveryTaskCollectionProps, emit: (event: "update:tasks", tasks: TaskDraft[]) => void) {
+  const createTask = (ownerName?: string) => (props.taskFactory || emptyTask)(ownerName)
+  const templates = computed(() => props.templates || [])
   const quickFillOpen = ref(false)
   const columnsOpen = ref(false)
   const users = ref<DirectoryUserOption[]>([])
@@ -44,14 +43,14 @@ export function useTaskCollection(props: DeliveryTaskCollectionProps, emit: (eve
   const taskPage = ref(1)
   const taskPageSize = 10
   const insertedTaskKeys = ref(new Set<string>())
-  const monthlyColumns: DeliveryTaskColumn[] = ["customer_name", "task_name", "work_content", "planned_completion_date", "owner_name"]
-  const weeklyFallbackColumns: DeliveryTaskColumn[] = [
+  const monthlyColumns: TaskColumn[] = ["customer_name", "task_name", "work_content", "planned_completion_date", "owner_name"]
+  const weeklyFallbackColumns: TaskColumn[] = [
     "output_description",
     "planned_completion_date",
     "progress_percent",
     "on_time_status",
   ]
-  const selectedColumns = ref<DeliveryTaskColumn[]>([])
+  const selectedColumns = ref<TaskColumn[]>([])
   const showCustomer = computed(() => props.includeCustomer)
   const editableDelivery = computed(() => props.includeCustomer && ["delivery_specialist_v1", "delivery_assistant_v1"].includes(props.columnPreferenceKey || "") && props.mode === "weekly")
   const columnStorageKey = computed(
@@ -91,10 +90,10 @@ export function useTaskCollection(props: DeliveryTaskCollectionProps, emit: (eve
     return filteredTaskEntries.value.slice(start, start + taskPageSize)
   })
 
-  const availableFields = computed<DeliveryTaskFieldDefinition[]>(() => {
+  const availableFields = computed<TaskFieldDefinition[]>(() => {
     const source = props.fieldDefinitions?.length
       ? props.fieldDefinitions
-      : deliveryTaskFieldDefinitions
+      : taskFieldDefinitions
     const monthlyAllowed = new Set(monthlyColumns)
     const fields = source
       // 客户和工作任务始终是固定列，不进入“选择展示字段”。
@@ -103,7 +102,7 @@ export function useTaskCollection(props: DeliveryTaskCollectionProps, emit: (eve
       .sort((left, right) => left.sort_order - right.sort_order)
     if (fields.length) return fields
     const fallback = props.mode === "monthly" ? monthlyColumns : weeklyFallbackColumns
-    return deliveryTaskFieldDefinitions.filter(
+    return taskFieldDefinitions.filter(
       (field) =>
         !["customer_name", "task_name"].includes(field.code) && fallback.includes(field.code),
     )
@@ -114,7 +113,7 @@ export function useTaskCollection(props: DeliveryTaskCollectionProps, emit: (eve
     return availableFields.value.filter((field) => selected.has(field.code))
   })
 
-  function defaultColumns(fields: DeliveryTaskFieldDefinition[]) {
+  function defaultColumns(fields: TaskFieldDefinition[]) {
     if (editableDelivery.value || props.columnPreferenceKey === "functional_group_v1") return fields.map(field => field.code)
     const defaults = fields
       .filter((field) => props.mode === "monthly" ? monthlyColumns.includes(field.code) : field.default_visible)
@@ -124,7 +123,7 @@ export function useTaskCollection(props: DeliveryTaskCollectionProps, emit: (eve
     return fields.filter((field) => fallback.includes(field.code)).map((field) => field.code)
   }
 
-  function loadStoredColumns(fields: DeliveryTaskFieldDefinition[]) {
+  function loadStoredColumns(fields: TaskFieldDefinition[]) {
     const availableCodes = new Set(fields.map((field) => field.code))
     try {
       const storedValue = localStorage.getItem(columnStorageKey.value)
@@ -132,8 +131,8 @@ export function useTaskCollection(props: DeliveryTaskCollectionProps, emit: (eve
         const parsed = JSON.parse(storedValue)
         if (Array.isArray(parsed)) {
           return parsed.filter(
-            (code): code is DeliveryTaskColumn =>
-              typeof code === "string" && availableCodes.has(code as DeliveryTaskColumn),
+            (code): code is TaskColumn =>
+              typeof code === "string" && availableCodes.has(code as TaskColumn),
           )
         }
       }
@@ -203,11 +202,11 @@ export function useTaskCollection(props: DeliveryTaskCollectionProps, emit: (eve
     emit("update:tasks", props.tasks.filter((_, itemIndex) => itemIndex !== index))
   }
 
-  function patchTask(key: string, value: Partial<DeliveryTaskDraft>) {
+  function patchTask(key: string, value: Partial<TaskDraft>) {
     const original = props.tasks.find(task => task.client_key === key)
     if (!original) return
     emit("update:tasks", props.tasks.map(task => {
-      const patch: Partial<DeliveryTaskDraft> = task.client_key === key ? { ...value } : {}
+      const patch: Partial<TaskDraft> = task.client_key === key ? { ...value } : {}
       if ((task.task_text_id || task.task_group_key || task.client_key) === (original.task_text_id || original.task_group_key || original.client_key)) {
         for (const field of ["task_name", "task_source", "task_template", "task_values"] as const) {
           if (field in value) Object.assign(patch, { [field]: value[field] })
@@ -256,7 +255,7 @@ export function useTaskCollection(props: DeliveryTaskCollectionProps, emit: (eve
     return rowspan
   }
 
-  function displayValue(task: DeliveryTaskDraft, column: DeliveryTaskColumn) {
+  function displayValue(task: TaskDraft, column: TaskColumn) {
     if (column === "customer_name") return task.customer_name || "未填写"
     if (["progress_percent", "quality_percent", "completion_rate"].includes(column)) return `${Math.round(Number(task.progress_percent ?? 0))}%`
     if (column === "on_time_status") return ({ pending: "待完成", in_progress: "进行中", on_time: "按时完成", late: "延期完成", overdue: "逾期未完成", completed: "已完成", not_applicable: "不适用" })[task[column]] || "—"

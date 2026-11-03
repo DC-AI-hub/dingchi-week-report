@@ -18,7 +18,8 @@
   gap: 1.15rem 1.35rem;
 }
 
-.form-grid label {
+.form-grid label,
+.form-grid .customer-field {
   display: grid;
   min-width: 0;
   gap: 0.48rem;

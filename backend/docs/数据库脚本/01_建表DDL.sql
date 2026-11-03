@@ -1,9 +1,10 @@
 -- DingChi 周报系统 MySQL 建表脚本
--- 版本：与当前 Django 模型及内置组件同步（2026-09）
+-- 版本：与当前 Django 模型及内置组件同步（2026-10-30，accounts.0008 / weekly_report.0023）
 --
 -- 使用说明：
 -- 1. 本脚本只负责创建当前项目已知表，不创建数据库、不执行迁移。
 -- 2. 所有 CREATE TABLE 均使用 IF NOT EXISTS；已有表不会被修改。
+--    存量库按缺失项执行27目录、28及29增量SQL，不能仅重跑本文件。
 -- 3. 业务表的关联字段均为逻辑 BIGINT ID，不创建外键；Django 框架表的外键
 --    是框架自身权限/后台功能所需约束，不属于业务表关联。
 -- 4. 业务主键由应用层雪花算法生成；日期时间统一使用 DATETIME(6)，不使用 BIGINT。
@@ -45,6 +46,7 @@ CREATE TABLE IF NOT EXISTS `organization_group` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='组织分组表';
 
 CREATE TABLE IF NOT EXISTS `role` (
+    `deletion_key` BIGINT NOT NULL DEFAULT 0 COMMENT '未删除为0，软删除为本记录ID',
     `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
     `role_code` VARCHAR(64) NOT NULL COMMENT '角色编码',
     `role_name` VARCHAR(128) NOT NULL COMMENT '角色名称',
@@ -57,10 +59,11 @@ CREATE TABLE IF NOT EXISTS `role` (
     `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
     `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_role_role_code` (`role_code`)
+    UNIQUE KEY `uq_role_code_live` (`role_code`, `deletion_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统角色表';
 
 CREATE TABLE IF NOT EXISTS `user_account` (
+    `deletion_key` BIGINT NOT NULL DEFAULT 0 COMMENT '未删除为0，软删除为本记录ID',
     `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
     `username` VARCHAR(64) NOT NULL COMMENT '登录用户名',
     `employee_no` VARCHAR(64) NOT NULL COMMENT '员工工号',
@@ -78,7 +81,7 @@ CREATE TABLE IF NOT EXISTS `user_account` (
     `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
     `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_user_account_username` (`username`),
+    UNIQUE KEY `uq_user_username_live` (`username`, `deletion_key`),
     UNIQUE KEY `uq_user_account_employee_no` (`employee_no`),
     UNIQUE KEY `uq_user_account_mcp_api_key` (`mcp_api_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户账号表';
@@ -145,6 +148,7 @@ CREATE TABLE IF NOT EXISTS `report_template_item` (
 
 CREATE TABLE IF NOT EXISTS `weekly_report` (
     `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `submission_id` BIGINT NULL COMMENT '统一主单ID，逻辑关联 report_submission.id',
     `role_code` VARCHAR(64) NOT NULL COMMENT '填写时使用的角色编码',
     `template_code` VARCHAR(64) NOT NULL COMMENT '填写时使用的模板编码（编码已包含版本）',
     `employee_id` BIGINT NOT NULL COMMENT '填报员工ID，逻辑关联 user_account.id',
@@ -165,11 +169,13 @@ CREATE TABLE IF NOT EXISTS `weekly_report` (
     `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
     `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
     PRIMARY KEY (`id`),
+    KEY `weekly_report_submission_id_01c5f55d` (`submission_id`),
     UNIQUE KEY `uq_weekly_report_employee_role_period` (`employee_id`, `role_code`, `period_start`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='员工周报主表';
 
 CREATE TABLE IF NOT EXISTS `monthly_plan` (
     `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `submission_id` BIGINT NULL COMMENT '统一主单ID，逻辑关联 report_submission.id',
     `role_code` VARCHAR(64) NOT NULL COMMENT '月度计划所属角色编码',
     `employee_id` BIGINT NOT NULL COMMENT '填报员工ID，逻辑关联 user_account.id',
     `group_id` BIGINT NULL COMMENT '填报时组织分组ID，逻辑关联 organization_group.id',
@@ -182,6 +188,7 @@ CREATE TABLE IF NOT EXISTS `monthly_plan` (
     `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
     `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
     PRIMARY KEY (`id`),
+    KEY `monthly_plan_submission_id_9061210a` (`submission_id`),
     UNIQUE KEY `uq_monthly_plan_employee_role_month` (`employee_id`, `role_code`, `month_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='员工角色月度共用计划主表';
 
@@ -277,7 +284,7 @@ CREATE TABLE IF NOT EXISTS `weekly_report_metric` (
 
 CREATE TABLE IF NOT EXISTS `system_attachment` (
     `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
-    `attachment_type` VARCHAR(64) NOT NULL COMMENT '业务类型，例如 weekly_report；不是文件格式',
+    `attachment_type` VARCHAR(64) NOT NULL COMMENT '业务类型：weekly_report、weekly_report_pending、monthly_plan；不是文件格式',
     `relation_id` BIGINT NOT NULL COMMENT '业务主记录ID，按 attachment_type 解释',
     `relation_sub_id` BIGINT NULL COMMENT '业务子记录ID，预留逻辑关联，不绑定具体模块',
     `storage_key` VARCHAR(512) NOT NULL COMMENT '文件存储键，相对 MEDIA_ROOT 的路径',
@@ -536,3 +543,72 @@ CREATE TABLE IF NOT EXISTS user_monthly_approver (
   CONSTRAINT uq_monthly_approver_pair UNIQUE (user_id, approver_id),
   CONSTRAINT uq_monthly_approver_order UNIQUE (user_id, sort_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- 多职位负责客户：默认无客户；仅保存逻辑关联，不建立外键。
+CREATE TABLE IF NOT EXISTS `role_customer` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `role_id` BIGINT NOT NULL COMMENT '职位ID，逻辑关联 role.id',
+    `customer_id` BIGINT NOT NULL COMMENT '负责客户ID，逻辑关联 system_dictionary.id',
+    `sort_order` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '客户选择顺序，从0开始',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_role_customer` (`role_id`, `customer_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='职位负责客户';
+
+CREATE TABLE IF NOT EXISTS `user_role_customer` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID，逻辑关联 user_account.id',
+    `role_id` BIGINT NOT NULL COMMENT '已分配职位ID，逻辑关联 role.id',
+    `customer_id` BIGINT NOT NULL COMMENT '用户在该职位下负责的客户ID，逻辑关联 system_dictionary.id',
+    `sort_order` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '客户选择顺序，从0开始',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_user_role_customer` (`user_id`, `role_id`, `customer_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户各职位负责客户';
+
+-- 多职位统一填报主单。历史单职位记录分别关联独立 legacy 主单，active_key 留空。
+CREATE TABLE IF NOT EXISTS `report_submission` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `merged_into_id` BIGINT NULL COMMENT '合并后的统一主单ID，逻辑关联report_submission.id',
+    `kind` VARCHAR(16) NOT NULL COMMENT '单据类型：monthly月度计划、weekly周报',
+    `employee_id` BIGINT NOT NULL COMMENT '填报员工ID，逻辑关联 user_account.id',
+    `group_id` BIGINT NULL COMMENT '填报组织分组ID，逻辑关联 organization_group.id',
+    `month_key` VARCHAR(7) NOT NULL COMMENT '所属月份，格式YYYY-MM',
+    `period_start` DATE NULL COMMENT '周报开始日期，月度计划为空',
+    `period_end` DATE NULL COMMENT '周报结束日期，月度计划为空',
+    `active_key` VARCHAR(128) NULL DEFAULT NULL COMMENT '新单唯一键：类型:员工:周期；历史/删除单为空',
+    `status` VARCHAR(24) NOT NULL DEFAULT 'draft' COMMENT 'draft/pending/approved/rejected/not_started/in_progress/completed/deleted',
+    `revision` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '整份主单内容版本',
+    `legacy` BOOL NOT NULL DEFAULT 0 COMMENT '历史单职位兼容标记，1表示保持原审批流程',
+    `submitted_at` DATETIME(6) NULL COMMENT '统一提交时间',
+    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间，历史回填保留原时间',
+    `updated_at` DATETIME(6) NOT NULL COMMENT '更新时间，历史回填保留原时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_report_submission_active_key` (`active_key`),
+    KEY `idx_submission_merged_into` (`merged_into_id`),
+    KEY `idx_submission_owner_period` (`employee_id`, `kind`, `month_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='多职位月度计划和周报统一主单';
+
+CREATE TABLE IF NOT EXISTS `report_submission_change` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `submission_id` BIGINT NOT NULL COMMENT '统一主单ID，逻辑关联 report_submission.id',
+    `base_revision` INT UNSIGNED NOT NULL COMMENT '申请变更时的生效主单版本',
+    `revision` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '变更提案版本',
+    `status` VARCHAR(24) NOT NULL DEFAULT 'draft' COMMENT 'draft/pending/approved/rejected/deleted',
+    `base_snapshot_json` LONGTEXT NOT NULL COMMENT '原始生效快照，包含全部职位内容',
+    `proposed_snapshot_json` LONGTEXT NOT NULL COMMENT '拟变更快照，通过审批前不覆盖生效数据',
+    `rejection_reason` LONGTEXT NOT NULL COMMENT '驳回原因，无原因时为空字符串',
+    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
+    `updated_at` DATETIME(6) NOT NULL COMMENT '最后更新时间',
+    PRIMARY KEY (`id`),
+    KEY `report_submission_change_submission_id_7dc0721d` (`submission_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='多职位月度计划整单变更及冻结快照';
+
+-- 用户月度计划与周报只读共享（accounts0008）
+CREATE TABLE IF NOT EXISTS `user_report_share` (
+    `id` BIGINT NOT NULL COMMENT '雪花算法主键ID',
+    `owner_id` BIGINT NOT NULL COMMENT '共享数据所有者ID，逻辑关联 user_account.id',
+    `recipient_id` BIGINT NOT NULL COMMENT '共享接收人ID，逻辑关联 user_account.id',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_user_report_share` (`owner_id`, `recipient_id`),
+    KEY `idx_report_share_recipient` (`recipient_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户月度计划及周报只读共享配置';

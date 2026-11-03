@@ -56,6 +56,7 @@ class ReportTemplateItem(SnowflakeIdModel):
 
 
 class WeeklyReport(SnowflakeIdModel):
+    submission_id = models.BigIntegerField(null=True, blank=True, db_index=True)
     role_code = models.CharField(max_length=64)
     template_code = models.CharField(max_length=64)
     employee_id = models.BigIntegerField()
@@ -89,6 +90,7 @@ class WeeklyReport(SnowflakeIdModel):
 
 
 class MonthlyPlan(SnowflakeIdModel):
+    submission_id = models.BigIntegerField(null=True, blank=True, db_index=True)
     role_code = models.CharField(max_length=64)
     employee_id = models.BigIntegerField()
     group_id = models.BigIntegerField(null=True, blank=True)
@@ -301,3 +303,6 @@ class WeeklyReportDailyTask(SnowflakeIdModel):
             ),
         ]
         ordering = ["work_date", "id"]
+
+
+from .submission_models import ReportSubmission, ReportSubmissionChange  # noqa: E402,F401

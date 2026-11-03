@@ -2,12 +2,13 @@ import json
 
 from django.db import transaction
 
-from apps.accounts.public import account_role_scope
+from apps.accounts.public import account_role_name, account_role_scope
 from apps.approvals.public import approval_history, decide_approval, start_approval
 
 from ... import monthly_plan_change_dao as changes
 from ... import monthly_plan_management_dao as dao
 from .. import reports
+from ..monthly_attachments import prepare_tasks
 from ..monthly_plan_tasks import (
     list_monthly_plan_tasks,
     save_monthly_plan_tasks,
@@ -15,12 +16,15 @@ from ..monthly_plan_tasks import (
     validate_report_monthly_data,
 )
 from ..monthly_task_metadata import snapshot_with_metadata, task_content_key
+from ..submission_scope import sync_legacy
 from .policy import configured_approvers, editable_plan, readable_plan
 from .read import detail
 
 
 def snapshot(plan):
     return {
+        "role_code": plan.role_code,
+        "role_name": account_role_name(plan.role_code),
         "summary": plan.summary,
         "tasks": list_monthly_plan_tasks(
             employee_id=plan.employee_id, role_code=plan.role_code, month_key=plan.month_key
@@ -61,6 +65,7 @@ def record_change(plan, user_id, action, before, after):
                     "customer_source",
                     "customer_template",
                     "customer_values",
+                    "attachments",
                 ]
             )
         ],
@@ -76,7 +81,7 @@ def record_change(plan, user_id, action, before, after):
 
 
 @transaction.atomic
-def save(user, role_code, payload, plan_id=None):
+def save(user, role_code, payload, plan_id=None, *, allow_incomplete=True):
     if account_role_scope(role_code) == "all":
         raise PermissionError("全员角色仅支持查看和审批。")
     configured_approvers(user.id)
@@ -103,31 +108,37 @@ def save(user, role_code, payload, plan_id=None):
     if not plan.template_code:
         plan.template_code = reports.resolve_role_template(role_code)["template_code"]
     summary = str(payload.get("summary") or "").strip()
-    tasks = payload.get("tasks")
-    if len(summary) > 10000:
-        raise ValueError("月度目标不能超过10000字符。")
-    validate_report_monthly_data(summary, tasks, plan.template_code)
-    current_content = [task_content_key(task) for task in before.get("tasks", [])]
-    next_content = [task_content_key(task) for task in tasks]
+    tasks = prepare_tasks(payload.get("tasks"), user.id, plan.id, before.get("tasks", []))
+    if not allow_incomplete and len(summary) > 10000:
+        raise ValueError("月度目标填写内容校验不通过：月度目标不能超过10000字符，请缩短后提交。")
+    if not allow_incomplete:
+        validate_report_monthly_data(summary, tasks, plan.template_code)
+    current_content = [
+        task_content_key(task, allow_incomplete=allow_incomplete)
+        for task in before.get("tasks", [])
+    ]
+    next_content = [task_content_key(task, allow_incomplete=allow_incomplete) for task in tasks]
     if before and summary == before["summary"] and current_content == next_content:
-        if plan.status == "rejected":
+        if plan.status == "rejected" and not allow_incomplete:
             raise ValueError("请先修改驳回的内容，再重新提交。")
         return detail(user, role_code, plan.id)
     plan.summary, plan.status = summary, "draft"
     plan.revision += 1
     dao.save_plan(plan)
+    sync_legacy(plan, "monthly")
     save_monthly_plan_tasks(
         employee_id=plan.employee_id,
         role_code=plan.role_code,
         month_key=plan.month_key,
         value=tasks,
+        allow_incomplete=allow_incomplete,
     )
     record_change(
         plan,
         user.id,
         "update" if before else "create",
         before,
-        snapshot_with_metadata(snapshot(plan), tasks),
+        snapshot_with_metadata(snapshot(plan), tasks, allow_incomplete=allow_incomplete),
     )
     return detail(user, role_code, plan.id)
 
@@ -153,6 +164,7 @@ def submit(user, role_code, plan_id):
     )
     plan.status, plan.rejection_reason = "pending" if approvers else "approved", ""
     dao.save_plan(plan)
+    sync_legacy(plan, "monthly")
     return detail(user, role_code, plan.id)
 
 
@@ -179,6 +191,7 @@ def decide(user, role_code, plan_id, payload):
     if plan.status == "rejected":
         plan.rejection_reason = str(payload.get("reason") or "").strip()
     dao.save_plan(plan)
+    sync_legacy(plan, "monthly")
     return detail(user, role_code, plan.id)
 
 
@@ -193,5 +206,6 @@ def delete(user, role_code, plan_id):
     plan.status = "deleted"
     plan.revision += 1
     dao.save_plan(plan)
+    sync_legacy(plan, "monthly")
     record_change(plan, user.id, "delete", before, {})
     return {"id": str(plan.id), "deleted": True}

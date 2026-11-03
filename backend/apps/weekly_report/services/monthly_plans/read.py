@@ -160,7 +160,13 @@ def gate(user, role_code, month_key):
     approved = bool(plan and plan.status == "approved")
     return {
         "approved": approved,
-        "message": "" if approved else f"{month_key} 尚无审批通过的月度计划，请先填写并完成审批。",
+        "message": ""
+        if approved
+        else (
+            f"{month_key} 月度计划尚未审批通过，请先完成审批。"
+            if plan and plan.status != "deleted"
+            else f"{month_key} 尚未填写月度计划，请先填写并完成审批。"
+        ),
         "plan": serialize_plan(plan, user.id, role_code=role_code)
         if plan and plan.status != "deleted"
         else None,

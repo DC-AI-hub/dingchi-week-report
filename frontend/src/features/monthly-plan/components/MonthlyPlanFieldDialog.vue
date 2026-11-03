@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
-import type { DeliveryTaskFieldDefinition } from "@/features/weekly-report/delivery-specialist/types"
-defineProps<{ open: boolean; fields: DeliveryTaskFieldDefinition[] }>()
+import type { TaskFieldDefinition } from "@/features/weekly-report/task-draft"
+defineProps<{ open: boolean; fields: TaskFieldDefinition[] }>()
 const selected = defineModel<string[]>({ required: true })
 const emit = defineEmits<{ close: [] }>()
 </script>

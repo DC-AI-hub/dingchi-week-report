@@ -7,12 +7,15 @@ from apps.core.services.id_generator import generate_primary_id
 
 from ... import monthly_plan_change_dao as dao
 from ... import monthly_plan_management_dao as plans
+from ..monthly_attachments import prepare_tasks
+from ..monthly_draft_tasks import restore_draft
 from ..monthly_plan_tasks import (
     save_monthly_plan_tasks,
     validate_report_monthly_data,
     validate_tasks,
 )
 from ..monthly_task_metadata import snapshot_with_metadata, task_content_key
+from ..submission_scope import sync_legacy
 from . import change_read
 from .policy import PlanNotFound, configured_approvers, editable_plan, readable_plan
 from .versions import live_snapshot
@@ -54,10 +57,10 @@ def create(user, role_code, plan_id):
 def normalized_proposal(change, payload):
     base = json.loads(change.base_snapshot_json)
     summary = str(payload.get("summary") or "").strip()
-    if len(summary) > 10000:
-        raise ValueError("月度目标不能超过10000字符。")
-    validate_report_monthly_data(summary, payload.get("tasks"), base["template_code"])
-    tasks = validate_tasks(payload["tasks"])
+
+    tasks = validate_tasks(payload["tasks"], allow_incomplete=True)
+    for task, raw in zip(tasks, payload["tasks"], strict=True):
+        restore_draft(task, raw)
     base_ids = {str(task["id"]) for task in base["tasks"]}
     seen = set()
     for raw, task in zip(payload["tasks"], tasks, strict=True):
@@ -66,13 +69,20 @@ def normalized_proposal(change, payload):
             raise ValueError("变更任务ID重复或不属于原始计划。")
         task["id"] = key
         seen.add(key)
-    return {**base, "summary": summary, "tasks": tasks}
+    reason = payload.get(
+        "change_reason", json.loads(change.proposed_snapshot_json).get("change_reason", "")
+    )
+    if not isinstance(reason, str) or len(reason) > 10000:
+        raise ValueError("变更原因必须为文本，最多10000字符。")
+    return {**base, "summary": summary, "tasks": tasks, "change_reason": reason.strip()}
 
 
 def same_content(first, second):
     return first["summary"] == second["summary"] and [
-        (task.get("id"), task_content_key(task)) for task in first["tasks"]
-    ] == [(task.get("id"), task_content_key(task)) for task in second["tasks"]]
+        (task.get("id"), task_content_key(task, allow_incomplete=True)) for task in first["tasks"]
+    ] == [
+        (task.get("id"), task_content_key(task, allow_incomplete=True)) for task in second["tasks"]
+    ]
 
 
 @transaction.atomic
@@ -82,9 +92,20 @@ def save(user, role_code, change_id, payload):
         raise ValueError("变更申请已更新，请重新加载。")
     if payload.get("month_key", plan.month_key) != plan.month_key:
         raise ValueError("变更申请不能修改所属月份。")
+    payload = {
+        **payload,
+        "tasks": prepare_tasks(
+            payload.get("tasks"),
+            user.id,
+            plan.id,
+            json.loads(change.proposed_snapshot_json)["tasks"],
+        ),
+    }
     proposed = normalized_proposal(change, payload)
     previous = json.loads(change.proposed_snapshot_json)
-    if not same_content(previous, proposed):
+    if not same_content(previous, proposed) or previous.get("change_reason", "") != proposed.get(
+        "change_reason", ""
+    ):
         change.proposed_snapshot_json = json.dumps(proposed, ensure_ascii=False)
         change.status = "draft"
         change.revision += 1
@@ -101,6 +122,7 @@ def submit(user, role_code, change_id):
         json.loads(change.base_snapshot_json),
         json.loads(change.proposed_snapshot_json),
     )
+    validate_report_monthly_data(proposal["summary"], proposal["tasks"], base["template_code"])
     if same_content(base, proposal):
         raise ValueError("请修改月度目标或计划后再提交变更。")
     history = approval_history("monthly_plan_change", change.id, user.id, role_code)
@@ -140,6 +162,7 @@ def publish(plan, change):
     plan.summary = proposal["summary"]
     plan.revision += 1
     plans.save_plan(plan)
+    sync_legacy(plan, "monthly")
     change.effective_revision = plan.revision
     change.published_snapshot_json = json.dumps(
         snapshot_with_metadata(live_snapshot(plan), tasks), ensure_ascii=False

@@ -1,6 +1,13 @@
 <script setup lang="ts">
+import { vRowBackgrounds } from "@/shared/table/row-backgrounds"
 import { vResizableColumns } from "@/shared/table/resizable-columns"
 import { useUserTableResizeKey } from "@/features/auth/useUserTableResizeKey"
+import { computed, ref } from "vue"
+import { useAuthStore } from "@/features/auth/store"
+import { reopenReport } from "@/features/weekly-report/api"
+import { getErrorMessage } from "@/shared/api/errors"
+import ConfirmDialog from "@/components/feedback/ConfirmDialog.vue"
+import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import { RouterLink, type LocationQueryRaw } from "vue-router"
 
 import { getReportRoleName } from "@/features/weekly-report/constants"
@@ -36,6 +43,7 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
+  restored: []
   copy: [report: WeeklyReport]
   submit: [report: WeeklyReport]
   delete: [report: WeeklyReport]
@@ -59,7 +67,7 @@ function canFillDailyReport(report: WeeklyReport) {
 }
 
 function hasActions() {
-  return props.scope === "self"
+  return props.scope === "self" || isAdmin.value
 }
 
 function editRoute(report: WeeklyReport) {
@@ -69,12 +77,36 @@ function editRoute(report: WeeklyReport) {
     query: props.returnQuery,
   }
 }
+const auth = useAuthStore()
+const isAdmin = computed(()=>auth.roles.some(role=>role.role_code==="system_admin"))
+const restoring = ref<WeeklyReport|null>(null)
+const restoreBusy = ref(false)
+const restoreError = ref("")
+function askRestore(report:WeeklyReport) {
+  if(!isAdmin.value || report.status!=="completed" || restoreBusy.value)return
+  restoreError.value=""
+  restoring.value=report
+}
+async function confirmRestore() {
+  if(!restoring.value || restoreBusy.value)return
+  restoreBusy.value=true
+  try {
+    await reopenReport(restoring.value.id)
+    restoring.value=null
+    emit("restored")
+  } catch(error) { restoreError.value=getErrorMessage(error) }
+  finally { restoreBusy.value=false }
+}
 const resizeKey = useUserTableResizeKey(() => `weekly-report:${props.scope}`)
 </script>
 
 <template>
   <div class="report-list-table-wrap">
-    <table v-resizable-columns="resizeKey" class="report-list-table">
+    <NoticeBridge :warning-message="restoreError" />
+    <ConfirmDialog :open="Boolean(restoring)" :busy="restoreBusy" title="恢复周报编辑"
+      :message="`确认将${restoring?.employee_name || '该用户'} ${formatPeriod(restoring?.period_start || '',restoring?.period_end || '')}的周报恢复为进行中？恢复后，用户可以修改并重新提交。`"
+      confirm-label="恢复编辑" @close="!restoreBusy && (restoring=null)" @confirm="confirmRestore" />
+    <table v-row-backgrounds v-resizable-columns="resizeKey" class="report-list-table">
       <thead>
         <tr>
           <th data-column-key="period">周报周期</th>
@@ -104,6 +136,8 @@ const resizeKey = useUserTableResizeKey(() => `weekly-report:${props.scope}`)
           <td><ReportStatusTag :status="report.status" /></td>
           <td class="date-cell">{{ formatDateTime(report.updated_at) }}</td>
           <td v-if="hasActions()" class="action-cell">
+            <button v-if="isAdmin && report.status==='completed'" class="table-action" type="button"
+              :disabled="restoreBusy" @click="askRestore(report)">恢复编辑</button>
             <button
               v-if="report.status === 'completed' && canCopy?.(report)"
               class="table-action"
@@ -145,10 +179,10 @@ const resizeKey = useUserTableResizeKey(() => `weekly-report:${props.scope}`)
           </td>
         </tr>
         <tr v-if="isLoading">
-          <td :colspan="scope === 'self' ? 6 : 7" class="empty-row">正在加载周报数据</td>
+          <td :colspan="(scope === 'self' ? 5 : 7) + Number(hasActions())" class="empty-row">正在加载周报数据</td>
         </tr>
         <tr v-else-if="!reports.length">
-          <td :colspan="scope === 'self' ? 6 : 7" class="empty-row">{{ emptyMessage }}</td>
+          <td :colspan="(scope === 'self' ? 5 : 7) + Number(hasActions())" class="empty-row">{{ emptyMessage }}</td>
         </tr>
       </tbody>
     </table>

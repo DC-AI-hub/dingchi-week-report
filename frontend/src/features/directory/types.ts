@@ -1,4 +1,5 @@
 export interface DirectoryRole {
+  customer_ids?: string[]
   id: string
   role_code: string
   role_name: string
@@ -11,6 +12,7 @@ export interface DirectoryRole {
 }
 
 export interface RoleMutationPayload {
+  customer_ids?: string[]
   role_code: string
   role_name: string
   scope: string
@@ -40,6 +42,8 @@ export interface DirectoryGroup {
 }
 
 export interface DirectoryUser {
+  shared_user_ids?: string[]
+  role_customer_ids?: Record<string, string[]>
   id: string
   username: string
   employee_no: string
@@ -75,6 +79,8 @@ export interface GroupMutationPayload {
 }
 
 export interface UserMutationPayload {
+  shared_user_ids?: string[]
+  role_customer_ids?: Record<string, string[]>
   username: string
   employee_no?: string
   display_name: string

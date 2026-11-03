@@ -1,7 +1,7 @@
 .approval-table-wrap { overflow-x:auto; }
 .approval-table { width:100%; min-width:1150px; table-layout:fixed; border-collapse:collapse; }
 .approval-table th { padding:0.78rem 0.7rem; background:#f2f7fd; color:#5b76a0; font-size:0.74rem; font-weight:750; text-align:left; white-space:nowrap; }
-.approval-table td { padding:0.82rem 0.7rem; border-bottom:1px solid #eaf1fa; font-size:0.8rem; text-align:left; vertical-align:middle; }
+.approval-table td { padding:0.82rem 0.7rem; border-bottom:1px solid var(--monthly-row-divider); font-size:0.8rem; text-align:left; vertical-align:middle; }
 .approval-table tbody tr:hover { background:#fbfdff; }
 .summary { white-space:pre-wrap; overflow-wrap:anywhere; }
 .date { white-space:nowrap; }
@@ -20,3 +20,6 @@
 .approval-table .date, .approval-table .actions { white-space: normal; }
 
 .approval-table th { overflow: hidden; text-overflow: ellipsis; }
+
+.approval-table { --monthly-row-divider: color-mix(in srgb, var(--accent) 32%, var(--surface-strong)); }
+.approval-table th { border-bottom: 1px solid var(--monthly-row-divider); }

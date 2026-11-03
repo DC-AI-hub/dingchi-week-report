@@ -1,17 +1,33 @@
 """将当前生效的本人月度计划独立复制到下一月。"""
 
+from django.core.files.storage import default_storage
 from django.db import transaction
 
 from ... import monthly_plan_management_dao as dao
+from ..monthly_attachment_copy import clone_tasks
 from ..monthly_plan_tasks import save_monthly_plan_tasks
 from ..monthly_task_metadata import snapshot_with_metadata
+from ..submission_scope import sync_legacy
 from .policy import editable_plan
 from .read import detail
 from .write import record_change, snapshot
 
 
-@transaction.atomic
-def copy_next_month(user, role_code, plan_id):
+def copy_next_month(user, role_code, plan_id, copied_files=None):
+    stored_files = []
+    try:
+        with transaction.atomic():
+            data = copy_plan(user, role_code, plan_id, stored_files)
+        if copied_files is not None:
+            copied_files.extend(stored_files)
+        return data
+    except Exception:
+        for key in stored_files:
+            default_storage.delete(key)
+        raise
+
+
+def copy_plan(user, role_code, plan_id, stored_files):
     source = editable_plan(user, role_code, plan_id)
     if source.status != "approved":
         raise ValueError("仅审批通过的月度计划可以复制。")
@@ -35,8 +51,10 @@ def copy_next_month(user, role_code, plan_id):
     target.status, target.rejection_reason = "draft", ""
     target.revision += 1
     dao.save_plan(target)
+    tasks = clone_tasks(tasks, source.id, target.id, stored_files)
     save_monthly_plan_tasks(
         employee_id=user.id, role_code=role_code, month_key=target_month, value=tasks
     )
     record_change(target, user.id, "create", {}, snapshot_with_metadata(snapshot(target), tasks))
+    sync_legacy(target, "monthly")
     return detail(user, role_code, target.id)

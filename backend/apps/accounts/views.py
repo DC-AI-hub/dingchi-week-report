@@ -382,7 +382,9 @@ def user_update_view(request: HttpRequest, user_id: str) -> JsonResponse:
     """修改或删除用户资料、上下级、分组、状态和角色集合。
 
     方法/路径：PATCH、DELETE /api/v1/users/{id}/；认证：总裁或系统管理员。
-    PATCH 参数：部分用户字段；DELETE 无请求体，执行软删除并停用角色/分组成员关系。
+    PATCH 参数：部分用户字段，shared_user_ids为只读共享接收人ID数组；省略保留，[]清空。
+    共享仅允许接收人查看该用户全部月度计划/周报，不授予编辑/提交/审批，撤销立即失效。
+    DELETE 无请求体，执行软删除并停用角色/分组成员关系。
     成功响应：更新后的用户对象，或 id/deleted=true；失败：400/401/403/404/409；响应带 X-Trace-ID。
     """
     try:

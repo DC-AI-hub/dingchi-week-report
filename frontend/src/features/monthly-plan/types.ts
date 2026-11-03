@@ -1,6 +1,9 @@
 import type { MonthlyPlanTask } from "@/features/weekly-report/monthly-plan/types"
 
+export interface RoleGoalSummary { role_code: string; role_name: string; summary: string }
+
 export interface ManagedMonthlyPlan {
+  role_summaries?: RoleGoalSummary[]
   id: string
   employee_id: string
   employee_name: string
@@ -20,7 +23,7 @@ export interface ManagedMonthlyPlan {
   children?: PlanChange[]
   can_create_change?: boolean
 }
-export interface PlanSnapshot { summary: string; tasks: MonthlyPlanTask[]; template_code: string; month_key: string }
+export interface PlanSnapshot { role_code?: string; role_name?: string; change_reason?: string; parts?: import("@/features/submissions/types").SubmissionPart[]; summary: string; tasks: MonthlyPlanTask[]; template_code: string; month_key: string }
 export interface ApprovalRecord {
   id: string
   revision: number
@@ -49,13 +52,13 @@ export interface PlanHistory {
   changes: { summary: { before: string; after: string }; added: MonthlyPlanTask[]; deleted: MonthlyPlanTask[]; modified: {before: MonthlyPlanTask; after: MonthlyPlanTask}[] }
 }
 export interface ApprovedPlanVersion extends ApprovalRecord { version: number; process_type: "initial" | "change" }
-export interface PlanChange { id:string; plan_id:string; status:string; revision:number; base_revision:number; summary:string; rejection_reason:string; created_at:string; updated_at:string }
+export interface PlanChange { role_summaries?: RoleGoalSummary[]; id:string; plan_id:string; status:string; revision:number; base_revision:number; summary:string; rejection_reason:string; created_at:string; updated_at:string }
 export interface ChangeDetail { plan:ManagedMonthlyPlan; change:PlanChange; base_snapshot:PlanSnapshot; snapshot:PlanSnapshot; approvals:ApprovalRecord[]; can_edit:boolean }
 export interface PlanDetail { plan: ManagedMonthlyPlan; tasks: MonthlyPlanTask[]; approvals: ApprovalRecord[]; history: ApprovedPlanVersion[]; can_edit: boolean; can_create_change?:boolean }
 export interface PlanContext { template_code: string; can_create: boolean; warning: string; managers: {id: string; name: string}[]; pending_approval_count?:number; has_approval_tasks?: boolean }
 export interface PlanInput { month_key: string; summary: string; tasks: MonthlyPlanTask[]; revision?: number }
-export type PlanListView = "mine" | "members" | "approvals"
-export interface PlanFilters { role_code?: string; view?: PlanListView; month_key?: string; status?: string; employee_id?: string; group_id?: string; pending_only?: boolean; page?: number; page_size?: number }
+export type PlanListView = "mine" | "members" | "approvals" | "shared"
+export interface PlanFilters { employee_name?: string; role_code?: string; view?: PlanListView; month_key?: string; status?: string; employee_id?: string; group_id?: string; pending_only?: boolean; page?: number; page_size?: number }
 export interface PlanList { items: ManagedMonthlyPlan[]; approvals: ApprovalRecord[]; page: number; page_size: number; total: number; total_pages: number; pending_approval_count?:number; has_approval_tasks?: boolean }
 export interface PlanGate { approved: boolean; message: string; plan: ManagedMonthlyPlan | null; tasks: MonthlyPlanTask[] }
 

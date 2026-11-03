@@ -6,6 +6,10 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- 业务表（明细/记录表先删除）
+DROP TABLE IF EXISTS `report_submission_change`;
+DROP TABLE IF EXISTS `report_submission`;
+DROP TABLE IF EXISTS `user_role_customer`;
+DROP TABLE IF EXISTS `role_customer`;
 DROP TABLE IF EXISTS `business_approval_step`;
 DROP TABLE IF EXISTS `business_approval`;
 DROP TABLE IF EXISTS `monthly_plan_revision`;
@@ -37,3 +41,5 @@ DROP TABLE IF EXISTS `todo_item`;
 DROP TABLE IF EXISTS `weekly_task_text`;
 
 DROP TABLE IF EXISTS user_monthly_approver;
+
+DROP TABLE IF EXISTS user_report_share;

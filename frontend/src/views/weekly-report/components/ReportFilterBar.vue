@@ -16,6 +16,8 @@ withDefaults(
     groupOptions?: DirectoryGroup[]
     showGroup?: boolean
     showPerson?: boolean
+    employeeName?: string
+    showName?: boolean
     employeeId?: string
     userOptions?: DirectoryUserOption[]
   }>(),
@@ -28,6 +30,7 @@ const emit = defineEmits<{
   "update:periodEnd": [value: string]
   "update:roleCode": [value: string]
   "update:groupId": [value: string]
+  "update:employeeName": [value:string]
   "update:employeeId": [value:string]
   search: []
   reset: []
@@ -128,6 +131,7 @@ function updatePeriodStart(value: string) {
       />
     </label>
     <label v-if="showPerson" class="person-filter">人员<PersonSelect :model-value="employeeId" :users="userOptions" @update:model-value="emit('update:employeeId',String($event || ''))" /></label>
+    <label v-if="showName">姓名<input :value="employeeName || ''" maxlength="128" placeholder="请输入姓名" @input="emit('update:employeeName', ($event.target as HTMLInputElement).value)" /></label>
     <div class="report-filter-actions">
       <button class="primary-button" type="submit">查询</button>
       <button class="ghost-button" type="button" @click="emit('reset')">重置</button>

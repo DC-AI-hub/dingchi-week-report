@@ -10,7 +10,9 @@ from typing import Any
 from django.db import transaction
 
 from .. import monthly_plan_task_dao as dao
+from .monthly_draft_tasks import draft_tasks
 from .monthly_task_metadata import restore_metadata, task_metadata, validate_group_contents
+from .monthly_validation_feedback import scope_label, task_location, validation_feedback
 
 
 def validate_month_key(month_key: str) -> str:
@@ -48,38 +50,52 @@ def list_monthly_plan_tasks(
     )
 
 
-def validate_tasks(value: Any) -> list[dict[str, Any]]:
-    if not isinstance(value, list) or len(value) > 200:
-        raise ValueError("月度计划必须为任务数组，最多 200 条。")
+def validate_tasks(
+    value: Any, template_code: str = "", *, allow_incomplete=False
+) -> list[dict[str, Any]]:
+    if allow_incomplete:
+        return draft_tasks(value)
+    if not isinstance(value, list):
+        raise ValueError("系统错误：月度计划明细数据格式异常，请刷新后重试；仍失败请联系管理员。")
+    if len(value) > 200:
+        raise ValueError("月度计划填写内容校验不通过：最多支持200条明细，请减少任务数量。")
     work_tasks = []
-    for item in value:
-        if not isinstance(item, Mapping) or not isinstance(item.get("work_task"), str):
-            raise ValueError("月度计划中的工作任务必须为文字。")
-        work_task = item["work_task"].strip()
-        if not work_task:
-            raise ValueError("月度计划工作任务不能为空。")
-        scope_name = item.get("scope_name", item.get("dimension") or item.get("customer_name", ""))
-        if scope_name is None:
-            scope_name = ""
-        if not isinstance(scope_name, str) or len(scope_name.strip()) > 255:
-            raise ValueError("月度计划客户/维度必须为文字且不能超过 255 个字符。")
-        work_content = item.get("work_content", "")
-        if not isinstance(work_content, str) or len(work_content) > 10000:
-            raise ValueError("月度计划主要工作内容必须为文字且不能超过 10000 个字符。")
-        normalized = {
-            "scope_name": scope_name.strip(),
-            "work_task": work_task,
-            "work_content": work_content.strip(),
-        }
-        normalized.update(validate_outcome(item))
-        normalized.update(task_metadata(item))
-        task_id = item.get("id")
-        if task_id and str(task_id).isdigit():
-            normalized["id"] = str(task_id)
-        work_tasks.append(normalized)
+    for index, item in enumerate(value, 1):
+        try:
+            work_tasks.append(validate_task(item))
+        except ValueError as exc:
+            raise ValueError(
+                f"{task_location(item, index, template_code)}：{validation_feedback(str(exc))}"
+            ) from exc
     validate_group_contents(work_tasks)
     return work_tasks
 
+
+def validate_task(item):
+    if not isinstance(item, Mapping) or not isinstance(item.get("work_task"), str):
+        raise ValueError("月度计划中的工作任务必须为文字。")
+    work_task = item["work_task"].strip()
+    if not work_task:
+        raise ValueError("月度计划工作任务不能为空。")
+    scope_name = item.get("scope_name", item.get("dimension") or item.get("customer_name", ""))
+    if scope_name is None:
+        scope_name = ""
+    if not isinstance(scope_name, str) or len(scope_name.strip()) > 255:
+        raise ValueError("月度计划客户/维度必须为文字且不能超过 255 个字符。")
+    work_content = item.get("work_content", "")
+    if not isinstance(work_content, str) or len(work_content) > 10000:
+        raise ValueError("月度计划主要工作内容必须为文字且不能超过 10000 个字符。")
+    normalized = {
+        "scope_name": scope_name.strip(),
+        "work_task": work_task,
+        "work_content": work_content.strip(),
+    }
+    normalized.update(validate_outcome(item))
+    normalized.update(task_metadata(item))
+    task_id = item.get("id")
+    if task_id and str(task_id).isdigit():
+        normalized["id"] = str(task_id)
+    return normalized
 
 def validate_outcome(item):
     output = item.get("output_description", "")
@@ -99,27 +115,31 @@ def validate_outcome(item):
 def validate_report_monthly_data(summary: Any, tasks: Any, template_code: str) -> None:
     """月度计划保存和提交必须具备有效月度目标和至少一条有效明细。"""
     if not isinstance(summary, str) or not summary.strip():
-        raise ValueError("请填写月度目标。")
-    normalized = validate_tasks(tasks)
+        raise ValueError("月度目标填写内容校验不通过：请填写月度目标。")
+    if len(summary) > 10000:
+        raise ValueError("月度目标填写内容校验不通过：月度目标不能超过10000字符。")
+    normalized = validate_tasks(tasks, template_code)
     if not normalized:
         raise ValueError("请至少填写一条月度计划。")
     if template_code == "functional_group_v1":
         return
-    label = "模块" if template_code == "human_resources_v1" else (
-        "维度" if template_code == "recruitment_v1" else "客户"
-    )
-    if any(not task["scope_name"] for task in normalized):
-        raise ValueError(f"月度计划中的{label}不能为空。")
+    for index, task in enumerate(normalized, 1):
+        if not task["scope_name"]:
+            raise ValueError(
+                f"{task_location(task, index, template_code)}：填写内容校验不通过："
+                f"{scope_label(template_code)}不能为空，请补充后提交。"
+            )
+
 
 
 @transaction.atomic
 def save_monthly_plan_tasks(
-    *, employee_id: int, role_code: str, month_key: str, value: Any
+    *, employee_id: int, role_code: str, month_key: str, value: Any, allow_incomplete=False
 ) -> None:
     """由月度计划管理写用例调用，在同一事务中保存共用月度任务及变更历史。"""
     dao.replace_tasks(
         employee_id=employee_id,
         role_code=role_code,
         month_key=validate_month_key(month_key),
-        work_tasks=validate_tasks(value),
+        work_tasks=validate_tasks(value, allow_incomplete=allow_incomplete),
     )

@@ -20,11 +20,10 @@ def weekly_reminder_entries(user, role_code):
             continue
         result.append(
             {
-                "dedupe_key": f"weekly:{role['role_code']}:{start}",
+                "dedupe_key": f"weekly:{start}",
                 "title": f"本周（{start} 至 {start + timedelta(days=6)}）周报提醒，请及时填写",
                 "target": {
                     "kind": "weekly_report",
-                    "role_code": role["role_code"],
                     "period_start": str(start),
                 },
             }

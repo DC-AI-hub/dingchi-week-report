@@ -1,20 +1,21 @@
 <script setup lang="ts">
-import { ref, watch } from "vue"
+import { customerScopeKey } from "@/features/submissions/customer-scope"
+import { inject, ref, watch } from "vue"
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
 import DeliveryCustomerSelect from "@/features/weekly-report/components/DeliveryCustomerSelect.vue"
 import { reportFormValidity } from "@/utils/form-validation"
-import { deliveryTaskTemplates } from "@/features/weekly-report/delivery-specialist/task-templates"
 
 import type { TaskTemplateOption } from "@/features/weekly-report/task-editing"
 
-const props = withDefaults(defineProps<{ open: boolean; monthly?: boolean; recruitment?: boolean; sales?: boolean; scopeLess?: boolean; customerLabel?: string; templates?: readonly TaskTemplateOption[] }>(), { templates: () => deliveryTaskTemplates, customerLabel: "客户" })
+const props = withDefaults(defineProps<{ open: boolean; monthly?: boolean; recruitment?: boolean; sales?: boolean; scopeLess?: boolean; customerLabel?: string; templates?: readonly TaskTemplateOption[] }>(), { templates: () => [], customerLabel: "客户" })
 const emit = defineEmits<{ close: []; confirm: [customer: string, indexes: number[]] }>()
+const customerScope = inject(customerScopeKey, undefined)
 const customer = ref("")
 const selected = ref<number[]>([])
 const formElement = ref<HTMLFormElement | null>(null)
 const taskInputs = ref<HTMLInputElement[]>([])
 watch(() => props.open, (open) => {
-  if (open) { customer.value = ""; selected.value = [] }
+  if (open) { customer.value = customerScope?.name.value || ""; selected.value = [] }
 })
 function clearTaskValidity() {
   taskInputs.value.forEach(input => input.setCustomValidity(""))

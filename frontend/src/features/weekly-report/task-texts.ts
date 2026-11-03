@@ -1,5 +1,6 @@
 import type { ReportItem } from "./types"
 export interface TaskTextMetadata {
+  customer_id?: string | null
   customer_text_id?: string | null
   customer_group_key?: string
   customer_source?: "custom" | "template"
@@ -19,7 +20,7 @@ export interface TaskTextMetadata {
   task_values?: string[]
 }
 export function taskTextMetadata(item: TaskTextMetadata): TaskTextMetadata {
-  return { customer_text_id: item.customer_text_id, customer_group_key: item.customer_group_key || item.customer_text_id || undefined,
+  return { customer_id: item.customer_id, customer_text_id: item.customer_text_id, customer_group_key: item.customer_group_key || item.customer_text_id || undefined,
     customer_source: item.customer_source || "custom", customer_template: item.customer_template || "", customer_values: [...(item.customer_values || [])],
     dimension_text_id: item.dimension_text_id, dimension_group_key: item.dimension_group_key || item.dimension_text_id || undefined,
     dimension_source: item.dimension_source || "custom", dimension_template: item.dimension_template || "", dimension_values: [...(item.dimension_values || [])],

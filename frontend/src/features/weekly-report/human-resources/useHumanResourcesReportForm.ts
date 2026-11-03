@@ -48,7 +48,7 @@ function taskCode(task: Pick<HumanResourcesTaskDraft, "client_key" | "task_code"
   return task.task_code || `human-resources_${task.client_key}`.slice(0, 64)
 }
 
-function fromReportItem(item: ReportItem, attachments: ReportAttachment[] = []) {
+export function hydrateReportItem(item: ReportItem, attachments: ReportAttachment[] = []) {
   return {
     ...emptyHumanResourcesTask(item.owner_name_snapshot),
     client_key: item.id || item.task_code,
@@ -162,7 +162,7 @@ export function useHumanResourcesReportForm(reportId: () => string) {
 
         const attachments = detail.attachments || []
         weeklyTasks.value = detail.items.map((item) =>
-          fromReportItem(item, attachments.filter((attachment) => attachment.relation_sub_id === item.id)),
+          hydrateReportItem(item, attachments.filter((attachment) => attachment.relation_sub_id === item.id)),
         )
         dailyTasks.value = detail.daily_tasks || []
       } else {
@@ -249,7 +249,7 @@ export function useHumanResourcesReportForm(reportId: () => string) {
   })
 
   return {
-    unsavedChanges, monthlyTasksState,
+    buildPayload, unsavedChanges, monthlyTasksState,
     report,
     monthlySummary,
     weeklyTasks,

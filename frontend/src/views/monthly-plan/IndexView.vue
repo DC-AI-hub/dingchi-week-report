@@ -22,7 +22,7 @@ const deleting = ref("")
 const deletingChange=ref(false)
 function askDelete(id:string,change=false){deleting.value=id;deletingChange.value=change}
 async function copyPlan(id:string){const planId=await list.copyPlan(id);if(planId)await router.push({name:"monthly-plan-edit",params:{planId},query:{tab:"mine"}})}
-async function beginChange(id:string){const changeId=await list.beginChange(id);if(changeId)await router.push({name:"monthly-plan-change-edit",params:{changeId},query:{tab:list.activeTab.value}})}
+async function beginChange(id:string){const changeId=await list.beginChange(id);if(changeId)await router.push({name:"monthly-plan-change-new",params:{planId:changeId},query:{tab:list.activeTab.value}})}
 const viewing = ref<ApprovalRecord|null>(null)
 async function decide(record:ApprovalRecord,reject:boolean,reason:string){if(await list.decide(record,reject,reason))closeViewing()}
 function closeViewing(){viewing.value=null;if(route.query.approval_id){const query={...route.query};delete query.approval_id;void router.replace({query})}}
@@ -36,14 +36,14 @@ watch(()=>route.query.approval_id,()=>void openRequested())
 watch(()=>auth.effectiveRole?.role_code,closeViewing)
 function search() { list.filters.page = 1; void list.load() }
 function page(value: number) { list.filters.page = value; void list.load() }
-function selectTab(tab: "mine" | "members" | "approvals") {
+function selectTab(tab: "mine" | "members" | "approvals" | "shared") {
   list.selectTab(tab)
   void router.replace({ query: { ...route.query, tab } })
 }
 async function remove() { const id = deleting.value; deleting.value = ""; await list.action(id, "delete", deletingChange.value) }
 onMounted(async()=>{
  const tab=route.query.tab
- if(tab==='approvals' || (tab==='mine' && (auth.effectiveRole?.scope!=='all' || auth.reportingRoles.length)) || (tab==='members' && auth.effectiveRole?.scope!=='self'))list.activeTab.value=tab
+ if(tab==='shared' || tab==='approvals' || (tab==='mine' && (auth.effectiveRole?.scope!=='all' || auth.reportingRoles.length)) || (tab==='members' && auth.effectiveRole?.scope!=='self'))list.activeTab.value=tab
  await list.initialize();await openRequested()
 })
 </script>

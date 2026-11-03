@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue"
+import { computed } from "vue"
 
 import SearchableSelect from "@/components/form/SearchableSelect.vue"
 import type { DirectoryUserOption } from "../types"
@@ -13,25 +13,6 @@ const props = defineProps<{
   placeholder?: string
   ordered?: boolean
 }>()
-const select = ref<{ $el: HTMLElement } | null>(null)
-const panelStyle = ref<Record<string,string>>({})
-let observer: MutationObserver | undefined
-async function updatePanel() {
-  await nextTick()
-  const root=select.value?.$el
-  const rect=root?.getBoundingClientRect()
-  const menu=root?.querySelector<HTMLElement>(".searchable-select__menu")
-  if(!rect || !menu)return
-  const width=menu.getBoundingClientRect().width
-  const left=Math.max(12,Math.min(rect.left,window.innerWidth-width-12))
-  panelStyle.value={"--person-menu-offset":`${left-rect.left}px`}
-}
-onMounted(()=>{
-  window.addEventListener("resize",updatePanel)
-  observer=new MutationObserver(()=>void updatePanel())
-  if(select.value?.$el)observer.observe(select.value.$el,{childList:true,subtree:true,characterData:true})
-})
-onBeforeUnmount(()=>{observer?.disconnect();window.removeEventListener("resize",updatePanel)})
 const emit = defineEmits<{ "update:modelValue": [value: string | string[]] }>()
 const options = computed(() => props.users.map((user) => ({
   value: user.id, label: user.display_name,
@@ -42,10 +23,8 @@ const options = computed(() => props.users.map((user) => ({
 
 <template>
   <SearchableSelect
-    ref="select"
-    :style="panelStyle"
-    @pointerdown.capture="updatePanel"
-    @focusin.capture="updatePanel"
+    teleport-menu
+    menu-class="person-select-menu"
     :model-value="modelValue || (multiple ? [] : '')"
     :options="options"
     :multiple="multiple"

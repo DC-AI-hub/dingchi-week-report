@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vRowBackgrounds } from "@/shared/table/row-backgrounds"
 import type { ReportItem, TemplateItem } from "@/features/weekly-report/types"
 import { formatDateTime } from "@/utils/date"
 
@@ -27,7 +28,7 @@ function isDelayed(item: TaskDraft) {
 
 <template>
   <div class="task-table-wrap">
-    <table class="task-table">
+    <table v-row-backgrounds class="task-table">
       <thead>
         <tr>
           <th>工作任务</th>

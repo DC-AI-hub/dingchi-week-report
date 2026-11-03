@@ -13,9 +13,10 @@ from apps.accounts.public import account_role_scope
 from .. import report_copy_dao as dao
 from .monthly_plans.policy import ensure_approved
 from .reports import ReportConflictError, ReportError, ReportNotFoundError, ReportPermissionError
+from .submission_scope import check_part, sync_legacy
 
 
-def copy_report(*, user, role_code, report_id):
+def copy_report(*, user, role_code, report_id, copied_files=None):
     stored_files = []
     try:
         with transaction.atomic():
@@ -28,6 +29,7 @@ def copy_report(*, user, role_code, report_id):
                 or source.role_code != role_code
             ):
                 raise ReportPermissionError("只能复制当前职位下自己的周报。")
+            check_part(source)
             if source.status != "completed":
                 raise ReportError("只有已完成的周报支持复制。")
             offset = timedelta(days=7)
@@ -45,6 +47,7 @@ def copy_report(*, user, role_code, report_id):
                 as_of_date=start,
                 status="not_started" if start > current_start else "in_progress",
             )
+            sync_legacy(target, "weekly")
             item_map = dao.copy_details(source, target)
             _copy_attachments(source, target, item_map, stored_files)
             result = {
@@ -53,6 +56,8 @@ def copy_report(*, user, role_code, report_id):
                 "period_start": start.isoformat(),
                 "period_end": target.period_end.isoformat(),
             }
+        if copied_files is not None:
+            copied_files.extend(stored_files)
         return result
     except Exception as exc:
         for storage_key in stored_files:

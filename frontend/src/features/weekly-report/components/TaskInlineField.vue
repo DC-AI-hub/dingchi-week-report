@@ -68,7 +68,7 @@ onBeforeUnmount(() => { window.removeEventListener("scroll", positionMenu, true)
 </script>
 <template>
   <div ref="root" class="inline-field" :class="{ 'inline-field--readonly': field === 'completion_rate' }" :style="menuStyle" tabindex="0" :aria-label="`${label}：${displayText}`" @pointerdown.capture="positionMenu" @focusin.capture="positionMenu" @input.capture="positionMenu">
-    <span class="inline-field__text">{{ displayText }}</span>
+    <span class="inline-field__text" :class="{'user-content':field!=='on_time_status'}">{{ displayText }}</span>
     <div v-if="field !== 'completion_rate'" class="inline-field__editor">
     <DeliveryCustomerSelect v-if="field === 'customer_name'" :model-value="task.customer_name || ''" required teleport-menu @update:model-value="emit('patch', { customer_name: $event })" />
     <PersonSelect v-else-if="field === 'owner_name'" :model-value="owner" :users="users" :aria-label="label" placeholder="选择责任人" @update:model-value="setOwner" />
@@ -76,9 +76,9 @@ onBeforeUnmount(() => { window.removeEventListener("scroll", positionMenu, true)
     <select v-else-if="field === 'on_time_status'" :value="task.on_time_status" :aria-label="label" @change="change">
       <option value="pending">待完成</option><option value="in_progress">进行中</option><option value="on_time">是，按计划完成</option><option value="late">否，已延期完成</option><option value="overdue">否，已逾期未完成</option><option value="completed">已完成</option><option value="not_applicable">不适用</option>
     </select>
-    <input v-else-if="field === 'progress_percent' || field === 'quality_percent'" :value="task[field] ?? 0" type="number" min="0" max="100" step="5" :aria-label="label" @input="normalizeNumberInput" @change="change" />
-    <input v-else-if="field === 'planned_completion_date' || field === 'actual_completion_date'" :value="task[field]" type="date" :aria-label="label" @change="change" />
-    <input v-else :maxlength="field === 'dimension' ? 64 : undefined" :value="task[field]" :aria-label="label" @change="change" />
+    <input class="user-content" v-else-if="field === 'progress_percent' || field === 'quality_percent'" :value="task[field] ?? 0" type="number" min="0" max="100" step="5" :aria-label="label" @input="normalizeNumberInput" @change="change" />
+    <input class="user-content" v-else-if="field === 'planned_completion_date' || field === 'actual_completion_date'" :value="task[field]" type="date" :aria-label="label" @change="change" />
+    <input class="user-content" v-else :maxlength="field === 'dimension' ? 64 : undefined" :value="task[field]" :aria-label="label" @change="change" />
     </div>
   </div>
 </template>

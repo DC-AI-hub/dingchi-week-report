@@ -6,13 +6,16 @@ logical user/role/group association rather than leaking joins into Views.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from django.db import connection
 
+from .customer_assignment_dao import role_customer_ids, user_customer_rows
 from .manager_dao import ordered_manager_ids
 from .models import OrganizationGroup, Role, UserAccount, UserRole
 from .monthly_approver_dao import ordered_ids
+from .report_share_dao import recipients as shared_recipients
 
 
 def list_roles() -> list[dict[str, Any]]:
@@ -35,13 +38,15 @@ def list_roles() -> list[dict[str, Any]]:
     group_names = dict(OrganizationGroup.objects.values_list("id", "group_name"))
     for row in rows:
         row["group_name"] = group_names.get(row.get("group_id"), "未分组")
+        row["customer_ids"] = [str(value) for value in role_customer_ids(row["id"])]
         row["id"] = str(row["id"])
     return rows
 
 
-def find_role_by_id(role_id: int) -> Role | None:
+def find_role_by_id(role_id: int, *, lock: bool = False) -> Role | None:
     """Find one non-deleted role for management operations."""
-    return Role.objects.exclude(status="deleted").filter(id=role_id).first()
+    rows = Role.objects.select_for_update() if lock else Role.objects.all()
+    return rows.exclude(status="deleted").filter(id=role_id).first()
 
 
 def find_group_by_id(group_id: int) -> OrganizationGroup | None:
@@ -55,8 +60,8 @@ def find_user_by_id(user_id: int) -> UserAccount | None:
 
 
 def role_code_exists(role_code: str) -> bool:
-    """Check role-code uniqueness, including previously soft-deleted rows."""
-    return Role.objects.filter(role_code=role_code).exists()
+    """未删除（包括停用）的职位编码不可重复。"""
+    return Role.objects.filter(role_code=role_code).exclude(status="deleted").exists()
 
 
 def insert_role(**values: Any) -> Role:
@@ -147,6 +152,15 @@ def list_users(
             item["role_names"] = _split_group_values(item.pop("role_names_csv", None))
             item["manager_ids"] = [str(value) for value in ordered_manager_ids(int(item["id"]))]
             item["monthly_approver_ids"] = [str(value) for value in ordered_ids(int(item["id"]))]
+            item["shared_user_ids"] = [str(value) for value in shared_recipients(int(item["id"]))]
+            role_codes_by_id = dict(Role.objects.values_list("id", "role_code"))
+            item["role_customer_ids"] = {}
+            for assignment in user_customer_rows(int(item["id"])):
+                code = role_codes_by_id.get(assignment.role_id)
+                if code in item["role_codes"]:
+                    item["role_customer_ids"].setdefault(code, []).append(
+                        str(assignment.customer_id)
+                    )
             rows.append(item)
         return rows
 
@@ -180,3 +194,11 @@ def list_role_options():
         .order_by("sort_order", "id")
         .values("role_code", "role_name")
     )
+
+
+def role_has_users(role_id: int) -> bool:
+    """检查有效职位关联下是否仍有未删除用户（包含停用用户）。"""
+    sql = (Path(__file__).parent / "sql/role_has_users.sql").read_text(encoding="utf-8")
+    with connection.cursor() as cursor:
+        cursor.execute(sql, [role_id])
+        return cursor.fetchone() is not None

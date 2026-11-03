@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CustomerTabsHeader from "@/features/submissions/components/CustomerTabsHeader.vue"
 import FullscreenPanel from "@/components/layout/FullscreenPanel.vue"
 import ExamplePreviewButton from "@/components/feedback/ExamplePreviewButton.vue"
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
@@ -6,21 +7,18 @@ import PaginationBar from "@/components/navigation/PaginationBar.vue"
 import EditableTaskTable from "@/features/weekly-report/components/EditableTaskTable.vue"
 import TaskQuickFillDialog from "@/features/weekly-report/components/TaskQuickFillDialog.vue"
 import { computed } from "vue"
-import { itoSalesWeeklyTaskSample, itoSalesWeeklyTaskSampleFields } from "@/features/weekly-report/ito-sales/samples"
-import { innovationSalesWeeklyTaskSample, innovationSalesWeeklyTaskSampleFields } from "@/features/weekly-report/innovation-sales/samples"
-import type { ItoSalesTaskDraft } from "@/features/weekly-report/ito-sales/types"
+import type {TaskDraft} from "@/features/weekly-report/task-draft"
 import { useSalesTaskCollection, type SalesCollectionProps } from "@/features/weekly-report/sales/useSalesTaskCollection"
 const props = defineProps<SalesCollectionProps>()
-const emit = defineEmits<{ "update:tasks": [tasks: ItoSalesTaskDraft[]] }>()
+const emit = defineEmits<{ "update:tasks": [tasks: TaskDraft[]] }>()
 const { templates, quickFillOpen, columnsOpen, users, customerFilter, plannedDateFilter, taskPage, pageSize, selectedColumns, customerOptions, filteredTaskEntries, totalPages, pagedTaskEntries, availableFields, selectedFields, addTemplates, insertTask, patchTask, removeTask } = useSalesTaskCollection(props, emit)
 const scopeLabel = computed(() => props.templateCode === "ito_sales_v1" ? "维度" : "客户")
-const sampleContent = computed(() => props.templateCode === "innovation_sales_v1" ? innovationSalesWeeklyTaskSample : itoSalesWeeklyTaskSample)
-const sampleFields = computed(() => props.templateCode === "innovation_sales_v1" ? innovationSalesWeeklyTaskSampleFields : itoSalesWeeklyTaskSampleFields)
 </script>
 <template>
   <FullscreenPanel :title="title" class="dashboard-card task-section">
+    <template #tabs><CustomerTabsHeader /></template>
     <template #actions>
-      <ExamplePreviewButton :content="sampleContent" :fields="sampleFields" panel-title="本周工作任务填写样例" />
+      <ExamplePreviewButton :content="sampleContent || ''" :fields="sampleFields" panel-title="本周工作任务填写样例" />
       <button class="ghost-button" type="button" @click="columnsOpen = true">选择展示字段</button>
       <button class="primary-button" type="button" @click="quickFillOpen = true">新增任务</button>
     </template>

@@ -18,7 +18,8 @@
   gap: 1rem 1.2rem;
 }
 
-.form-grid > label {
+.form-grid > label,
+.form-grid > .person-field {
   display: grid;
   min-width: 0;
   gap: 0.42rem;

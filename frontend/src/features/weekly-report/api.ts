@@ -1,3 +1,5 @@
+/** 统一主单GET列表支持view=shared，仅返回直接共享给当前用户的人员数据；employee_name为可选姓名模糊筛选，最多128字；先授权和筛选再分页。共享详情和附件只读，撤销立即失效，权限不足403。 */
+/** 列表、删除、提交及复制改走report-submissions主单资源；按整单分页与事务处理，正文/日报接口仍使用职位明细ID。 */
 /** v1多职位兼容扩展：列表聚合账号可见的所有职位；新增通过X-Report-Role指定本人有效填写职位。
  * 本模块统一附加填写上下文，已有记录由后端按所属职位校验；未分配职位403，未认证401；Bearer/trace保持不变。
  */
@@ -41,7 +43,7 @@ export function getReportTemplate(templateCode: string): Promise<ReportTemplate>
 export function listReports(filters: ReportListFilters = {}): Promise<ReportListResponse> {
   return request<ReportListResponse>({
     method: "GET",
-    url: "/v1/weekly-reports/",
+    url: "/v1/report-submissions/weekly/",
     params: filters,
   })
 }
@@ -201,7 +203,7 @@ export function deleteDailyTask(
 export function deleteReport(reportId: string): Promise<{ id: string; deleted: true }> {
   return request<{ id: string; deleted: true }>({
     method: "DELETE",
-    url: "/v1/weekly-reports/" + reportId + "/",
+    url: "/v1/report-submissions/weekly/" + reportId + "/",
   })
 }
 
@@ -216,7 +218,7 @@ export function submitReport(
 ): Promise<{ id: string; status: "completed"; submitted: true }> {
   return request<{ id: string; status: "completed"; submitted: true }>({
     method: "POST",
-    url: "/v1/weekly-reports/" + reportId + "/submit/",
+    url: "/v1/report-submissions/weekly/" + reportId + "/submit/",
   })
 }
 
@@ -257,7 +259,7 @@ export function deleteReportAttachment(
 /**
  * 鉴权下载附件。
  * 方法/路径：GET /v1/attachments/{attachment_id}/download/；认证：Bearer；幂等：是。
- * 当前角色必须对附件所属周报具有查看权限；响应为二进制文件流，不暴露存储路径。
+ * 当前职位必须对附件所属周报/月度计划具有查看或审批权限（待绑定附件仅上传本人）；响应为二进制文件流，不暴露存储路径。
  */
 export async function downloadReportAttachment(
   attachmentId: string,
@@ -291,5 +293,14 @@ export function copyReport(reportId: string): Promise<{
   period_start: string
   period_end: string
 }> {
-  return request({ method: "POST", url: `/v1/weekly-reports/${reportId}/copy/` })
+  return request({ method: "POST", url: `/v1/report-submissions/weekly/${reportId}/copy/` })
+}
+
+
+/** POST恢复误提交周报：仅系统管理员，整份已完成周报恢复进行中，填写内容保留。
+ * 参数为字符串主单ID；返回id、status、revision、restored。400状态不符/403越权/404不存在；
+ * Bearer及X-Trace-ID由统一HTTP客户端附加，不授予普通用户恢复权限。
+ */
+export function reopenReport(reportId: string): Promise<{id:string;status:"in_progress";revision:number;restored:true}> {
+  return request({method:"POST",url:`/v1/report-submissions/weekly/${reportId}/reopen/`})
 }

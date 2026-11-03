@@ -38,7 +38,7 @@ function save() {
   <BaseDialog :open="open" :title="`编辑${title}`" width="800px" @close="emit('close')">
     <form id="human-resources-task-text-form" ref="formElement" class="text-field-form" @submit.prevent="save">
       <div class="text-field-heading"><label for="human-resources-task-text">{{ title }}</label><button v-if="templateField" ref="pickerTrigger" type="button" class="template-picker-button" :aria-expanded="pickerOpen" aria-haspopup="dialog" @click="togglePicker">选择模板</button></div>
-      <textarea id="human-resources-task-text" v-model="draft" class="text-field-input" :rows="templateField === 'dimension' || templateField === 'customer_name' ? 3 : 10" :maxlength="maxLength" :aria-label="title" />
+      <textarea id="human-resources-task-text" v-model="draft" class="text-field-input user-content" :rows="templateField === 'dimension' || templateField === 'customer_name' ? 3 : 10" :maxlength="maxLength" :aria-label="title" />
     </form>
     <template #actions><button class="ghost-button" type="button" @click="emit('close')">取消</button><button class="primary-button" type="submit" form="human-resources-task-text-form">确定</button></template>
   </BaseDialog>

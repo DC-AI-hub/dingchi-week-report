@@ -1,11 +1,12 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router"
 
-import { getReportRole, setReportRole } from "@/shared/api/report-context"
+import { setReportRole } from "@/shared/api/report-context"
 
 import { useAuthStore } from "@/features/auth/store"
 
 const routes: RouteRecordRaw[] = [
-  { path: "/reporting-position", name: "reporting-position", component: () => import("@/views/reporting-position/IndexView.vue"), meta: { title: "选择填写职位", requiresAuth: true } },
+  {path:"/monthly-plans/:planId/change",name:"monthly-plan-change-new",component:()=>import("@/views/monthly-plan/EditView.vue"),meta:{title:"填写月度计划变更",requiresAuth:true}},
+  { path: "/reporting-position", name: "reporting-position", redirect: to => ({name:to.query.target === "monthly-plan-new"?"monthly-plan-new":"weekly-report-new"}) },
   {path:"/monthly-plans/changes/:changeId/edit",name:"monthly-plan-change-edit",component:()=>import("@/views/monthly-plan/EditView.vue"),meta:{title:"填写月度计划变更",requiresAuth:true}},
   {path:"/monthly-plans/changes/:changeId",name:"monthly-plan-change-detail",component:()=>import("@/views/monthly-plan/ChangeDetailView.vue"),meta:{title:"月度计划变更",requiresAuth:true}},
   {
@@ -115,7 +116,7 @@ export const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
-router.beforeEach(async (to, from) => {
+router.beforeEach(async (to) => {
   const authStore = useAuthStore()
   if (to.meta.public) {
     if (to.name === "login" && authStore.isAuthenticated) return { name: "dashboard" }
@@ -128,16 +129,7 @@ router.beforeEach(async (to, from) => {
   if (to.meta.adminOnly && authStore.effectiveRole?.role_code !== "system_admin") {
     return { name: "dashboard" }
   }
-  const creating = to.name === "weekly-report-new" || to.name === "monthly-plan-new"
-  if (creating && !to.query.role_code) {
-    const roles = authStore.reportingRoles
-    if (roles.length > 1) return { name: "reporting-position", query: { ...to.query, target: String(to.name) } }
-    if (roles.length === 1) return { ...to, query: { ...to.query, role_code: roles[0]!.role_code } }
-  }
-  const editNames = ["weekly-report-new", "weekly-report-edit", "monthly-plan-new", "monthly-plan-edit", "monthly-plan-change-edit"]
-  // 保存后同一编辑流程可能只更新记录ID，保留已选填写职位；离开编辑流程则清除。
-  const keepContext = editNames.includes(String(to.name)) && editNames.includes(String(from.name))
-  setReportRole(creating && typeof to.query.role_code === "string" ? to.query.role_code : keepContext ? getReportRole() : "")
+  setReportRole("")
   return true
 })
 

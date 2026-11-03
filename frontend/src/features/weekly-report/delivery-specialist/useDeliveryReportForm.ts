@@ -51,7 +51,7 @@ function taskCode(task: Pick<DeliveryTaskDraft, "client_key">, prefix = "deliver
   return `${prefix}_${task.client_key}`.slice(0, 64)
 }
 
-function fromReportItem(
+export function hydrateReportItem(
   item: ReportItem,
   attachments: ReportAttachment[] = [],
 ): DeliveryTaskDraft {
@@ -186,7 +186,7 @@ export function useDeliveryReportForm(
 
         const attachments = detail.attachments || []
         weeklyTasks.value = detail.items.map((item) =>
-          fromReportItem(
+          hydrateReportItem(
             item,
             attachments.filter((attachment) => attachment.relation_sub_id === item.id),
           ),
@@ -280,7 +280,7 @@ export function useDeliveryReportForm(
   })
 
   return {
-    unsavedChanges, monthlyTasksState,
+    buildPayload, unsavedChanges, monthlyTasksState,
     report, monthlySummary, weeklyTasks, dailyTasks, taskFields, monthKey, isNew,
     isLoading, isSaving, errorMessage, authStore, setPeriodStart, load, save, }
 }

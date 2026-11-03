@@ -73,7 +73,7 @@ export function insertMonthlyChild(tasks: MonthlyPlanTask[], id: string, level: 
   const child: MonthlyPlanTask = { ...origin, id: `draft-${createId()}`, scope_group_key: scopeKey,
     output_description: "", planned_date: null,
     progress_text: "", progress_percent: 0, quality_percent: 0, completion_rate: 0,
-    delay_reason: "", on_time_status: "in_progress", actual_completion_date: "", document_links: "",
+    delay_reason: "", on_time_status: "in_progress", actual_completion_date: "", document_links: "", attachments: [],
     work_content: level === "content" ? origin.work_content : "",
     content_group_key: level === "content" ? contentKey : createId(),
     task_group_key: level === "scope" ? createId() : taskKey,

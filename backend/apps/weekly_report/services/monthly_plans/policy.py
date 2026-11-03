@@ -1,6 +1,7 @@
-from apps.accounts.public import approval_managers, visible_user_ids
+from apps.accounts.public import approval_managers, shared_report_owner_ids, visible_user_ids
 
 from ... import monthly_plan_management_dao as dao
+from ..submission_scope import check_part
 from .versions import assigned_root_ids
 
 
@@ -12,7 +13,9 @@ def readable_plan(user, role_code, plan_id, *, lock=False):
     plan = dao.find_plan(plan_id, lock=lock)
     if plan is None or plan.status == "deleted":
         raise PlanNotFound("月度计划不存在或已删除。")
-    visible = int(plan.employee_id) in visible_user_ids(user, role_code)
+    visible = int(plan.employee_id) in visible_user_ids(user, role_code) or int(
+        plan.employee_id
+    ) in shared_report_owner_ids(user.id)
     if not visible and int(plan.id) not in assigned_root_ids(user.id, role_code):
         raise PermissionError("无权查看该月度计划。")
     return plan
@@ -20,6 +23,7 @@ def readable_plan(user, role_code, plan_id, *, lock=False):
 
 def editable_plan(user, role_code, plan_id):
     plan = readable_plan(user, role_code, plan_id, lock=True)
+    check_part(plan)
     if int(plan.employee_id) != int(user.id) or plan.role_code != role_code:
         raise PermissionError("只能修改当前角色下自己的月度计划。")
     if plan.status == "pending":

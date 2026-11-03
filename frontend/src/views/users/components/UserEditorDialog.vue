@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UserCustomerAssignments from "@/features/directory/components/UserCustomerAssignments.vue"
 import { computed, nextTick, reactive, ref, watch } from "vue"
 import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
@@ -44,7 +45,9 @@ const form = reactive<UserMutationPayload>({
   group_id: null,
   manager_id: null,
   manager_ids: [],
+  shared_user_ids: [],
   monthly_approver_ids: [],
+  role_customer_ids: {},
   role_codes: [],
   status: "active",
 })
@@ -56,11 +59,16 @@ const monthlyApproverSelection = computed({
   get: () => form.monthly_approver_ids || [],
   set: (value: string | string[]) => { form.monthly_approver_ids = Array.isArray(value) ? value : value ? [value] : [] },
 })
+const sharedUserSelection = computed({
+  get: () => form.shared_user_ids || [],
+  set: (value: string | string[]) => { form.shared_user_ids = Array.isArray(value) ? value : value ? [value] : [] },
+})
 const availableManagers = computed(() => props.users.filter((item) => item.id !== props.user?.id))
 watch(
-  () => ({ open: props.open, user: props.user, roles: props.roles }),
-  ({ open, user, roles }) => {
+  () => [props.open, props.user?.id] as const,
+  ([open]) => {
     if (!open) return
+    const user = props.user, roles = props.roles
     Object.assign(
       form,
       user
@@ -73,8 +81,10 @@ watch(
             password: "",
             group_id: user.group_id,
             manager_id: user.manager_id,
+            shared_user_ids: [...(user.shared_user_ids || [])],
             monthly_approver_ids: [...(user.monthly_approver_ids || [])],
             manager_ids: user.manager_ids?.length ? [...user.manager_ids] : user.manager_id ? [user.manager_id] : [],
+            role_customer_ids: JSON.parse(JSON.stringify(user.role_customer_ids || {})),
             role_codes: [...user.role_codes],
             status: user.status,
           }
@@ -88,7 +98,9 @@ watch(
             group_id: null,
             manager_id: null,
             manager_ids: [],
+            shared_user_ids: [],
             monthly_approver_ids: [],
+            role_customer_ids: {},
             role_codes: roles[0] ? [roles[0].role_code] : [],
             status: "active",
           },
@@ -96,7 +108,7 @@ watch(
     formError.value = ""
     void nextTick(() => displayNameInput.value?.focus())
   },
-  { immediate: true, deep: true },
+  { immediate: true },
 )
 function toggleRole(roleCode: string) {
   form.role_codes = form.role_codes.includes(roleCode)
@@ -114,7 +126,9 @@ function submitForm() {
     group_id: form.group_id || null,
     manager_id: form.manager_ids?.[0] || null,
     manager_ids: [...(form.manager_ids || [])],
+    shared_user_ids: [...(form.shared_user_ids || [])],
     monthly_approver_ids: [...(form.monthly_approver_ids || [])],
+    role_customer_ids: JSON.parse(JSON.stringify(form.role_customer_ids || {})),
     role_codes: [...form.role_codes],
     status: form.status || "active",
   }
@@ -183,15 +197,19 @@ function submitForm() {
           <span>所属分组</span>
           <GroupTreeSelect v-model="form.group_id" :disabled="isSaving" :groups="groups" />
         </label>
-        <label>
+        <div class="person-field">
           <span>直属上级</span>
           <PersonSelect v-model="managerSelection" :users="availableManagers" :disabled="isSaving" multiple aria-label="直属上级" />
-        </label>
-        <label>
+        </div>
+        <div class="person-field">
           <span>月报审批人</span>
           <PersonSelect v-model="monthlyApproverSelection" :users="availableManagers" :disabled="isSaving" multiple ordered aria-label="月报审批顺序" />
           <small>按选择顺序依次审批；不选则提交后直接通过。</small>
-        </label>
+        </div>
+        <div class="person-field">
+          <span>负责的客户</span>
+          <UserCustomerAssignments v-model="form.role_customer_ids" :roles="roles" :role-codes="form.role_codes" :disabled="isSaving" />
+        </div>
         <label v-if="isEditing">
           <span>账号状态</span>
           <select v-model="form.status" :disabled="isSaving">
@@ -199,6 +217,10 @@ function submitForm() {
             <option value="inactive">停用</option>
           </select>
         </label>
+        <div class="person-field">
+          <span>共享用户</span>
+          <PersonSelect v-model="sharedUserSelection" :users="availableManagers" :disabled="isSaving" multiple aria-label="共享用户" />
+        </div>
         <fieldset class="role-fieldset">
           <legend>职位</legend>
           <label v-for="role in roles" :key="role.id" class="role-option">

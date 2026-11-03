@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CustomerSelect from "@/features/directory/components/CustomerSelect.vue"
 import { computed } from "vue"
 
 import BaseDialog from "@/components/overlay/BaseDialog.vue"
@@ -44,6 +45,8 @@ const emit = defineEmits<{
         <div><dt>所属分组</dt><dd>{{ user.group_name || "未分组" }}</dd></div>
         <div><dt>直属上级</dt><dd>{{ managerDisplayName }}</dd></div>
         <div><dt>月报审批人</dt><dd>{{ monthlyApproverDisplayName }}</dd></div>
+        <div class="detail-grid__wide"><dt>共享用户</dt><dd>{{ (user.shared_user_ids || []).map(id => users.find(item => item.id === id)?.display_name || "未知").join(" / ") || "无" }}</dd></div>
+        <div class="detail-grid__wide"><dt>负责的客户</dt><dd><CustomerSelect :model-value="[...new Set(Object.values(user.role_customer_ids || {}).flat())]" disabled /></dd></div>
         <div class="detail-grid__wide"><dt>职位</dt><dd class="detail-roles">{{ user.role_names.length ? user.role_names.join("、") : "未分配" }}</dd></div>
       </dl>
     </div>

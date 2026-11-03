@@ -27,7 +27,8 @@ class OrganizationGroup(SnowflakeIdModel):
 
 
 class Role(SnowflakeIdModel):
-    role_code = models.CharField(max_length=64, unique=True)
+    role_code = models.CharField(max_length=64)
+    deletion_key = models.BigIntegerField(default=0, editable=False)
     role_name = models.CharField(max_length=128)
     scope = models.CharField(max_length=16, default="self")
     description = models.CharField(max_length=255, blank=True, default="")
@@ -47,11 +48,15 @@ class Role(SnowflakeIdModel):
 
     class Meta:
         db_table = "role"
-        ordering = ["sort_order", "id"]
+        ordering = ["deletion_key", "sort_order", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["role_code", "deletion_key"], name="uq_role_code_live"),
+        ]
 
 
 class UserAccount(SnowflakeIdModel):
-    username = models.CharField(max_length=64, unique=True)
+    username = models.CharField(max_length=64)
+    deletion_key = models.BigIntegerField(default=0, editable=False)
     employee_no = models.CharField(max_length=64, unique=True)
     display_name = models.CharField(max_length=128)
     email = models.EmailField(blank=True, default="")
@@ -69,6 +74,11 @@ class UserAccount(SnowflakeIdModel):
     class Meta:
         db_table = "user_account"
         ordering = ["employee_no"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["username", "deletion_key"], name="uq_user_username_live"
+            ),
+        ]
 
 
 class UserRole(SnowflakeIdModel):
@@ -135,3 +145,48 @@ class UserMonthlyApprover(SnowflakeIdModel):
                 fields=["user_id", "sort_order"], name="uq_monthly_approver_order"
             ),
         ]
+
+
+class RoleCustomer(SnowflakeIdModel):
+    role_id = models.BigIntegerField()
+    customer_id = models.BigIntegerField()
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = "role_customer"
+        ordering = ["sort_order", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["role_id", "customer_id"], name="uq_role_customer")
+        ]
+
+
+class UserRoleCustomer(SnowflakeIdModel):
+    user_id = models.BigIntegerField()
+    role_id = models.BigIntegerField()
+    customer_id = models.BigIntegerField()
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = "user_role_customer"
+        ordering = ["sort_order", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user_id", "role_id", "customer_id"], name="uq_user_role_customer"
+            )
+        ]
+
+
+class UserReportShare(SnowflakeIdModel):
+    """owner将全部月度计划与周报只读共享给recipient，非传递授权。"""
+
+    owner_id = models.BigIntegerField()
+    recipient_id = models.BigIntegerField()
+
+    class Meta:
+        db_table = "user_report_share"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["owner_id", "recipient_id"], name="uq_user_report_share"
+            ),
+        ]
+        indexes = [models.Index(fields=["recipient_id"], name="idx_report_share_recipient")]

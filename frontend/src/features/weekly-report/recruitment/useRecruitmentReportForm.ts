@@ -52,7 +52,7 @@ function displayDimension(value: string) {
   return ({ overall: "总体目标", demand: "需求管理", demand_management: "需求管理", other: "其他" } as Record<string, string>)[value] || value
 }
 
-function fromReportItem(item: ReportItem, attachments: ReportAttachment[] = []) {
+export function hydrateReportItem(item: ReportItem, attachments: ReportAttachment[] = []) {
   return {
     ...emptyRecruitmentTask(item.owner_name_snapshot),
     client_key: item.id || item.task_code,
@@ -166,7 +166,7 @@ export function useRecruitmentReportForm(reportId: () => string) {
 
         const attachments = detail.attachments || []
         weeklyTasks.value = detail.items.map((item) =>
-          fromReportItem(item, attachments.filter((attachment) => attachment.relation_sub_id === item.id)),
+          hydrateReportItem(item, attachments.filter((attachment) => attachment.relation_sub_id === item.id)),
         )
         dailyTasks.value = detail.daily_tasks || []
       } else {
@@ -253,7 +253,7 @@ export function useRecruitmentReportForm(reportId: () => string) {
   })
 
   return {
-    unsavedChanges, monthlyTasksState,
+    buildPayload, unsavedChanges, monthlyTasksState,
     report,
     monthlySummary,
     weeklyTasks,

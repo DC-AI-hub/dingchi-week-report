@@ -48,7 +48,7 @@ function taskCode(task: Pick<ItoSalesTaskDraft, "client_key" | "task_code">) {
   return task.task_code || `ito_sales_${task.client_key}`.slice(0, 64)
 }
 
-function fromReportItem(item: ReportItem, attachments: ReportAttachment[] = []) {
+export function hydrateReportItem(item: ReportItem, attachments: ReportAttachment[] = []) {
   return {
     ...emptyItoSalesTask(item.owner_name_snapshot),
     client_key: item.id || item.task_code,
@@ -152,7 +152,7 @@ export function useItoSalesReportForm(reportId: () => string) {
         monthlySummary.value = monthlyTasksState.summary.value
 
         const attachments = detail.attachments || []
-        weeklyTasks.value = detail.items.map((item) => fromReportItem(item, attachments.filter((attachment) => attachment.relation_sub_id === item.id)))
+        weeklyTasks.value = detail.items.map((item) => hydrateReportItem(item, attachments.filter((attachment) => attachment.relation_sub_id === item.id)))
         dailyTasks.value = detail.daily_tasks || []
       } else {
         report.id = ""
@@ -226,5 +226,5 @@ export function useItoSalesReportForm(reportId: () => string) {
 
   watch(() => report.period_start, async () => { if (initialized) await loadMonthlyPlan() })
 
-  return { unsavedChanges, monthlyTasksState, report, monthlySummary, weeklyTasks, dailyTasks, taskFields, monthKey, isNew, isLoading, isSaving, errorMessage, authStore, setPeriodStart, load, save, }
+  return { buildPayload, unsavedChanges, monthlyTasksState, report, monthlySummary, weeklyTasks, dailyTasks, taskFields, monthKey, isNew, isLoading, isSaving, errorMessage, authStore, setPeriodStart, load, save, }
 }
