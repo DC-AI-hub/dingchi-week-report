@@ -1,0 +1,109 @@
+.monthly-plan-section {
+  padding: 22px;
+}
+
+.monthly-plan-section__heading,
+.monthly-plan-section__actions {
+  display: flex;
+  align-items: center;
+}
+
+.monthly-plan-section__heading {
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.monthly-plan-section__heading h2 {
+  margin: 0;
+  color: #173764;
+  font-size: 22px;
+}
+
+.monthly-plan-section__actions {
+  gap: 10px;
+}
+
+.monthly-plan-section > textarea,
+.monthly-plan-editor textarea {
+  box-sizing: border-box;
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #cfe0f5;
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: #153562;
+  background: #f7faff;
+  font: inherit;
+  line-height: 1.65;
+}
+
+.monthly-plan-section > textarea {
+  display: block;
+}
+
+.monthly-plan-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.monthly-plan-editor__month {
+  color: #5c7395;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.monthly-plan-editor textarea {
+  min-height: 280px;
+}
+
+.monthly-plan-editor textarea:focus {
+  border-color: #2778e8;
+  outline: 3px solid rgba(39, 120, 232, 0.13);
+}
+
+.monthly-plan-editor textarea[readonly] {
+  color: #7185a1;
+  background: #f1f5fa;
+  cursor: not-allowed;
+}
+
+.monthly-plan-confirm {
+  display: grid;
+  gap: 14px;
+}
+
+.monthly-plan-confirm__warning {
+  padding: 15px 16px;
+  border: 2px solid #e59a2f;
+  border-radius: 12px;
+  color: #8a4d08;
+  background: #fff5df;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.7;
+  text-align: left;
+}
+
+.monthly-plan-editor__error {
+  margin: 0;
+  padding: 11px 14px;
+  border: 1px solid #e28b8b;
+  border-radius: 10px;
+  color: #a33d3d;
+  background: #fff1f1;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  .monthly-plan-section__heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .monthly-plan-section__actions {
+    flex-wrap: wrap;
+  }
+}

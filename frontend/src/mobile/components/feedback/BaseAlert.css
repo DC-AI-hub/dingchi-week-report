@@ -1,0 +1,8 @@
+.base-alert {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 12px;
+  color: var(--accent-dark);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}

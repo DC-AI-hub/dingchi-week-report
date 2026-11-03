@@ -40,3 +40,5 @@ backend/media/
 /backend/docs
 /.ruff_cache
 .tmp*
+
+test-*

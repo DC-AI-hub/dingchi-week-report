@@ -1,0 +1,26 @@
+.task-table-wrap { width: 100%; min-width: 0; max-width: 100%; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
+.task-table { width: 100%; min-width: 980px; border-collapse: collapse; }
+.task-table th { padding: 0.78rem 0.65rem; color: #5b76a0; background: #f3f7fd; font-size: 0.74rem; font-weight: 750; text-align: left; white-space: nowrap; }
+.task-table td { padding: 0.72rem 0.65rem; border-bottom: 1px solid #edf2fa; color: var(--text); font-size: 0.78rem; vertical-align: top; }
+.task-name { width: 18%; }
+.task-name strong { display: block; color: var(--text-strong); font-size: 0.84rem; }
+.task-name small { display: block; margin-top: 0.3rem; color: var(--muted); line-height: 1.45; }
+.task-table input, .task-table textarea, .delay-card input { width: 100%; box-sizing: border-box; border: 1px solid #dce8f7; border-radius: 7px; padding: 0.42rem 0.48rem; color: var(--text); background: #fbfdff; font: inherit; }
+.task-table textarea { resize: vertical; }
+.task-table input:focus, .task-table textarea:focus, .delay-card input:focus { border-color: var(--accent); outline: 2px solid rgba(47, 128, 237, 0.13); }
+.output-cell { min-width: 190px; }
+.output-cell textarea + textarea { margin-top: 0.4rem; }
+.percent-control { display: flex; align-items: center; gap: 0.2rem; width: 70px; }
+.percent-control input { min-width: 0; padding-right: 0.2rem; }
+.percent-control span { color: var(--muted); }
+.status-pill { display: inline-flex; padding: 0.28rem 0.55rem; border-radius: 99px; font-size: 0.7rem; font-weight: 750; white-space: nowrap; }
+.status-pill--in_progress { color: #216aca; background: #e1efff; }
+.status-pill--on_time { color: #07855c; background: #dff8ee; }
+.status-pill--overdue, .status-pill--late { color: #c44343; background: #ffe2e2; }
+.status-pill--not_applicable { color: #74839a; background: #edf1f6; }
+.empty-cell { padding: 2rem !important; color: var(--muted); text-align: center; }
+.delay-fields { display: grid; gap: 0.7rem; margin-top: 1rem; }
+.delay-card { padding: 0.8rem 0.9rem; border: 1px solid #ffd9c5; border-radius: 10px; background: #fff9f4; }
+.delay-card strong { display: block; margin-bottom: 0.6rem; color: #a7552a; font-size: 0.78rem; }
+.delay-grid { display: grid; grid-template-columns: 1fr 1fr 150px; gap: 0.6rem; }
+@media (max-width: 680px) { .delay-grid { grid-template-columns: 1fr; } }

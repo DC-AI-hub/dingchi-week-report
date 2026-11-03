@@ -1,0 +1,27 @@
+.team-panel { position: relative; min-width: 0; overflow: hidden; padding: 13px 15px; border: 1px solid rgba(109, 169, 239, .2); border-radius: 14px; background: rgba(255, 255, 255, .94); box-shadow: 0 6px 17px rgba(67, 133, 205, .09), inset 0 1px rgba(255, 255, 255, .95); }
+.team-plans-panel { padding-right: 278px; background: radial-gradient(circle at 90% 48%, rgba(106, 188, 255, .18), transparent 23%), linear-gradient(105deg, rgba(255, 255, 255, .98), rgba(247, 252, 255, .97) 52%, rgba(225, 242, 255, .96)); }
+.team-plans-panel > :not(.team-plan-artwork) { position: relative; z-index: 2; }
+.team-plan-artwork { position: absolute; top: 0; right: 0; bottom: 0; z-index: 1; display: grid; width: 258px; place-items: center; overflow: hidden; background: linear-gradient(90deg, rgba(232, 246, 255, .08), rgba(215, 239, 255, .42)); pointer-events: none; }
+.team-plan-artwork img { display: block; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 8px 12px rgba(43, 118, 216, .15)); }
+.team-panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; min-height: 38px; }
+.team-panel-title { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.team-panel-title > div { display: grid; gap: 2px; min-width: 0; }
+.team-panel-title strong { color: #102d5f; font-size: 17px; font-weight: 750; }
+.team-panel-icon { display: grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; border-radius: 8px; }
+.team-panel-icon--purple { color: #7651df; background: #eee9ff; }
+.team-panel-note { display: inline-flex; align-items: center; gap: 4px; color: #7d96b8; font-size: 11px; }
+.team-panel-empty { display: grid; place-items: center; color: #8298b7; font-size: 12px; }
+.team-plans-panel { padding-bottom: 16px; }
+.team-plan-board { display: grid; gap: 7px; margin-top: 8px; }
+.team-plan-row { display: grid; grid-template-columns: 38px minmax(0, 1.6fr) minmax(120px, 0.8fr) auto; align-items: center; gap: 12px; padding: 9px 11px; border: 1px solid #e0edf9; border-radius: 10px; background: linear-gradient(90deg, #f7fbff, #eef7ff); }
+.team-plan-index { display: grid; width: 32px; height: 27px; place-items: center; border-radius: 8px; color: #fff; background: linear-gradient(135deg, #2d86ef, #59b3ff); font-size: 11px; font-weight: 700; }
+.team-plan-row:nth-child(2n) .team-plan-index { background: linear-gradient(135deg, #815ae8, #ae7cf4); }
+.team-plan-copy { display: grid; min-width: 0; gap: 3px; }
+.team-plan-copy strong { overflow: hidden; color: #183967; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.team-plan-copy span { overflow: hidden; color: #8098b9; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.team-plan-date { display: inline-flex; align-items: center; justify-content: center; gap: 5px; color: #7390b3; font-size: 11px; white-space: nowrap; }
+.team-plan-date svg { color: #5b96df; }
+.team-plan-status { padding: 4px 8px; border-radius: 99px; color: #2878d2; background: #e5f1ff; font-size: 11px; white-space: nowrap; }
+.team-plans-empty { min-height: 88px; }
+@media (max-width: 760px) { .team-plan-row { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 8px; } .team-plan-date { display: none; } }
+@media (max-width: 1080px) { .team-plans-panel { padding-right: 15px; } .team-plan-artwork { display: none; } }

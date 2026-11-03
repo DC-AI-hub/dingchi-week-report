@@ -4,6 +4,9 @@ import { setReportRole } from "@/shared/api/report-context"
 
 import { useAuthStore } from "@/features/auth/store"
 
+import { mobileRoutes } from "./mobile"
+import { isMobileDevice, mobilePath } from "@/shared/utils/device-routing"
+
 const routes: RouteRecordRaw[] = [
   {path:"/monthly-plans/:planId/change",name:"monthly-plan-change-new",component:()=>import("@/views/monthly-plan/EditView.vue"),meta:{title:"填写月度计划变更",requiresAuth:true}},
   { path: "/reporting-position", name: "reporting-position", redirect: to => ({name:to.query.target === "monthly-plan-new"?"monthly-plan-new":"weekly-report-new"}) },
@@ -112,22 +115,26 @@ const routes: RouteRecordRaw[] = [
 
 export const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes,
+  routes: [...mobileRoutes, ...routes],
   scrollBehavior: () => ({ top: 0 }),
 })
 
 router.beforeEach(async (to) => {
+  const mobile = to.path === "/mobile" || to.path.startsWith("/mobile/")
+  if (!mobile && isMobileDevice()) return { path: mobilePath(to.path), query: to.query, hash: to.hash, replace: true }
+  const home = mobile ? "mobile-dashboard" : "dashboard"
+  const login = mobile ? "mobile-login" : "login"
   const authStore = useAuthStore()
   if (to.meta.public) {
-    if (to.name === "login" && authStore.isAuthenticated) return { name: "dashboard" }
+    if (to.name === login && authStore.isAuthenticated) return { name: home }
     return true
   }
   await authStore.bootstrap()
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    return { name: "login", query: { redirect: to.fullPath } }
+    return { name: login, query: { redirect: to.fullPath } }
   }
   if (to.meta.adminOnly && authStore.effectiveRole?.role_code !== "system_admin") {
-    return { name: "dashboard" }
+    return { name: home }
   }
   setReportRole("")
   return true
