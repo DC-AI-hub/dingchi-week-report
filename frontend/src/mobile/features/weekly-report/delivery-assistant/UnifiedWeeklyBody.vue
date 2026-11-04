@@ -5,7 +5,6 @@ import type {SubmissionPart} from "@/mobile/features/submissions/types"
 import type {ReportPayload} from "@/mobile/features/weekly-report/types"
 import CustomerTaskTabs from "@/mobile/features/submissions/components/CustomerTaskTabs.vue"
 import TaskCollectionSection from "@/mobile/features/weekly-report/delivery-assistant/components/TaskCollectionSection.vue"
-import DailyTaskSection from "@/mobile/features/weekly-report/components/DailyTaskSection.vue"
 const props=defineProps<{part:SubmissionPart;periodStart:string}>()
 const emit=defineEmits<{"update:payload":[value:ReportPayload]}>()
 const form=useDeliveryAssistantReportForm(()=>props.part.id || "")
@@ -24,5 +23,5 @@ watch(()=>form.buildPayload(),payload=>emit("update:payload",payload),{deep:true
  <CustomerTaskTabs :tasks="form.weeklyTasks.value" :customers="part.customers" name-field="customer_name" @update:tasks="form.weeklyTasks.value=$event" v-slot="scope">
   <TaskCollectionSection :tasks="scope.tasks" @update:tasks="scope.update($event)" title="本周工作任务" :default-owner-id="form.authStore.user?.id || ''" :owner-name="form.authStore.user?.display_name || ''" :field-definitions="form.taskFields.value"  />
  </CustomerTaskTabs>
- <DailyTaskSection :report="form.report" v-model:daily-tasks="form.dailyTasks.value" defer-save can-edit />
 </template>
+

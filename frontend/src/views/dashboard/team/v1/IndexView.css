@@ -38,3 +38,6 @@
 @media (max-width: 680px) {
   .team-home-page { gap: 7px; padding-inline: 0; }
 }
+
+.team-home-page {gap:var(--panel-stack-gap);}
+

@@ -5,3 +5,6 @@
 .leader-state--error { display: flex; justify-content: center; align-items: center; gap: 8px; color: #bf5962; }
 @media (max-width: 920px) { .leader-bottom-grid { grid-template-columns: 1fr; } }
 @media (max-width: 680px) { .leader-home-page { gap: 9px; padding-inline: 0; } }
+
+.leader-home-page {gap:var(--panel-stack-gap);}
+

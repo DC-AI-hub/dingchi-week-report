@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ScrollableTabs from "@/mobile/components/navigation/ScrollableTabs.vue"
 import AlertDialog from "@/mobile/components/feedback/AlertDialog.vue"
 import ConfirmDialog from "@/mobile/components/feedback/ConfirmDialog.vue"
 import NoticeBridge from "@/mobile/components/feedback/NoticeBridge.vue"
@@ -14,7 +15,7 @@ const {
   canEdit, canSubmit, canDelete, removeReport, submitOwnReport,
   changePage, confirmDialogOpen, confirmDialogBusy, confirmDialogAction, closeConfirmDialog,
   confirmReportAction, authStore, reportCopy, copyBusy, copyMessage,
-  copyTitle, dailyDialogOpen, dailyDialogReport, dailyDialogTasks, openDailyDialog,
+  copyTitle, dailyPositionChoices, dailyPosition, dailyDialogOpen, dailyDialogReport, dailyDialogTasks, openDailyDialog,
   closeDailyDialog, onDailySaved
 } = useTeamReportList()
 </script>
@@ -24,32 +25,8 @@ const {
     <NoticeBridge :warning-message="errorMessage" />
 
     <section class="dashboard-card report-list-card">
-      <div class="report-list-heading">
-        <h1>团队周报</h1>
-        <button v-if="activeTab === 'self'" class="primary-button" type="button" @click="openCreateReport">填写周报</button>
-      </div>
-      <div class="report-tabs" role="tablist" aria-label="周报范围">
-        <button
-          class="report-tab"
-          :class="{ 'is-active': activeTab === 'self' }"
-          type="button"
-          role="tab"
-          :aria-selected="activeTab === 'self'"
-          @click="switchTab('self')"
-        >
-          我的周报
-        </button>
-        <button
-          class="report-tab"
-          :class="{ 'is-active': activeTab === 'team' }"
-          type="button"
-          role="tab"
-          :aria-selected="activeTab === 'team'"
-          @click="switchTab('team')"
-        >
-          团队周报
-        </button>
-      </div>
+      <Teleport defer to="#weekly-list-create-action"><button v-if="activeTab === 'self'" class="primary-button" type="button" @click="openCreateReport">填写周报</button>
+      </Teleport>
       <ReportFilterBar
         v-model:role-code="filters.role_code"
         v-model:month-key="filters.month_key"
@@ -101,8 +78,10 @@ const {
       @confirm="confirmReportAction"
     />
     <AlertDialog :open="Boolean(copyMessage)" :title="copyTitle" :message="copyMessage" @close="copyMessage = ''" />
-    <DailyTaskDialog :open="dailyDialogOpen" :report="dailyDialogReport" :existing-tasks="dailyDialogTasks" @close="closeDailyDialog" @saved="onDailySaved" />
+    <DailyTaskDialog :open="dailyDialogOpen" :report="dailyDialogReport" :existing-tasks="dailyDialogTasks" @close="closeDailyDialog" @saved="onDailySaved"><template #before-form><ScrollableTabs v-if="dailyPositionChoices.length > 1" v-model="dailyPosition" :items="dailyPositionChoices" aria-label="日报职位" /></template></DailyTaskDialog>
   </div>
 </template>
 
 <style scoped src="./IndexView.css"></style>
+
+

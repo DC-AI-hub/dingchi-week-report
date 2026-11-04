@@ -549,3 +549,6 @@
     height: 24px;
   }
 }
+
+.app-main {padding-top:var(--panel-stack-gap);}
+

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ScrollableTabs from "@/mobile/components/navigation/ScrollableTabs.vue"
 import TaskHierarchy from "@/mobile/components/data-display/TaskHierarchy.vue"
 import BaseDialog from "@/mobile/components/overlay/BaseDialog.vue"
 import { useReportTaskTable, type ReportTaskTableProps } from "../composables/useReportTaskTable"
@@ -16,33 +17,29 @@ defineExpose({ openColumns, customers, activeCustomer, deliveryMode })
 
 <template>
   <div class="report-task-table" :class="{ 'report-task-table--delivery': sharedMode }">
-    <div v-if="showCustomerTabs !== false && deliveryMode && customers.length" class="customer-tabs" role="tablist" aria-label="客户">
-      <button v-for="customer in customers" :key="customer.id" type="button" role="tab"
-        :aria-selected="activeCustomer === customer.id" :class="{ active: activeCustomer === customer.id }"
-        @click="activeCustomer = customer.id">{{ customer.name }}</button>
-    </div>
+    <ScrollableTabs v-if="showCustomerTabs !== false && deliveryMode && customers.length" v-model="activeCustomer" :items="customers" aria-label="客户" />
     <div v-if="showColumnsButton" class="report-task-table__toolbar">
       <button class="ghost-button" type="button" @click="columnsOpen = true">选择展示字段</button>
     </div>
 
     <div class="report-task-table-wrap">
       <div class="mobile-task-cards">
-        
-        
+
+
           <TaskHierarchy :rows="pagedItems" :row-key="row => String(row.id || row.task_code)" :task-key="row => sharedKey(row,false)" :content-key="row => sharedKey(row,true)" :title="row => formatReportTaskField(row,'task_name')">
 <template #task="{row:item,index}">
-              
+
               <div data-card-field :data-label="primaryField?.label || '客户'"
                 v-if="primaryField"
                 class="fixed-col customer-col customer-cell"
-               
+
               >
                 <span class="cell-text user-content" :title="primaryValue(item)">
                   {{ primaryValue(item) }}
                 </span>
               </div>
               <div data-card-field data-label="工作任务"
-                
+
                 class="fixed-col task-col task-cell"
                 :class="{ 'task-col--without-primary': !primaryField }"
               >
@@ -58,8 +55,8 @@ defineExpose({ openColumns, customers, activeCustomer, deliveryMode })
               </div>
               </template>
 <template #content="{row:item,index}"><template v-for="field in selectedFields.filter(item => item.field_code === 'work_content')" :key="field.field_code">
-                <div data-card-field :data-label="field.label" 
-                 
+                <div data-card-field :data-label="field.label"
+
                   class="dynamic-col" :class="{ 'multiline-col': ['work_content', 'output_description'].includes(field.field_code) }">
                   <span
                     class="cell-text" :class="{'user-content':field.field_code!=='on_time_status'}"
@@ -73,8 +70,8 @@ defineExpose({ openColumns, customers, activeCustomer, deliveryMode })
               </template>
               </template>
 <template #row="{row:item,index}"><template v-for="field in selectedFields.filter(item => item.field_code !== 'work_content')" :key="field.field_code">
-                <div data-card-field :data-label="field.label" 
-                 
+                <div data-card-field :data-label="field.label"
+
                   class="dynamic-col" :class="{ 'multiline-col': ['work_content', 'output_description'].includes(field.field_code) }">
                   <span
                     class="cell-text" :class="{'user-content':field.field_code!=='on_time_status'}"
@@ -102,7 +99,7 @@ defineExpose({ openColumns, customers, activeCustomer, deliveryMode })
           <article data-mobile-task-card v-if="!pagedItems.length">
             <div data-card-field data-label="" :colspan="selectedFields.length + (primaryField ? 5 : 4)" class="empty-cell">暂无工作任务</div>
           </article>
-        
+
       </div>
     </div>
     <ScrollLoadMore :show-end="false"
@@ -144,5 +141,3 @@ defineExpose({ openColumns, customers, activeCustomer, deliveryMode })
 <style scoped src="./ReportTaskTable.css"></style>
 
 <style scoped src="@/mobile/components/data-display/TaskCards.css"></style>
-
-

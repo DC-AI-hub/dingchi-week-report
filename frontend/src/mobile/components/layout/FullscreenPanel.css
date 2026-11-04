@@ -98,3 +98,8 @@
 
 .fullscreen-panel__body :deep(.task-filter-panel) {margin-bottom:12px;}
 
+/* Prevent tab margins and toolbar padding from stacking vertically. */
+.fullscreen-panel__header {margin-bottom:8px;}
+.fullscreen-panel__toolbar {gap:12px;margin-bottom:8px;}
+.fullscreen-panel__toolbar > :deep(.scrollable-tabs),.fullscreen-panel__toolbar > :deep(.monthly-customer-tabs),.fullscreen-panel__toolbar > :deep(.customer-tabs-header) {margin-bottom:0;}
+.fullscreen-panel__actions {padding-bottom:0;align-self:center;}

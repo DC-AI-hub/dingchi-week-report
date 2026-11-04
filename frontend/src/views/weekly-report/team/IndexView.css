@@ -32,42 +32,15 @@
   font-size: clamp(1.45rem, 2.5vw, 2rem);
 }
 
-.report-tabs {
-  display: flex;
-  gap: 0.35rem;
-  border-bottom: 1px solid #e3edf9;
-}
 
-.report-tab {
-  position: relative;
-  border: 0;
-  padding: 0.58rem 0.9rem 0.72rem;
-  color: var(--muted);
-  background: transparent;
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
 
-.report-tab::after {
-  position: absolute;
-  right: 0.7rem;
-  bottom: -1px;
-  left: 0.7rem;
-  height: 3px;
-  border-radius: 3px 3px 0 0;
-  background: var(--accent);
-  content: "";
-  opacity: 0;
-}
 
-.report-tab.is-active {
-  color: var(--accent-dark);
-}
 
-.report-tab.is-active::after {
-  opacity: 1;
-}
+
+
+
+
+
 
 @media (max-width: 680px) {
   .report-list-heading {
@@ -79,3 +52,6 @@
     width: 100%;
   }
 }
+
+.weekly-report-page {gap:var(--panel-stack-gap);}
+

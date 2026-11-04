@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ScrollableTabs from "@/components/navigation/ScrollableTabs.vue"
 import { vRowBackgrounds } from "@/shared/table/row-backgrounds"
 import { vResizableColumns } from "@/shared/table/resizable-columns"
 import { useTaskTableResizeKey } from "@/features/weekly-report/useTaskTableResizeKey"
@@ -19,11 +20,7 @@ defineExpose({ openColumns, customers, activeCustomer, deliveryMode })
 
 <template>
   <div class="report-task-table" :class="{ 'report-task-table--delivery': sharedMode }">
-    <div v-if="showCustomerTabs !== false && deliveryMode && customers.length" class="customer-tabs" role="tablist" aria-label="客户">
-      <button v-for="customer in customers" :key="customer.id" type="button" role="tab"
-        :aria-selected="activeCustomer === customer.id" :class="{ active: activeCustomer === customer.id }"
-        @click="activeCustomer = customer.id">{{ customer.name }}</button>
-    </div>
+    <ScrollableTabs v-if="showCustomerTabs !== false && deliveryMode && customers.length" v-model="activeCustomer" :items="customers" aria-label="客户" />
     <div v-if="showColumnsButton" class="report-task-table__toolbar">
       <button class="ghost-button" type="button" @click="columnsOpen = true">选择展示字段</button>
     </div>

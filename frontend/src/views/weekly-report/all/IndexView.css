@@ -30,3 +30,6 @@
   color: var(--text-strong);
   font-size: clamp(1.45rem, 2.5vw, 2rem);
 }
+
+.weekly-report-page {gap:var(--panel-stack-gap);}
+

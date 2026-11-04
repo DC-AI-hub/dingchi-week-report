@@ -106,9 +106,7 @@ watch(() => route.query, () => {
     <NoticeBridge :warning-message="errorMessage" />
 
     <section class="dashboard-card report-list-card">
-      <div class="report-list-heading">
-        <h1>全员周报</h1>
-      </div>
+
       <ReportFilterBar
         v-model:role-code="filters.role_code"
         v-model:month-key="filters.month_key"

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { ChevronLeft, ChevronRight } from "lucide-vue-next"
-const props = defineProps<{ items: { id: string; name: string }[]; modelValue: string }>()
+const props = defineProps<{ items: { id: string; name: string }[]; modelValue: string; ariaLabel?:string; tabIdPrefix?:string; panelId?:string }>()
 const emit = defineEmits<{ "update:modelValue": [value: string] }>()
 const track = ref<HTMLElement | null>(null)
 const overflow = ref(false)
@@ -40,12 +40,12 @@ onBeforeUnmount(() => observer?.disconnect())
 
 <template>
   <div class="scrollable-tabs">
-    <button v-if="overflow" class="tab-arrow" type="button" aria-label="向左滚动客户标签" :disabled="atStart" @click="scroll(-1)"><ChevronLeft :size="18" /></button>
-    <div ref="track" class="tab-track" role="tablist" aria-label="客户" @scroll="measure">
-      <button v-for="item in items" :key="item.id" type="button" role="tab" :aria-selected="modelValue === item.id"
-        :class="{ active: modelValue === item.id }" @click="emit('update:modelValue', item.id)">{{ item.name }}</button>
+    <button v-if="overflow" class="tab-arrow" type="button" aria-label="向左滚动标签" :disabled="atStart" @click="scroll(-1)"><ChevronLeft :size="18" /></button>
+    <div ref="track" class="tab-track" role="tablist" :aria-label="ariaLabel || '标签切换'" @scroll="measure">
+      <button v-for="item in items" :key="item.id" :id="tabIdPrefix ? `${tabIdPrefix}${item.id}` : undefined" :aria-controls="panelId" type="button" role="tab" :aria-selected="modelValue === item.id"
+        :class="{ active: modelValue === item.id }" @click="emit('update:modelValue', item.id)">{{ item.name }}<slot name="suffix" :item="item" /></button>
     </div>
-    <button v-if="overflow" class="tab-arrow" type="button" aria-label="向右滚动客户标签" :disabled="atEnd" @click="scroll(1)"><ChevronRight :size="18" /></button>
+    <button v-if="overflow" class="tab-arrow" type="button" aria-label="向右滚动标签" :disabled="atEnd" @click="scroll(1)"><ChevronRight :size="18" /></button>
   </div>
 </template>
 <style scoped src="./ScrollableTabs.css"></style>

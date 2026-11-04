@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ScrollableTabs from "@/components/navigation/ScrollableTabs.vue"
 import AlertDialog from "@/components/feedback/AlertDialog.vue"
 import ConfirmDialog from "@/components/feedback/ConfirmDialog.vue"
 import NoticeBridge from "@/components/feedback/NoticeBridge.vue"
@@ -18,7 +19,7 @@ const {
   authStore, copyBusy, reportCopy,
   copyMessage, copyTitle, removeReport,
   submitOwnReport, openDailyDialog, changePage,
-  dailyDialogOpen, dailyDialogReport, dailyDialogTasks,
+  dailyDialogOpen, dailyDialogReport, dailyDialogTasks, dailyPositionChoices, dailyPosition,
   closeDailyDialog, onDailySaved, confirmDialogOpen,
   confirmDialogBusy, confirmDialogAction, closeConfirmDialog,
   confirmReportAction, templateWarningOpen,
@@ -30,10 +31,8 @@ const {
     <NoticeBridge :warning-message="errorMessage" />
 
     <section class="dashboard-card report-list-card">
-      <div class="report-list-heading">
-        <h1>我的周报</h1>
-        <button class="primary-button" type="button" @click="openCreateReport">填写周报</button>
-      </div>
+      <Teleport defer to="#weekly-list-create-action"><button class="primary-button" type="button" @click="openCreateReport">填写周报</button>
+      </Teleport>
       <ReportFilterBar
         v-model:role-code="filters.role_code"
         v-model:month-key="filters.month_key"
@@ -80,7 +79,7 @@ const {
       :existing-tasks="dailyDialogTasks"
       @close="closeDailyDialog"
       @saved="onDailySaved"
-    />
+    ><template #before-form><ScrollableTabs v-if="dailyPositionChoices.length > 1" v-model="dailyPosition" :items="dailyPositionChoices" aria-label="日报职位" /></template></DailyTaskDialog>
     <ConfirmDialog
       :open="confirmDialogOpen"
       :busy="confirmDialogBusy"
@@ -103,3 +102,4 @@ const {
 </template>
 
 <style scoped src="./IndexView.css"></style>
+

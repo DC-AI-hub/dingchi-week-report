@@ -79,7 +79,7 @@ async function confirmDelete() {
   deleteBusy.value = true
   try {
     if (!props.deferSave) {
-      await deleteDailyTask(props.report.id, pendingDelete.value.id)
+      await deleteDailyTask(pendingDelete.value.report_id || props.report.id, pendingDelete.value.id)
     }
     items.value = items.value.filter((item) => item.id !== pendingDelete.value?.id)
     emit("update:dailyTasks", [...items.value])
@@ -178,3 +178,4 @@ function displayDate(value: string) {
 </template>
 
 <style scoped src="./DailyTaskSection.css"></style>
+

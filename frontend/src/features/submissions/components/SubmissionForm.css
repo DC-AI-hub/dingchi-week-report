@@ -14,3 +14,13 @@
 .submission-period--weekly :deep(.period-calendar) {margin-left:auto;}
 .submission-period-meta {grid-column:1/-1;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px 20px;color:var(--muted);font-size:0.85rem;}
 @media(max-width:640px) {.submission-period--weekly {grid-template-columns:minmax(0,1fr);gap:16px;}.submission-period-meta {justify-content:flex-start;}}
+
+.submission-form,.submission-template,.submission-layout,.submission-positions {gap:var(--panel-stack-gap);}
+
+
+.submission-position-workspace {min-width:0;padding:0;}
+.submission-position-tabs {min-width:0;margin:0 20px;padding:10px 0 0;border-bottom:1px solid var(--line);}
+.submission-position-workspace .submission-template {gap:0;}
+.submission-position-workspace :deep(.dashboard-card:not(.fullscreen-panel--expanded)) {margin:0;border:0;border-top:1px solid var(--line);border-radius:0;background:transparent;box-shadow:none;}
+.submission-position-workspace :deep(.goal-card) {border-top:0!important;}
+@media(max-width:640px) {.submission-position-tabs {margin-inline:14px;}}

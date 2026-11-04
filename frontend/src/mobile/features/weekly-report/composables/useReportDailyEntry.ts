@@ -8,8 +8,8 @@ export function useReportDailyEntry(onError:(message:string)=>void) {
  const entries=ref<DailyEntry[]>([])
  const current=computed(()=>entries.value.find(item=>item.id===active.value))
  const report=computed(()=>current.value?.report || null)
- const tasks=computed(()=>current.value?.tasks || [])
- const choices=computed(()=>entries.value.map(({id,name})=>({id,name})))
+ const tasks=computed(()=>entries.value.flatMap(item=>item.tasks))
+ const choices=computed(()=>[] as {id:string;name:string}[])
  let generation=0
  async function show(value:WeeklyReport){
   if(loading.value)return
@@ -28,3 +28,4 @@ export function useReportDailyEntry(onError:(message:string)=>void) {
  function saved(task:DailyWorkTask){if(!current.value)return;const index=current.value.tasks.findIndex(item=>item.id===task.id);if(index<0)current.value.tasks.push(task);else current.value.tasks.splice(index,1,task)}
  return {open,report,tasks,choices,active,show,close,saved}
 }
+

@@ -100,7 +100,7 @@ async function save() {
       const now = new Date().toISOString()
       emit("saved", {
         id: props.task?.id || `draft-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        report_id: props.report.id || "",
+        report_id: props.task?.report_id || props.report.id || "",
         work_date: workDate.value,
         work_content: content,
         created_at: props.task?.created_at || now,
@@ -110,7 +110,7 @@ async function save() {
       return
     }
     const saved = isEditing.value
-      ? await updateDailyTask(props.report.id, props.task!.id, payload)
+      ? await updateDailyTask(props.task!.report_id || props.report.id, props.task!.id, payload)
       : await createDailyTask(props.report.id, payload)
     emit("saved", saved)
     emit("close")
@@ -151,6 +151,7 @@ function localDateInput() {
     :busy="busy"
     @close="emit('close')"
   >
+    <slot name="before-form" />
     <form class="daily-task-dialog" @submit.prevent="save">
       <label class="daily-task-dialog__field">
         <span class="daily-task-dialog__label">日期<span class="required-mark">*</span></span>
@@ -192,3 +193,5 @@ function localDateInput() {
 </template>
 
 <style scoped src="./DailyTaskDialog.css"></style>
+
+

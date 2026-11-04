@@ -25,7 +25,7 @@ onMounted(() => {
 </script>
 <template>
 <section class="dashboard-card shared-report-card" aria-label="共享周报">
- <h1>共享周报</h1>
+
  <ReportFilterBar v-model:month-key="filters.month_key" v-model:period-start="filters.period_start" v-model:period-end="filters.period_end" v-model:role-code="filters.role_code" v-model:employee-id="filters.employee_id" :user-options="users" show-person @search="search" @reset="reset" />
  <NoticeBridge :warning-message="list.errorMessage.value || optionError" />
  <ReportListTable @restored="load" :reports="list.reports.value" scope="all" :is-loading="list.isLoading.value" :return-query="{tab:'shared'}" empty-message="暂无共享周报" />

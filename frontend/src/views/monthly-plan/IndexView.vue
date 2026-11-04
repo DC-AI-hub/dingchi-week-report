@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ScrollableTabs from "@/components/navigation/ScrollableTabs.vue"
 import { useRouter, useRoute } from "vue-router"
 import { onMounted, ref, watch } from "vue"
 import { useMonthlyPlanList } from "@/features/monthly-plan/useMonthlyPlanList"
@@ -51,7 +52,7 @@ onMounted(async()=>{
   <div class="monthly-plan-page">
     <section class="dashboard-card monthly-list-card" aria-label="月度计划列表">
     <MonthlyPlanListHeader :context="list.context.value" :personal="list.activeTab.value==='mine'">
-    <nav class="monthly-tabs" aria-label="月度计划分类" role="tablist"><button v-for="tab in list.tabs.value" :id="`monthly-tab-${tab.value}`" :key="tab.value" type="button" role="tab" :aria-selected="list.activeTab.value===tab.value" aria-controls="monthly-tab-content" :class="{'is-active':list.activeTab.value===tab.value}" @click="selectTab(tab.value)">{{tab.label}}<CountBadge v-if="tab.value==='approvals'" :count="list.pendingCount.value" /></button></nav>
+    <ScrollableTabs :items="list.tabs.value.map(tab => ({id:tab.value,name:tab.label}))" :model-value="list.activeTab.value" aria-label="月度计划分类" tab-id-prefix="monthly-tab-" panel-id="monthly-tab-content" @update:model-value="selectTab($event as 'mine' | 'members' | 'approvals' | 'shared')"><template #suffix="{item}"><CountBadge v-if="item.id==='approvals'" :count="list.pendingCount.value" /></template></ScrollableTabs>
     </MonthlyPlanListHeader>
     <div id="monthly-tab-content" class="monthly-tab-content" role="tabpanel" :aria-labelledby="`monthly-tab-${list.activeTab.value}`">
     <MonthlyPlanFilters v-model="list.filters" :busy="list.busy.value" :view="list.activeTab.value" @search="search" />

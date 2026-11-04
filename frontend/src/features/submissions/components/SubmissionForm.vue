@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import DailyTaskSection from "@/features/weekly-report/components/DailyTaskSection.vue"
+import {useCommonDailySummary} from '../useCommonDailySummary'
 import {computed,onMounted} from "vue"
 import {useRoute,useRouter,RouterLink} from "vue-router"
 import WeekPeriodPicker from "@/components/form/WeekPeriodPicker.vue"
@@ -21,11 +23,12 @@ import SubmissionWeeklyReadonly from "./SubmissionWeeklyReadonly.vue"
 import SubmissionWeeklyHeading from "./SubmissionWeeklyHeading.vue"
 const props=defineProps<{kind:SubmissionKind;readonly?:boolean}>()
 const route=useRoute(),router=useRouter(),auth=useAuthStore(),editor=useSubmissionEditor(props.kind,Boolean(props.readonly))
+const commonDaily=useCommonDailySummary(editor.input)
 const periodEnd=computed(()=>{const value=new Date(`${editor.input.period_start}T00:00:00`);value.setDate(value.getDate()+6);return `${value.getFullYear()}-${String(value.getMonth()+1).padStart(2,"0")}-${String(value.getDate()).padStart(2,"0")}`})
 const back=computed(()=>props.kind==='monthly'?'monthly-plans':'weekly-reports')
 const editable=computed(()=>!props.readonly && editor.canEdit.value)
 async function save(submit:boolean){const id=await editor.save(submit);if(!id)return;const prefix=props.kind==='monthly'?'monthly-plan':'weekly-report';await router.replace({name:editor.change.value?`monthly-plan-change-${submit?'detail':'edit'}`:`${prefix}-${submit?'detail':'edit'}`,params:editor.change.value?{changeId:id}:props.kind==='monthly'?{planId:id}:{reportId:id}})}
-function update(part:SubmissionPart,payload:SubmissionPart['payload']){editor.update(part,payload)}
+function update(part:SubmissionPart,payload:SubmissionPart['payload']){editor.update(part,{...payload,daily_tasks:part.payload.daily_tasks})}
 async function beginChange(){if(editor.detail.value)await router.push({name:"monthly-plan-change-new",params:{planId:editor.detail.value.plan.id}})}
 function baseline(part:SubmissionPart){const before=editor.change.value?.base_snapshot.parts.find(p=>p.role_code===part.role_code);return before?{...before.payload,template_code:before.template_code,month_key:editor.input.month_key}:undefined}
 onMounted(()=>{if(props.kind==='weekly' && !route.params.reportId && typeof route.query.period_start==='string' && /^\d{4}-\d{2}-\d{2}$/.test(route.query.period_start))editor.input.period_start=route.query.period_start;void editor.load(String(route.params.planId || route.params.reportId || ''),String(route.params.changeId || ''),route.name==='monthly-plan-change-new')})
@@ -46,7 +49,7 @@ onMounted(()=>{if(props.kind==='weekly' && !route.params.reportId && typeof rout
  <PlanDetailHeading v-if="editor.change.value || editor.detail.value" :plan="(editor.change.value?.plan || editor.detail.value!.plan)" :change="Boolean(editor.change.value)" :status="editor.change.value?.change.status" :updated-at="editor.change.value?.change.updated_at" :rejection-reason="editor.change.value?.change.rejection_reason || editor.detail.value?.plan.rejection_reason" />
  <section v-else class="dashboard-card submission-period" :inert="editor.busy.value"><label class="submission-month"><span>所属月度<span class="required" aria-hidden="true"> *</span></span><input type="month" v-model="editor.input.month_key" required aria-required="true" :disabled="!editable" /></label></section>
  </template>
- <ScrollableTabs v-model="editor.active.value" :items="editor.tabs.value" />
+ <div class="dashboard-card submission-position-workspace"><div class="submission-position-tabs"><ScrollableTabs v-model="editor.active.value" :items="editor.tabs.value" aria-label="填报职位" /></div>
  <section v-for="part in editor.input.parts" :key="`${part.role_code}:${editor.generation.value}`" v-show="editor.active.value===part.role_code" class="submission-template" :aria-label="part.role_name">
  <PlanComparison v-if="readonly && editor.change.value && baseline(part)" :before="baseline(part)!" :after="{...part.payload,template_code:part.template_code,month_key:editor.input.month_key}" />
  <component v-if="kind==='monthly'" :is="monthlyBodies[part.template_code]" :part="part" :month-key="editor.input.month_key" :readonly="!editable" @update:payload="update(part,$event)" />
@@ -57,6 +60,8 @@ onMounted(()=>{if(props.kind==='weekly' && !route.params.reportId && typeof rout
  <SubmissionWeeklyReadonly v-else :part="part" />
  </template>
  </section>
+ </div>
+ <DailyTaskSection v-if="kind==='weekly'" :report="commonDaily.report.value" :daily-tasks="commonDaily.tasks.value" :can-edit="editable" :defer-save="editable" @update:daily-tasks="commonDaily.update" />
  <PlanChangeHistory v-if="readonly && !editor.change.value && editor.detail.value?.history" :history="editor.detail.value.history" />
  </div>
  <MonthlyFloatingPanels v-if="kind==='monthly'" :has-reason="Boolean(editor.change.value)" :busy="editor.busy.value">
@@ -68,3 +73,7 @@ onMounted(()=>{if(props.kind==='weekly' && !route.params.reportId && typeof rout
 </div>
 </template>
 <style scoped src="./SubmissionForm.css"></style>
+
+
+
+

@@ -79,3 +79,6 @@
 .mobile-actions :deep(.submission-actions:has(> :only-child)) {display:flex;justify-content:flex-end;}
 .mobile-actions :deep(.submission-actions > :only-child) {flex:0 0 auto;min-width:112px;}
 .mobile-actions :deep(.submission-change-button) {background:#1765cb;border:1px solid #1765cb;color:#fff;font-weight:600;box-shadow:0 3px 8px rgba(23,101,203,.16);}
+
+.mobile-main {padding-top:var(--panel-stack-gap);}
+

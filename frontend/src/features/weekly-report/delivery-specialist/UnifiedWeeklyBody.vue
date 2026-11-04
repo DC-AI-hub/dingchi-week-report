@@ -7,7 +7,6 @@ import type {SubmissionPart} from "@/features/submissions/types"
 import type {ReportPayload} from "@/features/weekly-report/types"
 import CustomerTaskTabs from "@/features/submissions/components/CustomerTaskTabs.vue"
 import TaskCollectionSection from "@/features/weekly-report/components/DeliveryTaskCollectionSection.vue"
-import DailyTaskSection from "@/features/weekly-report/components/DailyTaskSection.vue"
 const props=defineProps<{part:SubmissionPart;periodStart:string}>()
 const emit=defineEmits<{"update:payload":[value:ReportPayload]}>()
 const form=useDeliveryReportForm(()=>props.part.id || "")
@@ -26,5 +25,5 @@ watch(()=>form.buildPayload(),payload=>emit("update:payload",payload),{deep:true
  <CustomerTaskTabs :tasks="form.weeklyTasks.value" :customers="part.customers" name-field="customer_name" @update:tasks="form.weeklyTasks.value=$event" v-slot="scope">
   <TaskCollectionSection :tasks="scope.tasks" @update:tasks="scope.update($event)" title="本周工作任务" :default-owner-id="form.authStore.user?.id || ''" :owner-name="form.authStore.user?.display_name || ''" :field-definitions="form.taskFields.value"  :templates="deliveryTaskTemplates" :sample-content="deliveryWeeklyTaskSample" :sample-fields="deliveryWeeklyTaskSampleFields" mode="weekly" column-preference-key="delivery_specialist_v1" />
  </CustomerTaskTabs>
- <DailyTaskSection :report="form.report" v-model:daily-tasks="form.dailyTasks.value" defer-save can-edit />
 </template>
+

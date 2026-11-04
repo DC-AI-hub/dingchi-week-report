@@ -31,10 +31,8 @@ const {
     <NoticeBridge :warning-message="errorMessage" />
 
     <section class="dashboard-card report-list-card">
-      <div class="report-list-heading">
-        <h1>我的周报</h1>
-        <button class="primary-button" type="button" @click="openCreateReport">填写周报</button>
-      </div>
+      <Teleport defer to="#weekly-list-create-action"><button class="primary-button" type="button" @click="openCreateReport">填写周报</button>
+      </Teleport>
       <ReportFilterBar
         v-model:role-code="filters.role_code"
         v-model:month-key="filters.month_key"
@@ -104,4 +102,3 @@ const {
 </template>
 
 <style scoped src="./IndexView.css"></style>
-

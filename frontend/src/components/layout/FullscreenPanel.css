@@ -67,3 +67,8 @@
 .fullscreen-panel--expanded .fullscreen-panel__body :deep(.task-table-wrap),
 .fullscreen-panel--expanded .fullscreen-panel__body :deep(.monthly-task-table-wrap),
 .fullscreen-panel--expanded .fullscreen-panel__body :deep(.report-task-table-wrap) { overscroll-behavior-y: contain; }
+/* Prevent tab margins and toolbar padding from stacking vertically. */
+.fullscreen-panel__header {margin-bottom:8px;}
+.fullscreen-panel__toolbar {gap:12px;margin-bottom:8px;}
+.fullscreen-panel__toolbar > :deep(.scrollable-tabs),.fullscreen-panel__toolbar > :deep(.monthly-customer-tabs),.fullscreen-panel__toolbar > :deep(.customer-tabs-header) {margin-bottom:0;}
+.fullscreen-panel__actions {padding-bottom:0;align-self:center;}

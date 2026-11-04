@@ -69,3 +69,6 @@
     padding-inline: 0;
   }
 }
+
+.personal-home-page {gap:var(--panel-stack-gap);}
+
