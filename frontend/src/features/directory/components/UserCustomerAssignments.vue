@@ -37,9 +37,11 @@ async function load(){
 onMounted(()=>void load())
 </script>
 <template>
- <div>
+ <div class="customer-selection">
   <SearchableSelect :model-value="selected" :options="options" multiple teleport-menu placeholder="无" aria-label="负责的客户" :disabled="disabled || !loaded" @update:model-value="update" />
   <p v-if="loaded && unavailable.length" role="status">部分已选客户当前不可选，请确认客户及职位配置后重新选择或移除。</p>
   <p v-if="error" role="alert">{{error}} <button type="button" @click="load">重试</button></p>
  </div>
 </template>
+<style scoped src="./UserCustomerAssignments.css"></style>
+

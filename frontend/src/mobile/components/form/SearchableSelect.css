@@ -176,3 +176,10 @@
 .searchable-select__option:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .searchable-select__group { padding: 8px 12px; background: var(--surface-soft); color: var(--muted); font-size: 0.8rem; font-weight: 600; }
+
+.searchable-select__select-all {position:sticky;top:0;z-index:1;display:block;width:100%;min-height:40px;padding:8px 12px;border:0;border-bottom:1px solid var(--line);background:var(--surface-soft);color:var(--accent-dark);font:inherit;font-size:14px;text-align:right;cursor:pointer;}
+.searchable-select__select-all:disabled {opacity:.5;cursor:not-allowed;}
+
+
+.searchable-select__chips {flex:1 1 auto;align-items:center;}
+

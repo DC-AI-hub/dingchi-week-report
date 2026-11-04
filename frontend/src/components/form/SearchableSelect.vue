@@ -13,6 +13,7 @@ const props = withDefaults(
   defineProps<{
     modelValue: string | string[]
     options: SearchableOption[]
+    showSelectAll?: boolean
     multiple?: boolean
     placeholder?: string
     disabled?: boolean
@@ -76,6 +77,12 @@ const selectedValues = computed<string[]>(() => {
   return typeof props.modelValue === "string" && props.modelValue ? [props.modelValue] : []
 })
 
+const selectableValues = computed(() => props.options.filter(option => !option.disabled).map(option => option.value))
+const allSelected = computed(() => selectableValues.value.length > 0 && selectableValues.value.every(value => selectedValues.value.includes(value)))
+function toggleAll() {
+  if (props.disabled || props.optionsDisabled || !props.multiple) return
+  emit("update:modelValue", allSelected.value ? selectedValues.value.filter(value => !selectableValues.value.includes(value)) : [...new Set([...selectedValues.value, ...selectableValues.value])])
+}
 const selectedOptions = computed(() =>
   selectedValues.value
     .map((value) => props.options.find((option) => option.value === value))
@@ -170,8 +177,8 @@ function handleFocusOut() {
     @click.prevent
   >
     <div class="searchable-select__control" @mousedown="handleControlMouseDown" @click.prevent>
-      <div v-if="multiple" class="searchable-select__chips">
-        <span v-for="(option, index) in selectedOptions" :key="option.value" class="searchable-select__chip">
+      <div class="searchable-select__chips">
+        <span v-for="(option, index) in (multiple ? selectedOptions : [])" :key="option.value" class="searchable-select__chip">
           {{ showSelectionOrder ? `${index + 1}. ` : "" }}{{ option.label }}
           <button
             type="button"
@@ -183,7 +190,6 @@ function handleFocusOut() {
             移除
           </button>
         </span>
-      </div>
       <span v-if="!multiple && selectedOptions[0] && !query" class="searchable-select__selected">
         {{ selectedOptions[0].label }}
       </span>
@@ -198,6 +204,7 @@ function handleFocusOut() {
         @focus="openList"
         @keydown.esc="isOpen = false"
       />
+      </div>
       <button
         v-if="!multiple && selectedValues.length"
         class="searchable-select__clear"
@@ -210,6 +217,7 @@ function handleFocusOut() {
     </div>
     <Teleport to="body" :disabled="!teleportMenu">
     <div v-if="isOpen" ref="menuRef" class="searchable-select__menu" :class="menuClass" :style="teleportMenu ? floatingStyle : undefined" role="listbox">
+      <button v-if="multiple && showSelectAll" class="searchable-select__select-all" type="button" :disabled="disabled || optionsDisabled || !selectableValues.length" @mousedown.prevent @click.stop.prevent="toggleAll">{{ allSelected ? '取消全选' : '全选' }}</button>
       <template v-for="group in optionGroups" :key="group.name">
       <div v-if="group.name" class="searchable-select__group">{{ group.name }}</div>
       <button
@@ -238,3 +246,5 @@ function handleFocusOut() {
 </template>
 
 <style scoped src="./SearchableSelect.css"></style>
+
+

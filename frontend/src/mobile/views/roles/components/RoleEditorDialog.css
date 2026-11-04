@@ -101,3 +101,9 @@
     grid-column: auto;
   }
 }
+/* Keep peer fields top-aligned and contain long customer selections. */
+.form-grid {align-items:start;}
+.form-grid label,.form-grid .customer-field {align-content:start;}
+
+
+

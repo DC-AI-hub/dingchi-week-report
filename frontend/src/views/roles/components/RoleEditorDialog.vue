@@ -196,7 +196,7 @@ function submitForm() {
 
         <div class="customer-field">
           <span>负责的客户</span>
-          <CustomerSelect v-model="form.customer_ids" :disabled="isSaving" />
+          <CustomerSelect show-select-all v-model="form.customer_ids" :disabled="isSaving" />
         </div>
         <label class="description-field">
           <span>职位说明</span>
@@ -224,3 +224,4 @@ function submitForm() {
 </template>
 
 <style scoped src="./RoleEditorDialog.css"></style>
+
