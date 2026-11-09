@@ -31,7 +31,7 @@ export function useOwnReportList() {
   const createRouteName = computed(() => "weekly-report-new")
   const daily = useReportDailyEntry(message => { reportList.errorMessage.value = message })
   const { open: dailyDialogOpen, report: dailyDialogReport, tasks: dailyDialogTasks,
-    choices: dailyPositionChoices, active: dailyPosition, show: openDailyDialog, close: closeDailyDialog, saved: onDailySaved } = daily
+    show: openDailyDialog, close: closeDailyDialog, saved: onDailySaved } = daily
   const confirmDialogOpen = ref(false)
   const confirmDialogBusy = ref(false)
   const confirmDialogAction = ref<"delete" | "submit">("submit")
@@ -160,7 +160,6 @@ export function useOwnReportList() {
     submitOwnReport,
     openDailyDialog,
     changePage,
-    dailyPositionChoices, dailyPosition,
     dailyDialogOpen,
     dailyDialogReport,
     dailyDialogTasks,

@@ -25,14 +25,12 @@ POST weekly/{id}/reopen/仅系统管理员恢复已完成周报为进行中，�
 404不存在、409并发；任务与旧接口兼容，整单保存/提交/审批使用数据库事务。
 """
 
-import json
-
 from django.db import IntegrityError
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from apps.accounts.public import AuthenticationError, require_user
-from apps.core.http import api_error, api_success, log_unhandled_exception
+from apps.core.http import api_error, api_success, log_unhandled_exception, parse_json_object
 
 from .services import submission_approvals as approvals
 from .services import submission_changes as changes
@@ -66,12 +64,6 @@ def invoke(request, callback):
         )
 
 
-def payload(request):
-    value = json.loads(request.body or b"{}")
-    if not isinstance(value, dict):
-        raise ValueError("请求体必须为JSON对象。")
-    return value
-
 
 @csrf_exempt
 @require_http_methods(["GET", "POST", "PATCH", "DELETE"])
@@ -99,19 +91,19 @@ def resource(request, kind, submission_id=None, action=None):
             )
         if request.method == "POST":
             return invoke(
-                request, lambda user, role: write.save(user, role, kind, payload(request))
+                request, lambda user, role: write.save(user, role, kind, parse_json_object(request))
             )
     elif action == "changes" and request.method == "POST":
 
         def create_change_request(user, role):
-            data = payload(request)
+            data = parse_json_object(request)
             return changes.create(
                 user, role, read.matching_id(user, role, kind, int(submission_id)), data or None
             )
 
         return invoke(request, create_change_request)
-    elif action in {"submit", "copy", "changes"} and request.method == "POST":
-        handler = {"submit": write.submit, "copy": copy.copy, "changes": changes.create}[action]
+    elif action in {"submit", "copy"} and request.method == "POST":
+        handler = {"submit": write.submit, "copy": copy.copy}[action]
         return invoke(
             request,
             lambda user, role: handler(
@@ -130,7 +122,7 @@ def resource(request, kind, submission_id=None, action=None):
             return invoke(
                 request,
                 lambda user, role: write.save(
-                    user, role, kind, payload(request), int(submission_id)
+                    user, role, kind, parse_json_object(request), int(submission_id)
                 ),
             )
         if request.method == "DELETE":
@@ -152,7 +144,8 @@ def change_resource(request, change_id, action=None):
         return invoke(request, lambda user, role: changes.detail(user, role, int(change_id)))
     if not action and request.method == "PATCH":
         return invoke(
-            request, lambda user, role: changes.save(user, role, int(change_id), payload(request))
+            request,
+            lambda user, role: changes.save(user, role, int(change_id), parse_json_object(request)),
         )
     if not action and request.method == "DELETE":
         return invoke(request, lambda user, role: changes.delete(user, role, int(change_id)))
@@ -165,7 +158,9 @@ def approval_resource(request, approval_id, action=None):
     if action == "decide" and request.method == "POST":
         return invoke(
             request,
-            lambda user, role: approvals.decide(user, role, int(approval_id), payload(request)),
+            lambda user, role: approvals.decide(
+                user, role, int(approval_id), parse_json_object(request)
+            ),
         )
     if not action and request.method == "GET":
         return invoke(request, lambda user, role: approvals.detail(user, role, int(approval_id)))

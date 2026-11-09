@@ -390,7 +390,7 @@ axios.get("http://127.0.0.1:8000/api/v1/weekly-reports/")
 - views/chat/components/ChatMessageList.vue：消息展示和滚动行为。
 - views/chat/components/ChatComposer.vue：输入与提交组件。
 - features/chat/：聊天领域的 API、Store 和类型。
-- components/feedback/BaseAlert.vue：跨业务复用的全局基础提示组件。
+- components/feedback/NoticeCenter.vue：跨业务复用的全局消息提示组件。
 - utils/id.ts：无业务语义的全局 ID 工具。
 - styles/：全局样式入口、主题变量、重置和基础类。
 - shared/api/：所有模块共用的 HTTP 与错误处理基础设施。

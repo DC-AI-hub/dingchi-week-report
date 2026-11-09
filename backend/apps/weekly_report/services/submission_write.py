@@ -35,7 +35,6 @@ def validate_parts(user, incoming, existing=None):
         raise ValueError("已有主单的职位集合不能变更，请保留原职位内容。")
     if not existing and set(codes) != positions.keys():
         raise ValueError("请完整填写所有需要填报的职位。")
-    return positions
 
 
 def period(kind, payload):
@@ -50,7 +49,7 @@ def period(kind, payload):
     return start.strftime("%Y-%m"), start, start + timedelta(days=6)
 
 
-def save_parts(parent, user, incoming, positions, allow_past_period=False):
+def save_parts(parent, user, incoming):
     old = {row.role_code: row for row in dao.part_rows(parent)}
     for part in incoming:
         code = part["role_code"]
@@ -75,7 +74,6 @@ def save_parts(parent, user, incoming, positions, allow_past_period=False):
             )
             data = reports.create_or_update_report(
                 user=user, role_code=code, payload=body, report_id=current.id if current else None,
-                allow_past_period=allow_past_period
             )
             part_id = int(data["report"]["id"])
         dao.attach(parent.kind, part_id, parent.id)
@@ -98,7 +96,7 @@ def save(user, role_code, kind, payload, submission_id=None):
         raise ValueError("数据已更新，请重新加载。")
     incoming = payload.get("parts")
     expand_weekly = bool(parent and kind == "weekly" and weekly_positions.needs_expansion(parent))
-    positions = validate_parts(user, incoming, None if expand_weekly else parent)
+    validate_parts(user, incoming, None if expand_weekly else parent)
     month, start, end = period(kind, payload)
     if parent and parent.kind == "monthly" and parent.month_key != month:
         raise ValueError("已有月度计划不能修改所属月份。")
@@ -111,7 +109,7 @@ def save(user, role_code, kind, payload, submission_id=None):
     parent.month_key, parent.period_start, parent.period_end = month, start, end
     if not parent.legacy:
         parent.active_key = f"{kind}:{user.id}:{start or month}"
-    save_parts(parent, user, incoming, positions, allow_past_period=expand_weekly)
+    save_parts(parent, user, incoming)
     if kind == "monthly":
         parent.status = "draft"
     else:

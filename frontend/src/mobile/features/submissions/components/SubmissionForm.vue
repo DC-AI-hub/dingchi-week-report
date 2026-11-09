@@ -56,7 +56,7 @@ onMounted(()=>{if(props.kind==='weekly' && !route.params.reportId && typeof rout
  <component v-if="kind==='monthly'" :is="monthlyBodies[part.template_code]" :part="part" :month-key="editor.input.month_key" :readonly="!editable" @update:payload="update(part,$event)" />
  <template v-else>
  <TaskPreviewScope :limit="3"><component v-if="part.monthly_plan?.plan" :is="monthlyBodies[part.template_code]" :part="{...part,payload:{summary:part.monthly_plan.plan.summary,tasks:part.monthly_plan.tasks}}" :month-key="editor.input.period_start?.slice(0,7) || ''" readonly /></TaskPreviewScope>
- <NoticeBridge v-if="editable && editor.active.value===part.role_code && part.monthly_approved===false" :warning-message="`${part.role_name}：${part.monthly_message || '请先完成月度计划审批。'}`" />
+ <NoticeBridge v-if="editable && editor.active.value===part.role_code && part.monthly_approved===false" :warning-message="part.monthly_message || `「${part.role_name}」：请先完成所属月度的月度计划审批。`" />
  <component v-if="editable" :is="weeklyBodies[part.template_code]" :part="part" :period-start="editor.input.period_start || ''" @update:payload="update(part,{...part.payload,...$event})" />
  <SubmissionWeeklyReadonly v-else :part="part" />
  </template>

@@ -109,6 +109,32 @@ def test_customer_reference_cannot_cross_reports(sales_report):
         reports._save_items(other, [row], [], 43)
 
 
+def test_submission_errors_identify_position_and_customer(sales_report, monkeypatch):
+    from apps.weekly_report.services import submission_validation as validation
+
+    monkeypatch.setattr(validation, "account_role_name", lambda code: "交付专员")
+    monkeypatch.setattr(validation, "reporting_positions", lambda user_id: [{
+        "role_code": sales_report.role_code,
+        "customers": [{"id": "101", "name": "港交所"}],
+    }])
+    errors = validation.submission_errors(
+        sales_report, [{"customer_id": "101"}], [], {}
+    )
+    assert errors
+    assert all("「交付专员」" in error for error in errors)
+    assert all("「港交所」" in error for error in errors)
+    assert any("输出成果不能为空" in error for error in errors)
+    grouped = validation.submission_errors(
+        sales_report, [{"customer_id": "101"}, {"customer_id": "101"}], [], {}
+    )
+    assert len(grouped) == 1
+    assert grouped[0].count("「交付专员」") == 1
+    assert grouped[0].count("「港交所」") == 1
+    assert "第1行：" in grouped[0] and "第2行：" in grouped[0]
+    empty = validation.submission_errors(sales_report, [], [], {})
+    assert "「交付专员」" in empty[0]
+
+
 def test_submission_requires_customer_placeholders(sales_report):
     raw = details()[0]
     raw["customer_values"] = [""]

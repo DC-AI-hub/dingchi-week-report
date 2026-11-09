@@ -14,6 +14,19 @@ def _body(payload: dict) -> bytes:
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("method,url", [
+    ("get", "/api/v1/dictionaries/customers/"),
+    ("post", "/api/v1/dictionaries/customers/new/"),
+    ("patch", "/api/v1/dictionaries/customers/1/"),
+    ("delete", "/api/v1/dictionaries/customers/1/"),
+])
+def test_customer_endpoints_require_login(client, method, url) -> None:
+    response = getattr(client, method)(url)
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "AUTHENTICATION_FAILED"
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize("payload", [
     {"dict_code": "C_001", "dict_name": "客户"},
     {"dict_code": "C.001", "dict_name": "客户"},
@@ -91,6 +104,18 @@ def test_customer_create_rejects_invalid_payload(client) -> None:
 
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "INVALID_REQUEST"
+
+
+@pytest.mark.django_db
+def test_customer_create_rejects_invalid_utf8_as_client_error(client) -> None:
+    with patch("apps.dictionary.views.require_user", return_value=(object(), "system_admin")):
+        response = client.post(
+            reverse("dictionary:customer-create"),
+            data=b"\xff",
+            content_type="application/json",
+        )
+    assert response.status_code == 400
+    assert response.json()["error"]["message"] == "请求体必须使用 UTF-8 编码。"
 
 
 @pytest.mark.django_db

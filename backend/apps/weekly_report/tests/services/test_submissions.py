@@ -1,7 +1,7 @@
 """多职位主单事务、审批隔离与客户权限的回归。"""
 
 from copy import deepcopy
-from datetime import timedelta
+from datetime import date, timedelta
 
 import pytest
 from django.utils import timezone
@@ -96,9 +96,12 @@ def approve(multi, data):
         "approvals"
     ]
     with pytest.raises(PermissionError):
+        approvals.detail(second, "manager", aid)
+    with pytest.raises(PermissionError):
         approvals.decide(second, "manager", aid, {"action": "approve"})
     approvals.decide(first, "manager", aid, {"action": "approve"})
     assert lists.list_submissions(second, "manager", "monthly", {"view": "approvals"})["total"] == 1
+    assert approvals.detail(second, "manager", aid)["id"] == str(aid)
     return approvals.decide(second, "manager", aid, {"action": "approve"})
 
 
@@ -234,6 +237,47 @@ def test_customer_ids_persist_in_monthly_metadata_and_weekly_rows(multi):
     assert all(p["detail"]["items"][0]["customer_id"] == str(customer.id) for p in data["parts"])
 
 
+def test_moving_weekly_period_preserves_daily_entries(multi):
+    owner = multi[0]
+    set_monthly_approvers(owner.id, [])
+    end = timezone.localdate()
+    end -= timedelta(days=end.weekday())
+    start = end - timedelta(days=7)
+    for month in {start.strftime("%Y-%m"), end.strftime("%Y-%m")}:
+        monthly = write.save(owner, "delivery", "monthly", body(month))
+        write.submit(owner, "delivery", int(monthly["plan"]["id"]))
+    initial = {
+        "period_start": start.isoformat(),
+        "parts": [
+            {
+                "role_code": code,
+                "payload": {
+                    "items": [], "metrics": [],
+                    "daily_tasks": [{
+                        "work_date": (start + timedelta(days=index)).isoformat(),
+                        "work_content": f"日报{index}",
+                    }],
+                },
+            }
+            for index, code in enumerate(["delivery", "sales"])
+        ],
+    }
+    saved = write.save(owner, "delivery", "weekly", initial)
+    daily_ids = [part["payload"]["daily_tasks"][0]["id"] for part in saved["parts"]]
+    for part in saved["parts"]:
+        task = part["payload"]["daily_tasks"][0]
+        task["work_date"] = (date.fromisoformat(task["work_date"]) + timedelta(days=7)).isoformat()
+    moved = write.save(owner, "delivery", "weekly", {
+        "period_start": end.isoformat(),
+        "revision": saved["plan"]["revision"],
+        "parts": saved["parts"],
+    }, int(saved["plan"]["id"]))
+    assert [part["payload"]["daily_tasks"][0]["id"] for part in moved["parts"]] == daily_ids
+    assert [part["payload"]["daily_tasks"][0]["work_date"] for part in moved["parts"]] == [
+        end.isoformat(), (end + timedelta(days=1)).isoformat()
+    ]
+
+
 def test_rejection_only_requires_changing_one_position(multi):
     owner, first, _, _ = multi
     data = write.save(owner, "delivery", "monthly", body())
@@ -257,6 +301,31 @@ def test_rejection_only_requires_changing_one_position(multi):
     saved = write.save(owner, "delivery", "monthly", payload, sid)
     assert saved["plan"]["status"] == "draft"
     assert write.submit(owner, "delivery", sid)["plan"]["status"] == "pending"
+
+
+def test_recreating_deleted_monthly_plan_keeps_approval_history_and_position_filter(multi):
+    owner, first, _, _ = multi
+    original = write.save(owner, "delivery", "monthly", body())
+    sid = int(original["plan"]["id"])
+    submitted = write.submit(owner, "delivery", sid)
+    approval_id = int(submitted["approvals"][0]["id"])
+    rejected = approvals.decide(
+        first, "manager", approval_id, {"action": "reject", "reason": "修改目标"}
+    )
+    payload = body()
+    payload["revision"] = rejected["plan"]["revision"]
+    payload["parts"][0]["payload"]["summary"] = "修改后草稿"
+    write.save(owner, "delivery", "monthly", payload, sid)
+    write.delete(owner, "delivery", sid)
+    write.save(owner, "delivery", "monthly", body())
+
+    result = lists.list_submissions(
+        first, "manager", "monthly", {"view": "approvals", "role_code": "sales"}
+    )
+    assert result["total"] == 1
+    assert result["approvals"][0]["id"] == str(approval_id)
+    assert result["approvals"][0]["role_name"] == "delivery / 销售"
+    assert result["approvals"][0]["snapshot"]["parts"][0]["payload"]["summary"] == "目标"
 
 
 def test_monthly_status_filter_includes_change_children(multi):

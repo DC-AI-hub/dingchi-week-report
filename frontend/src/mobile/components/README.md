@@ -17,8 +17,8 @@
 kebab-case 子目录。
 
 组件必须使用 PascalCase 命名。存在私有样式时，使用同名 CSS 文件并通过 scoped style
-的 src 属性引入。例如：`components/feedback/BaseAlert.vue` 与同目录的
-`BaseAlert.css` 一一对应。
+的 src 属性引入。例如：`components/feedback/NoticeCenter.vue` 与同目录的
+`NoticeCenter.css` 一一对应。
 
 领域组件放到 features/<domain>/components，仅单个页面模块使用的组件放到
 views/<module>/components。

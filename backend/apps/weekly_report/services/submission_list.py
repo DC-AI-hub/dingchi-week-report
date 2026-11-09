@@ -3,6 +3,7 @@
 from apps.accounts.public import account_role_scope, shared_report_owner_ids, visible_user_ids
 from apps.approvals.public import (
     assigned_approval_records,
+    assigned_submission_ids_for_position,
     participated_business_ids,
     pending_monthly_count,
 )
@@ -76,16 +77,32 @@ def has_tasks(user, role_code):
 
 def list_approvals(user, role_code, filters, page, size):
     ids, parent_ids = assigned_ids(user, role_code)
+    root_filters = {key: value for key, value in filters.items() if key != "status"}
     roots = {
         row.id: row
         for row in dao.query(
             "monthly",
             [],
-            {key: value for key, value in filters.items() if key != "status"},
+            root_filters,
             list(parent_ids),
             include_deleted=True,
         )
     }
+    if root_filters.get("role_code"):
+        # 同月重新创建计划时会复用职位明细，旧的已删除主单因此不再关联明细。
+        # 处理过的审批仍按提交时的快照匹配职位，而不是从新计划推断。
+        candidates = dao.query(
+            "monthly",
+            [],
+            {key: value for key, value in root_filters.items() if key != "role_code"},
+            list(parent_ids),
+            include_deleted=True,
+        )
+        missing = {
+            row.id: row for row in candidates if row.status == "deleted" and row.id not in roots
+        }
+        matched = assigned_submission_ids_for_position(user.id, missing, root_filters["role_code"])
+        roots.update({submission_id: missing[submission_id] for submission_id in matched})
     allowed_ids = set(roots)
     for root in roots.values():
         allowed_ids.update(dao.merged_source_ids(root.id))

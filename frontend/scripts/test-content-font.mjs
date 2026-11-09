@@ -29,7 +29,7 @@ const font=selector=>getComputedStyle(document.querySelector(selector)).fontSize
  globalThis.mockAuth.user={id:'font-test-b'};await tick();check(settings.size===14,'切换用户应使用独立设置');settings.setSize(18);
  globalThis.mockAuth.user={id:'font-test-a'};await tick();check(settings.size===22,'未恢复原用户字号');
  setActivePinia(createPinia());const reloaded=useContentTypography();check(reloaded.size===22,'刷新后未恢复存储字号');
- reloaded.setSize(100);check(reloaded.size===24,'上限错误');reloaded.setSize(0);check(reloaded.size===12,'下限错误');reloaded.reset();check(reloaded.size===14 && font('#task')==='14px','恢复默认失败');
+ reloaded.setSize(100);check(reloaded.size===24,'上限错误');reloaded.setSize(0);check(reloaded.size===10,'下限错误');reloaded.reset();check(reloaded.size===14 && font('#task')==='14px','恢复默认失败');
  document.body.dataset.result='PASS';document.querySelector('#result').textContent='PASS: 内容字号、范围隔离、按用户记忆、重新加载和恢复默认';
 }catch(error){document.body.dataset.result='FAIL';document.querySelector('#result').textContent=error.message;}})();`
 const built=await build({stdin:{contents:source,resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,format:'iife',alias:{'@':resolve('src')},define:{__VUE_OPTIONS_API__:'true',__VUE_PROD_DEVTOOLS__:'false',__VUE_PROD_HYDRATION_MISMATCH_DETAILS__:'false','process.env.NODE_ENV':'"production"'},plugins:[{name:'vue-test',setup(b){

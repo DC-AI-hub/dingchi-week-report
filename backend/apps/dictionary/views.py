@@ -9,8 +9,8 @@ from django.http import HttpRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from apps.accounts.public import require_user
-from apps.core.http import api_error, api_success, log_unhandled_exception
+from apps.accounts.public import AuthenticationError, require_user
+from apps.core.http import api_error, api_success, log_unhandled_exception, parse_json_object
 
 from .services.customers import (
     CustomerConflictError,
@@ -24,15 +24,6 @@ from .services.customers import (
 from .services.items import InvalidDictionaryTypeError, get_active_items
 
 
-def _json_payload(request: HttpRequest) -> dict[str, Any]:
-    if not request.body:
-        return {}
-    value = json.loads(request.body)
-    if not isinstance(value, dict):
-        raise ValueError("请求体必须是 JSON 对象。")
-    return value
-
-
 def _ensure_system_admin(request: HttpRequest) -> tuple[Any, str]:
     """Return the (user, role_code) for a system administrator request."""
     user, role_code = require_user(request)
@@ -42,6 +33,8 @@ def _ensure_system_admin(request: HttpRequest) -> tuple[Any, str]:
 
 
 def _error_from_exception(exc: Exception) -> JsonResponse:
+    if isinstance(exc, AuthenticationError):
+        return api_error(exc.code, str(exc), status=401)
     if isinstance(exc, CustomerNotFoundError):
         return api_error(exc.code, str(exc), status=404)
     if isinstance(exc, CustomerConflictError):
@@ -109,7 +102,7 @@ def customer_create_view(request: HttpRequest) -> JsonResponse:
     """
     try:
         _ensure_system_admin(request)
-        created = create_customer(payload=_json_payload(request))
+        created = create_customer(payload=parse_json_object(request))
         return api_success(created, status=201)
     except Exception as exc:
         return _error_from_exception(exc)
@@ -128,16 +121,17 @@ def customer_detail_view(request: HttpRequest, customer_id: str) -> JsonResponse
     """
     try:
         _ensure_system_admin(request)
+    except Exception as exc:
+        return _error_from_exception(exc)
+    try:
         parsed_id = int(customer_id)
     except ValueError:
         return api_error("INVALID_REQUEST", "客户 ID 必须是数字。", status=400)
-    except Exception as exc:
-        return _error_from_exception(exc)
     try:
         if request.method == "DELETE":
             deleted = soft_delete_customer(customer_id=parsed_id)
             return api_success({"id": deleted["id"], "deleted": True})
-        updated = update_customer(customer_id=parsed_id, payload=_json_payload(request))
+        updated = update_customer(customer_id=parsed_id, payload=parse_json_object(request))
         return api_success(updated)
     except Exception as exc:
         return _error_from_exception(exc)

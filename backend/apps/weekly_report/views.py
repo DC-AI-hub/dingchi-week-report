@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 from django.core.files.storage import default_storage
 from django.http import FileResponse, HttpRequest, JsonResponse
@@ -11,7 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from apps.accounts.services.auth import AuthenticationError
-from apps.core.http import api_error, api_success, log_unhandled_exception
+from apps.core.http import api_error, api_success, log_unhandled_exception, parse_json_object
 
 from .request_context import require_report_user
 from .services.daily_tasks import (
@@ -40,15 +39,6 @@ from .services.reports import (
     submit_report,
     upload_pending_report_attachment,
 )
-
-
-def _json_payload(request: HttpRequest) -> dict[str, Any]:
-    if not request.body:
-        return {}
-    value = json.loads(request.body)
-    if not isinstance(value, dict):
-        raise ValueError("请求体必须是 JSON 对象。")
-    return value
 
 
 def _error(exc: Exception) -> JsonResponse:
@@ -161,7 +151,7 @@ def report_list_view(request: HttpRequest) -> JsonResponse:
         if request.method == "POST":
             return api_success(
                 create_or_update_report(
-                    user=user, role_code=role_code, payload=_json_payload(request)
+                    user=user, role_code=role_code, payload=parse_json_object(request)
                 ),
                 status=201,
             )
@@ -201,7 +191,7 @@ def monthly_plan_view(request: HttpRequest, month_key: str) -> JsonResponse:
     try:
         user, role_code = require_report_user(request)
         if request.method == "PUT":
-            payload = _json_payload(request)
+            payload = parse_json_object(request)
             return api_success(
                 save_monthly_plan(
                     user=user,
@@ -242,7 +232,7 @@ def report_detail_view(request: HttpRequest, report_id: str) -> JsonResponse:
                 create_or_update_report(
                     user=user,
                     role_code=role_code,
-                    payload=_json_payload(request),
+                    payload=parse_json_object(request),
                     report_id=int(report_id),
                 )
             )
@@ -297,7 +287,7 @@ def daily_task_list_view(request: HttpRequest, report_id: str) -> JsonResponse:
                     user=user,
                     role_code=role_code,
                     report_id=parsed_report_id,
-                    payload=_json_payload(request),
+                    payload=parse_json_object(request),
                 ),
                 status=201,
             )
@@ -331,7 +321,7 @@ def daily_task_detail_view(
                     role_code=role_code,
                     report_id=parsed_report_id,
                     daily_task_id=parsed_task_id,
-                    payload=_json_payload(request),
+                    payload=parse_json_object(request),
                 )
             )
         return api_success(

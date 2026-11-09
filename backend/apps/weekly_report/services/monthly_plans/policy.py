@@ -1,4 +1,9 @@
-from apps.accounts.public import approval_managers, shared_report_owner_ids, visible_user_ids
+from apps.accounts.public import (
+    account_role_name,
+    approval_managers,
+    shared_report_owner_ids,
+    visible_user_ids,
+)
 
 from ... import monthly_plan_management_dao as dao
 from ..submission_scope import check_part
@@ -36,10 +41,23 @@ def configured_approvers(user_id):
     return approval_managers(user_id)
 
 
+def approval_requirement_message(role_code, month_key, plan):
+    location = f"「{account_role_name(role_code)}」→「{month_key} 月度计划」"
+    status = plan.status if plan else "missing"
+    reasons = {
+        "missing": "尚未填写，请进入月度计划页面新增该职位的计划并提交审批，审批通过后再提交周报。",
+        "deleted": "已删除，请重新填写该职位的月度计划并提交审批，审批通过后再提交周报。",
+        "draft": "当前为草稿，尚未审批通过，请先提交月度计划审批。",
+        "pending": "当前待审批，尚未审批通过，请等待审批完成后再提交周报。",
+        "rejected": "已被驳回，尚未审批通过，请修改月度计划并重新提交审批。",
+    }
+    return f"{location}：{reasons.get(status, '尚未审批通过，请进入月度计划页面确认审批状态。')}"
+
+
 def ensure_approved(user, role_code, month_key, *, missing_message=None):
     plan = dao.find_plan(employee_id=user.id, role_code=role_code, month_key=month_key, lock=True)
     if missing_message and (plan is None or plan.status == "deleted"):
         raise ValueError(missing_message)
     if plan is None or plan.status != "approved":
-        raise ValueError(f"{month_key} 尚无审批通过的月度计划，请先填写并完成审批后再填写周报。")
+        raise ValueError(approval_requirement_message(role_code, month_key, plan))
     return plan

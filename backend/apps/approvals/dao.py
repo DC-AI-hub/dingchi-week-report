@@ -70,9 +70,7 @@ def participant_business_ids(user_id, business_type, pending_only=False, role_co
     return list(rows.values_list("business_id", flat=True))
 
 
-def assigned_requests(
-    user_id, business_type, business_ids, status, pending_only, page, size, role_code=None
-):
+def _assigned_requests(user_id, business_type, business_ids, status, pending_only, role_code=None):
     # 只有已轮到或已处理的节点进入审批列表；未激活、上级驳回后取消的节点不可见。
     assigned = ApprovalStep.objects.filter(
         approver_id=user_id, status__in=["pending", "approved", "rejected"]
@@ -92,7 +90,22 @@ def assigned_requests(
         rows = rows.filter(status=status)
     if pending_only:
         rows = rows.filter(status="pending")
+    return rows
+
+
+def assigned_requests(
+    user_id, business_type, business_ids, status, pending_only, page, size, role_code=None
+):
+    rows = _assigned_requests(
+        user_id, business_type, business_ids, status, pending_only, role_code
+    )
     return rows.count(), list(rows[(page - 1) * size : page * size])
+
+
+def assigned_snapshots(user_id, business_type, business_ids, role_codes):
+    return _assigned_requests(
+        user_id, business_type, business_ids, "", False, role_codes
+    ).values_list("business_id", "snapshot_json")
 
 
 def pending_requests(user_id, role_code=None):

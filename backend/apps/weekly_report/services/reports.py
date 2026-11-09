@@ -66,12 +66,6 @@ class ReportConflictError(ReportError):
     code = "REPORT_CONFLICT"
 
 
-class MonthlyPlanLockedError(ReportConflictError):
-    """A monthly plan already exists and is intentionally immutable."""
-
-    code = "MONTHLY_PLAN_LOCKED"
-
-
 class ReportPermissionError(ReportError):
     """The current role cannot access or mutate the report."""
 
@@ -226,7 +220,6 @@ def list_visible_reports(
 
 def create_or_update_report(
     *, user: UserAccount, role_code: str, payload: Mapping[str, Any], report_id: int | None = None,
-    allow_past_period: bool = False,
 ) -> dict[str, Any]:
     if _role_scope(role_code) == "all":
         raise ReportPermissionError("全员数据角色仅支持查看周报。")
@@ -981,39 +974,6 @@ def _build_dashboard_task_stats(
     return member_result, group_result
 
 
-def _save_monthly_plan(
-    *, user: UserAccount, role_code: str, month_key: str, value: Mapping[str, Any]
-) -> None:
-    summary = str(value.get("summary") or "").strip()
-    if not summary:
-        raise ReportError("月度计划不能为空。")
-
-    # 月度计划是同一用户、角色、月份下跨周复用的基线。首次保存后不允许
-    # 覆盖，使用行锁确保并发请求也不会产生第二次写入。
-    existing = (
-        MonthlyPlan.objects.select_for_update()
-        .filter(
-            employee_id=user.id,
-            role_code=role_code,
-            month_key=month_key,
-        )
-        .first()
-    )
-    if existing is not None:
-        raise MonthlyPlanLockedError("月度计划不支持修改。")
-    try:
-        MonthlyPlan.objects.create(
-            employee_id=user.id,
-            role_code=role_code,
-            month_key=month_key,
-            group_id=user.group_id,
-            summary=summary,
-        )
-    except IntegrityError as exc:
-        # 唯一约束兜底处理并发创建，向调用方返回明确的锁定提示。
-        raise MonthlyPlanLockedError("月度计划不支持修改。") from exc
-
-
 def _save_items(
     report: WeeklyReport, value: Any, template_items: Sequence[Mapping[str, Any]], owner_id: int
 ) -> dict[str, int]:
@@ -1611,12 +1571,3 @@ def _decimal_or_none(value: Any, value_type: str) -> Decimal | None:
 def _build_trend(items, history_rows, start):
     """先汇总每条明细的当日快照，再按工作任务等权统计趋势。"""
     return task_trend(items, history_rows, start)
-
-
-def _decimal_snapshot(value: Any) -> Decimal | None:
-    if value in (None, ""):
-        return None
-    try:
-        return Decimal(str(value))
-    except (InvalidOperation, ValueError):
-        return None

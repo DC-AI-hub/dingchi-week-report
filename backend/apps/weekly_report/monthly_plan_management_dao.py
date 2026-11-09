@@ -61,10 +61,6 @@ def append_revision(**fields):
     return MonthlyPlanRevision.objects.create(**fields)
 
 
-def revisions(plan_id):
-    return MonthlyPlanRevision.objects.filter(monthly_plan_id=plan_id).order_by("-id")
-
-
 def has_report(employee_id, role_code, month_key):
     return WeeklyReport.objects.filter(
         employee_id=employee_id, role_code=role_code, month_key=month_key

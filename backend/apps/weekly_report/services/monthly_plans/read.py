@@ -13,7 +13,7 @@ from ... import monthly_plan_management_dao as dao
 from .. import reports
 from ..monthly_plan_tasks import list_monthly_plan_tasks, validate_month_key
 from .approval_read import list_assigned_approvals
-from .policy import readable_plan
+from .policy import approval_requirement_message, readable_plan
 from .versions import approved_versions, assigned_root_ids, change_row
 
 
@@ -162,11 +162,7 @@ def gate(user, role_code, month_key):
         "approved": approved,
         "message": ""
         if approved
-        else (
-            f"{month_key} 月度计划尚未审批通过，请先完成审批。"
-            if plan and plan.status != "deleted"
-            else f"{month_key} 尚未填写月度计划，请先填写并完成审批。"
-        ),
+        else approval_requirement_message(role_code, month_key, plan),
         "plan": serialize_plan(plan, user.id, role_code=role_code)
         if plan and plan.status != "deleted"
         else None,

@@ -4,6 +4,7 @@ import json
 
 from django.db import transaction
 
+from apps.accounts.public import account_role_name
 from apps.approvals.public import approval_history, assigned_record, decide_approval
 
 from .. import monthly_plan_change_dao as old_changes
@@ -55,12 +56,19 @@ def detail(user, role_code, approval_id):
     if not parent:
         raise LookupError("月度计划不存在。")
     row = read.serialize(parent, user, role_code, include_deleted=True)
+    snapshot_parts = record.get("snapshot", {}).get("parts", [])
+    codes = [part.get("role_code") for part in snapshot_parts if part.get("role_code")]
+    names = [
+        part.get("role_name") or account_role_name(part["role_code"])
+        for part in snapshot_parts
+        if part.get("role_code")
+    ]
     return {
         **record,
         "plan_id": str(parent.id),
         "month_key": parent.month_key,
-        "role_code": row["role_code"],
-        "role_name": row["role_name"],
+        "role_code": codes[0] if codes else row["role_code"],
+        "role_name": " / ".join(names) if names else row["role_name"],
         "employee_name": row.get("employee_name", ""),
         "group_name": row.get("group_name", ""),
         "process_type": "change" if change else "initial",

@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from apps.core.http import api_error, api_success, log_unhandled_exception
+from apps.core.http import api_error, api_success, log_unhandled_exception, parse_json_object
 
 from .dao import find_group_by_id, find_user_by_id, list_groups, list_user_options, list_users
 from .services.auth import (
@@ -46,15 +45,6 @@ from .services.organization import (
 from .services.role_options import get_role_options
 
 
-def _json_payload(request: HttpRequest) -> dict[str, Any]:
-    if not request.body:
-        return {}
-    value = json.loads(request.body)
-    if not isinstance(value, dict):
-        raise ValueError("请求体必须是 JSON 对象。")
-    return value
-
-
 def _error_from_exception(exc: Exception) -> JsonResponse:
     if isinstance(exc, AuthenticationError):
         return api_error(exc.code, str(exc), status=401)
@@ -88,7 +78,7 @@ def login_view(request: HttpRequest) -> JsonResponse:
     安全/追踪/兼容：密码只接受加密值；响应带 X-Trace-ID；新增会话字段向后兼容。
     """
     try:
-        payload = _json_payload(request)
+        payload = parse_json_object(request)
         return api_success(
             login(
                 username=str(payload.get("username") or "").strip(),
@@ -134,7 +124,7 @@ def switch_role_view(request: HttpRequest) -> JsonResponse:
     """
     try:
         user, _ = require_request_user(request)
-        payload = _json_payload(request)
+        payload = parse_json_object(request)
         return api_success(
             switch_role(user=user, role_code=str(payload.get("role_code") or "").strip())
         )
@@ -160,7 +150,7 @@ def change_password_view(request: HttpRequest) -> JsonResponse:
     """
     try:
         user, role_code = require_request_user(request)
-        payload = _json_payload(request)
+        payload = parse_json_object(request)
         return api_success(
             change_password(
                 user=user,
@@ -221,7 +211,8 @@ def role_create_view(request: HttpRequest) -> JsonResponse:
         _, role_code = require_request_user(request)
         if not can_manage_directory(role_code):
             raise AuthorizationError("无权维护角色。")
-        return api_success(serialize_role(create_role(payload=_json_payload(request))), status=201)
+        created = create_role(payload=parse_json_object(request))
+        return api_success(serialize_role(created), status=201)
     except Exception as exc:
         return _error_from_exception(exc)
 
@@ -248,7 +239,7 @@ def role_detail_view(request: HttpRequest, role_id: str) -> JsonResponse:
         if request.method == "DELETE":
             deleted_role = delete_role(role_id=parsed_role_id, acting_role_code=role_code)
             return api_success({"id": str(deleted_role.id), "deleted": True})
-        updated_role = update_role(role_id=parsed_role_id, payload=_json_payload(request))
+        updated_role = update_role(role_id=parsed_role_id, payload=parse_json_object(request))
         return api_success(serialize_role(updated_role))
     except Exception as exc:
         return _error_from_exception(exc)
@@ -283,7 +274,7 @@ def group_create_view(request: HttpRequest) -> JsonResponse:
         if not can_manage_directory(role_code):
             raise AuthorizationError("无权维护组织分组。")
         return api_success(
-            serialize_group(create_group(payload=_json_payload(request))), status=201
+            serialize_group(create_group(payload=parse_json_object(request))), status=201
         )
     except Exception as exc:
         return _error_from_exception(exc)
@@ -310,7 +301,7 @@ def group_update_view(request: HttpRequest, group_id: str) -> JsonResponse:
         if group is None:
             raise GroupNotFoundError("分组不存在或已被删除。")
         return api_success(
-            serialize_group(update_group(group=group, payload=_json_payload(request)))
+            serialize_group(update_group(group=group, payload=parse_json_object(request)))
         )
     except Exception as exc:
         return _error_from_exception(exc)
@@ -371,7 +362,8 @@ def user_create_view(request: HttpRequest) -> JsonResponse:
         _, role_code = require_request_user(request)
         if not can_manage_directory(role_code):
             raise AuthorizationError("无权维护用户。")
-        return api_success(serialize_user(create_user(payload=_json_payload(request))), status=201)
+        created = create_user(payload=parse_json_object(request))
+        return api_success(serialize_user(created), status=201)
     except Exception as exc:
         return _error_from_exception(exc)
 
@@ -398,7 +390,8 @@ def user_update_view(request: HttpRequest, user_id: str) -> JsonResponse:
         user = find_user_by_id(parsed_user_id)
         if user is None:
             raise UserNotFoundError("用户不存在或已被删除。")
-        return api_success(serialize_user(update_user(user=user, payload=_json_payload(request))))
+        updated = update_user(user=user, payload=parse_json_object(request))
+        return api_success(serialize_user(updated))
     except Exception as exc:
         return _error_from_exception(exc)
 

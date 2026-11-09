@@ -28,7 +28,7 @@ export function useTeamReportList() {
   const { busy: copyBusy, message: copyMessage, title: copyTitle } = reportCopy
   const daily = useReportDailyEntry(message => { reportList.errorMessage.value = message })
   const { open: dailyDialogOpen, report: dailyDialogReport, tasks: dailyDialogTasks,
-    choices: dailyPositionChoices, active: dailyPosition, show: openDailyDialog, close: closeDailyDialog, saved: onDailySaved } = daily
+    show: openDailyDialog, close: closeDailyDialog, saved: onDailySaved } = daily
   const filters = reactive({
     role_code: "",
     month_key: "",
@@ -217,6 +217,6 @@ export function useTeamReportList() {
     syncRouteFilters()
     if (currentListState() !== previousState) void loadReports()
   }, { deep: true })
-  return { activeTab, reports, isLoading, errorMessage, groups, filters, returnQuery, page, pageSize, total, totalPages, openCreateReport, switchTab, resetFilters, search, canEdit, canSubmit, canDelete, removeReport, submitOwnReport, changePage, confirmDialogOpen, confirmDialogBusy, confirmDialogAction, closeConfirmDialog, confirmReportAction, authStore, reportCopy, copyBusy, copyMessage, copyTitle, dailyPositionChoices, dailyPosition, dailyDialogOpen, dailyDialogReport, dailyDialogTasks, openDailyDialog, closeDailyDialog, onDailySaved }
+  return { activeTab, reports, isLoading, errorMessage, groups, filters, returnQuery, page, pageSize, total, totalPages, openCreateReport, switchTab, resetFilters, search, canEdit, canSubmit, canDelete, removeReport, submitOwnReport, changePage, confirmDialogOpen, confirmDialogBusy, confirmDialogAction, closeConfirmDialog, confirmReportAction, authStore, reportCopy, copyBusy, copyMessage, copyTitle, dailyDialogOpen, dailyDialogReport, dailyDialogTasks, openDailyDialog, closeDailyDialog, onDailySaved }
 }
 

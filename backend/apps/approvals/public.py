@@ -170,6 +170,21 @@ def assigned_approval_records(
     return {"items": records, "total": total}
 
 
+def assigned_submission_ids_for_position(user_id, submission_ids, position_code):
+    """从本人有权查看的审批快照中查找曾包含指定职位的主单。"""
+    rows = dao.assigned_snapshots(
+        user_id, "monthly_submission", submission_ids, assigned_role_codes(user_id)
+    )
+    return {
+        business_id
+        for business_id, snapshot_json in rows
+        if any(
+            part.get("role_code") == position_code
+            for part in json.loads(snapshot_json).get("parts", [])
+        )
+    }
+
+
 def pending_todo_entries(user_id, role_code):
     requests = dao.pending_requests(user_id, role_code)
     profiles = user_profiles([request.applicant_id for request in requests])
@@ -192,6 +207,7 @@ def assigned_record(user_id, request_id, role_code):
     if not request or not any(
         int(step.approver_id) == int(user_id)
         and step.approver_role_code in assigned_role_codes(user_id)
+        and step.status in {"pending", "approved", "rejected"}
         for step in dao.steps(request_id)
     ):
         raise PermissionError("无权查看该审批记录。")

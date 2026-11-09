@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import ScrollableTabs from "@/mobile/components/navigation/ScrollableTabs.vue"
 import AlertDialog from "@/mobile/components/feedback/AlertDialog.vue"
 import ConfirmDialog from "@/mobile/components/feedback/ConfirmDialog.vue"
 import NoticeBridge from "@/mobile/components/feedback/NoticeBridge.vue"
@@ -19,7 +18,7 @@ const {
   authStore, copyBusy, reportCopy,
   copyMessage, copyTitle, removeReport,
   submitOwnReport, openDailyDialog, changePage,
-  dailyDialogOpen, dailyDialogReport, dailyDialogTasks, dailyPositionChoices, dailyPosition,
+  dailyDialogOpen, dailyDialogReport, dailyDialogTasks,
   closeDailyDialog, onDailySaved, confirmDialogOpen,
   confirmDialogBusy, confirmDialogAction, closeConfirmDialog,
   confirmReportAction, templateWarningOpen,
@@ -79,7 +78,7 @@ const {
       :existing-tasks="dailyDialogTasks"
       @close="closeDailyDialog"
       @saved="onDailySaved"
-    ><template #before-form><ScrollableTabs v-if="dailyPositionChoices.length > 1" v-model="dailyPosition" :items="dailyPositionChoices" /></template></DailyTaskDialog>
+    />
     <ConfirmDialog
       :open="confirmDialogOpen"
       :busy="confirmDialogBusy"

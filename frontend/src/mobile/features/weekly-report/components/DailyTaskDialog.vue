@@ -38,6 +38,7 @@ const dateOptions = computed(() => {
   if (!props.report) return []
   const start = toDateInput(props.report.period_start)
   const end = toDateInput(props.report.period_end)
+  if (!start || !end || start > end) return []
   const usedDates = new Set(
     props.existingTasks
       .filter((item) => item.id !== props.task?.id)
@@ -151,7 +152,6 @@ function localDateInput() {
     :busy="busy"
     @close="emit('close')"
   >
-    <slot name="before-form" />
     <form class="daily-task-dialog" @submit.prevent="save">
       <label class="daily-task-dialog__field">
         <span class="daily-task-dialog__label">日期<span class="required-mark">*</span></span>

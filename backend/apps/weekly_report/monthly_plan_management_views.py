@@ -5,14 +5,12 @@ Bearer认证、本人编辑/授权查看；统一success包络和X-Trace-ID。
 非法字段返回400 INVALID_REQUEST；无权403 FORBIDDEN；未认证401；不输出敏感任务日志。
 """
 
-import json
-
 from django.db import IntegrityError
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from apps.accounts.services.auth import AuthenticationError
-from apps.core.http import api_error, api_success, log_unhandled_exception
+from apps.core.http import api_error, api_success, log_unhandled_exception, parse_json_object
 
 from .request_context import require_report_user
 from .services.monthly_plans import approval_read, change_read, change_write, copy, read, write
@@ -38,12 +36,6 @@ def invoke(request, callback):
         return api_error("INTERNAL_ERROR", "月度计划服务暂不可用。", status=500)
 
 
-def payload(request):
-    value = json.loads(request.body or b"{}")
-    if not isinstance(value, dict):
-        raise ValueError("请求体必须是 JSON 对象。")
-    return value
-
 
 @require_GET
 def context_view(request):
@@ -68,7 +60,7 @@ def list_view(request):
     """
     if request.method == "GET":
         return invoke(request, lambda user, role: read.list_plans(user, role, request.GET))
-    return invoke(request, lambda user, role: write.save(user, role, payload(request)))
+    return invoke(request, lambda user, role: write.save(user, role, parse_json_object(request)))
 
 
 @csrf_exempt
@@ -77,7 +69,9 @@ def detail_view(request, plan_id):
     """月度计划查看、修改和软删除；历史与审批记录保留，审批期间锁定。"""
     callbacks = {
         "GET": lambda user, role: read.detail(user, role, int(plan_id)),
-        "PATCH": lambda user, role: write.save(user, role, payload(request), int(plan_id)),
+        "PATCH": lambda user, role: write.save(
+            user, role, parse_json_object(request), int(plan_id)
+        ),
         "DELETE": lambda user, role: write.delete(user, role, int(plan_id)),
     }
     return invoke(request, callbacks[request.method])
@@ -95,7 +89,8 @@ def submit_view(request, plan_id):
 def decide_view(request, plan_id):
     """POST /monthly-plan-management/{id}/decide/：仅当前审批人可操作，驳回原因必填。"""
     return invoke(
-        request, lambda user, role: write.decide(user, role, int(plan_id), payload(request))
+        request,
+        lambda user, role: write.decide(user, role, int(plan_id), parse_json_object(request)),
     )
 
 
@@ -112,7 +107,9 @@ def change_detail_view(request, change_id):
     """查看/编辑/删除变更草稿；原始快照不可修改，权限与月度计划一致，契约见文档。"""
     callbacks = {
         "GET": lambda user, role: change_read.detail(user, role, int(change_id)),
-        "PATCH": lambda user, role: change_write.save(user, role, int(change_id), payload(request)),
+        "PATCH": lambda user, role: change_write.save(
+            user, role, int(change_id), parse_json_object(request)
+        ),
         "DELETE": lambda user, role: change_write.delete(user, role, int(change_id)),
     }
     return invoke(request, callbacks[request.method])
@@ -131,7 +128,9 @@ def change_decide_view(request, change_id):
     """POST changes/{id}/decide/；最终通过原子发布，驳回保留主流程数据，400/403，统一trace。"""
     return invoke(
         request,
-        lambda user, role: change_write.decide(user, role, int(change_id), payload(request)),
+        lambda user, role: change_write.decide(
+            user, role, int(change_id), parse_json_object(request)
+        ),
     )
 
 

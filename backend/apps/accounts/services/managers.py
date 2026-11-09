@@ -30,16 +30,6 @@ def set_managers(user_id, value):
     return ids
 
 
-def get_managers(user_id):
-    ids = manager_dao.ordered_manager_ids(user_id)
-    users = {
-        int(item.id): item for item in manager_dao.active_users(ids).only("id", "display_name")
-    }
-    if len(users) != len(ids):
-        raise ValueError("直属上级中存在停用人员，请联系管理员调整直属上级配置。")
-    return [{"id": str(value), "name": users[value].display_name} for value in ids]
-
-
 def visible_ids(user, role_code):
     scope = manager_dao.role_scope(role_code)
     active = set(manager_dao.active_users().values_list("id", flat=True))
