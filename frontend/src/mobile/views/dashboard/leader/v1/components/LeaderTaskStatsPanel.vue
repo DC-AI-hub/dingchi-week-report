@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { progressColor } from "@/mobile/utils/progress-color"
 import { computed, ref, watch } from "vue"
 import { useRouter } from "vue-router"
 import { ListChecks, UsersRound } from "lucide-vue-next"
@@ -65,9 +66,9 @@ const visibleMembers=computed(()=>{
         
         @click="selectedGroup=groupKey(group)"
       >
-        <div class="leader-group-stat__title"><strong>{{ group.group_name }}</strong><b>{{ Math.round(group.completion_rate) }}%</b></div>
+        <div class="leader-group-stat__title"><strong>{{ group.group_name }}</strong><b :style="{ color: progressColor(group.completion_rate) }">{{ Math.round(group.completion_rate) }}%</b></div>
         <div class="leader-group-stat__meta"><span><UsersRound :size="13" />{{ group.member_count }} 人</span><span><ListChecks :size="13" />{{ group.task_count }} 项任务</span></div>
-        <div class="leader-group-stat__track"><i :style="{ width: `${Math.min(100, Math.max(0, group.completion_rate))}%` }" /></div>
+        <div class="leader-group-stat__track"><i :style="{ background: progressColor(group.completion_rate), width: `${Math.min(100, Math.max(0, group.completion_rate))}%` }" /></div>
         <small>已完成 {{ group.completed_task_count }} · 进行中 {{ group.in_progress_task_count }} · 风险 {{ group.risk_task_count }}</small>
       </button>
     </div>
@@ -87,7 +88,7 @@ const visibleMembers=computed(()=>{
         <span class="leader-member-stat__group">{{ member.group_name }}</span>
         <div class="leader-member-stat__tasks" :title="taskPreview(member)"><b>{{ member.task_count }} 项</b><small>{{ taskPreview(member) }}</small></div>
         <span class="leader-member-stat__result">完成 {{ member.completed_task_count }} · 风险 {{ member.risk_task_count }}</span>
-        <div class="leader-member-stat__progress"><i :style="{ width: `${Math.min(100, Math.max(0, (member.progress_percent ?? member.completion_rate)))}%` }" /><b>{{ Math.round(member.progress_percent ?? member.completion_rate) }}%</b></div>
+        <div class="leader-member-stat__progress"><i :style="{ background: progressColor(member.progress_percent ?? member.completion_rate), width: `${Math.min(100, Math.max(0, (member.progress_percent ?? member.completion_rate)))}%` }" /><b :style="{ color: progressColor(member.progress_percent ?? member.completion_rate) }">{{ Math.round(member.progress_percent ?? member.completion_rate) }}%</b></div>
       </button>
       <div v-if="!visibleMembers.length" class="leader-task-stats-empty">该团队暂无需填写周报的人员</div>
     </div>

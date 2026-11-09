@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { progressColor } from "@/mobile/utils/progress-color"
 import { BarChart3, Building2, ListChecks, PieChart } from "lucide-vue-next"
 
 import type { DashboardDistribution, DashboardTrendPoint } from "@/mobile/features/dashboard/types"
@@ -41,8 +42,8 @@ const props = defineProps<{
       <div v-else class="department-list">
         <div v-for="department in props.departments" :key="department.name" class="department-row">
           <span class="department-name" :title="department.name">{{ department.name }}</span>
-          <div class="department-track"><span :style="{ width: `${Math.min(100, Math.max(0, department.rate))}%` }" /></div>
-          <strong>{{ department.rate }}%</strong>
+          <div class="department-track"><span :style="{ background: progressColor(department.rate), width: `${Math.min(100, Math.max(0, department.rate))}%` }" /></div>
+          <strong :style="{ color: progressColor(department.rate) }">{{ department.rate }}%</strong>
         </div>
       </div>
     </article>

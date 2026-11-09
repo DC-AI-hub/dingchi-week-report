@@ -35,7 +35,7 @@ function submit(reject:boolean){
   <div v-if="record.base_snapshot" class="full-application-action"><button type="button" class="ghost-button" :aria-expanded="fullContent" aria-controls="legacy-full-application" @click="fullContent=!fullContent">{{fullContent?'收起完整申请内容':'查看完整申请内容'}}</button></div>
   <section v-if="!record.base_snapshot || fullContent" id="legacy-full-application" class="full-application" :class="{'full-application--expanded':record.base_snapshot}"><h3 v-if="record.base_snapshot">本次变更申请完整内容</h3><section class="snapshot-goal"><h2>月度目标</h2><p>{{record.snapshot.summary}}</p></section><MonthlyPlanTaskPanel :tasks="record.snapshot.tasks" :month-key="record.month_key || record.snapshot.month_key" :template-code="record.snapshot.template_code" readonly /></section></template>
   <p v-if="error" class="approval-error" role="alert">{{error}}</p>
-  <form v-if="record.can_approve" id="monthly-plan-approval-form" ref="form" class="approval-decision" novalidate @input.capture="clearFieldValidity" @submit.prevent><label>审批意见（驳回必填）<textarea v-model="reason" maxlength="2000" rows="4" :disabled="busy" /></label></form>
+  <form v-if="record.can_approve" id="monthly-plan-approval-form" ref="form" class="approval-decision" novalidate @input.capture="clearFieldValidity" @submit.prevent><label>审批意见（驳回必填）<textarea class="user-content" v-model="reason" maxlength="2000" rows="4" :disabled="busy" /></label></form>
  </div>
  <template v-if="record?.can_approve" #actions><button class="ghost-button" type="button" :disabled="busy" @click="submit(false)">通过</button><button class="ghost-button" type="button" :disabled="busy" @click="submit(true)">驳回</button></template>
 </BaseDialog>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { progressColor } from "@/mobile/utils/progress-color"
 import { toRefs, type UnwrapRef } from "vue"
 import type { useLegacyDashboard } from "../composables/useLegacyDashboard"
 import heroActionChecklist from "@/assets/dashboard/hero-action-checklist.png"
@@ -107,7 +108,7 @@ const { authStore, dashboardStore, summary, workTasks, scopeLabel, customerDistr
         <div class="completion-visual">
           <img class="completion-art" :src="heroProgressArrow" alt="" aria-hidden="true" />
           <div class="completion-ring" :style="{ '--completion': `${summary.kpis.completion_rate}%` }">
-            <div><strong>{{ Math.round(summary.kpis.completion_rate) }}%</strong><span>综合完成</span></div>
+            <div><strong :style="{ color: progressColor(summary.kpis.completion_rate) }">{{ Math.round(summary.kpis.completion_rate) }}%</strong><span>综合完成</span></div>
           </div>
         </div>
         <p class="completion-note">本周整体完成情况良好</p>

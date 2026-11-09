@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { progressColor } from "@/utils/progress-color"
 import { ArrowUpRight, BarChart3, CalendarCheck2, ClipboardCheck, ListChecks, PieChart, Target, UsersRound } from "lucide-vue-next"
 import { useRouter } from "vue-router"
 
@@ -38,7 +39,7 @@ function openMyReport() {
       </div>
       <div class="own-report-stats">
         <button class="own-report-stat own-report-stat--blue" type="button" :disabled="!myReport" @click="openMyReport">
-          <span><Target :size="18" /></span><div><strong>{{ Math.round(myReport?.completionRate || 0) }}%</strong><small>个人完成率</small></div>
+          <span><Target :size="18" /></span><div><strong :style="{ color: progressColor(myReport?.completionRate || 0) }">{{ Math.round(myReport?.completionRate || 0) }}%</strong><small>个人完成率</small></div>
         </button>
         <button class="own-report-stat own-report-stat--purple" type="button" :disabled="!myReport" @click="openMyReport">
           <span><ListChecks :size="18" /></span><div><strong>{{ ownTaskCount }}</strong><small>本周条目</small></div>
@@ -75,9 +76,9 @@ function openMyReport() {
           <div class="member-progress-name">
             <span class="member-avatar">{{ member.employeeName.slice(0, 1) }}</span>
             <div><strong>{{ member.employeeName }}</strong><small>{{ member.roleName }} · {{ member.taskCount }} 项任务，完成 {{ member.completedTaskCount }} 项</small></div>
-            <b>{{ Math.round(member.completionRate) }}%</b>
+            <b :style="{ color: progressColor(member.completionRate) }">{{ Math.round(member.completionRate) }}%</b>
           </div>
-          <div class="member-progress-track"><i :style="{ width: `${Math.min(100, Math.max(0, member.completionRate))}%` }" /></div>
+          <div class="member-progress-track"><i :style="{ background: progressColor(member.completionRate), width: `${Math.min(100, Math.max(0, member.completionRate))}%` }" /></div>
         </div>
       </div>
       <div v-else class="team-panel-empty">暂无团队任务</div>

@@ -4,7 +4,7 @@ import {ref,watch} from "vue"
 import {useAuthStore} from "@/features/auth/store"
 
 export const defaultContentFontSize=14
-export const minimumContentFontSize=12
+export const minimumContentFontSize=10
 export const maximumContentFontSize=24
 
 function normalizeSize(value:number){

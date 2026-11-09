@@ -15,3 +15,7 @@
 .approval-card-actions button {min-height:44px;padding:8px 14px;border:0;border-radius:10px;background:var(--surface-soft);color:var(--accent-dark);font-size:14px;cursor:pointer;}
 .approval-empty {margin:0;padding:24px 12px;text-align:center;color:var(--muted);font-size:14px;}
 .approval-card {border-color:#9fbce0;background:linear-gradient(180deg,#e2edfc 0%,#f2f7fe 42%,#fff 100%);box-shadow:0 3px 10px rgba(45,84,135,.08);}
+
+.approval-card { background: #fff; }
+.approval-card:nth-child(even) { background: #edf5ff; }
+.approval-card :deep(.plan-status-tag) { background: transparent; padding: 0; border-radius: 0; }

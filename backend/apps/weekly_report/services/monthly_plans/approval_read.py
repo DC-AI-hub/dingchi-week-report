@@ -11,7 +11,10 @@ from .versions import assigned_root_ids
 def list_assigned_approvals(user, role_code, filters, page, size):
     ids = assigned_root_ids(user.id, role_code)
     plans = {int(plan.id): plan for plan in dao.approval_plans(ids, filters)}
-    children = {int(child.id): child for child in changes.changes_for_plans(list(plans))}
+    children = {
+        int(child.id): child
+        for child in changes.changes_for_plans(list(plans), include_deleted=True)
+    }
     result = assigned_approval_records(
         user.id,
         ["monthly_plan", "monthly_plan_change"],

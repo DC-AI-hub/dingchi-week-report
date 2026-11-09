@@ -16,8 +16,9 @@ def changes_by_ids(ids):
     return list(MonthlyPlanChange.objects.filter(id__in=ids))
 
 
-def changes_for_plans(ids):
-    return list(MonthlyPlanChange.objects.filter(monthly_plan_id__in=ids))
+def changes_for_plans(ids, *, include_deleted=False):
+    rows = MonthlyPlanChange.objects.filter(monthly_plan_id__in=ids)
+    return list(rows if include_deleted else rows.exclude(status="deleted"))
 
 
 def active_change(plan_id):

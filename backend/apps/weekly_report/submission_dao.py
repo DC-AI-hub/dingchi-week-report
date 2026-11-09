@@ -9,12 +9,13 @@ from .models import MonthlyPlan, WeeklyReport
 from .submission_models import ReportSubmission, ReportSubmissionChange
 
 
-def find(submission_id, lock=False):
+def find(submission_id, lock=False, *, include_deleted=False):
     rows = ReportSubmission.objects.select_for_update() if lock else ReportSubmission.objects.all()
     seen = set()
     while submission_id not in seen:
         seen.add(submission_id)
-        row = rows.filter(id=submission_id).exclude(status="deleted").first()
+        candidates = rows.filter(id=submission_id)
+        row = (candidates if include_deleted else candidates.exclude(status="deleted")).first()
         if not row or not row.merged_into_id:
             return row
         submission_id = row.merged_into_id
@@ -29,9 +30,11 @@ def save(row):
     row.save()
 
 
-def part_rows(parent, lock=False):
+def part_rows(parent, lock=False, *, include_deleted=False):
     model = MonthlyPlan if parent.kind == "monthly" else WeeklyReport
-    rows = model.objects.filter(submission_id=parent.id).exclude(status="deleted").order_by("id")
+    rows = model.objects.filter(submission_id=parent.id).order_by("id")
+    if not include_deleted:
+        rows = rows.exclude(status="deleted")
     return list(rows.select_for_update() if lock else rows)
 
 
@@ -45,12 +48,12 @@ def set_part_status(parent, status):
     model.objects.filter(submission_id=parent.id).exclude(status="deleted").update(status=status)
 
 
-def query(kind, visible_ids, filters, ids=None):
-    rows = ReportSubmission.objects.filter(kind=kind, merged_into_id__isnull=True).exclude(
-        status="deleted"
-    )
+def query(kind, visible_ids, filters, ids=None, *, include_deleted=False):
+    rows = ReportSubmission.objects.filter(kind=kind, merged_into_id__isnull=True)
+    if not include_deleted:
+        rows = rows.exclude(status="deleted")
     rows = (
-        rows.filter(id__in=canonical_ids(ids))
+        rows.filter(id__in=canonical_ids(ids, include_deleted=include_deleted))
         if ids is not None
         else rows.filter(employee_id__in=visible_ids)
     )
@@ -78,6 +81,8 @@ def query(kind, visible_ids, filters, ids=None):
     if filters.get("role_code"):
         table = "monthly_plan" if kind == "monthly" else "weekly_report"
         sql = (Path(__file__).parent / "sql/submission_role_ids.sql").read_text(encoding="utf-8")
+        if include_deleted:
+            sql = sql.replace("AND status <> 'deleted'", "")
         rows = rows.filter(id__in=RawSQL(sql.format(part_table=table), [filters["role_code"]]))
     return rows.order_by("-month_key", "-period_start", "-updated_at", "-id")
 
@@ -88,19 +93,19 @@ def pending_changes(parent_id):
     )
 
 
-def changes(parent_id):
-    return list(
-        ReportSubmissionChange.objects.filter(submission_id=parent_id).exclude(status="deleted")
-    )
+def changes(parent_id, *, include_deleted=False):
+    rows = ReportSubmissionChange.objects.filter(submission_id=parent_id)
+    return list(rows if include_deleted else rows.exclude(status="deleted"))
 
 
-def find_change(change_id, lock=False):
+def find_change(change_id, lock=False, *, include_deleted=False):
     rows = (
         ReportSubmissionChange.objects.select_for_update()
         if lock
         else ReportSubmissionChange.objects.all()
     )
-    return rows.filter(id=change_id).exclude(status="deleted").first()
+    rows = rows.filter(id=change_id)
+    return (rows if include_deleted else rows.exclude(status="deleted")).first()
 
 
 def create_change(**fields):
@@ -167,8 +172,14 @@ def create_monthly_part(**values):
     return MonthlyPlan.objects.create(**values)
 
 
-def canonical_ids(ids):
-    return list({row.id for value in ids if (row := find(value)) is not None})
+def canonical_ids(ids, *, include_deleted=False):
+    return list(
+        {
+            row.id
+            for value in ids
+            if (row := find(value, include_deleted=include_deleted)) is not None
+        }
+    )
 
 
 def weekly_rows_for_period(employee_id, period_start, lock=False):

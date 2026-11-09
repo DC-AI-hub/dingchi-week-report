@@ -240,8 +240,6 @@ def create_or_update_report(
         raise ReportError("周报周期必须从周一开始。")
     if period_end != period_start + timedelta(days=6):
         raise ReportError("周报周期结束日期必须是开始日期后的周日。")
-    if report_id is None and period_start < current_start and not allow_past_period:
-        raise ReportError("只能新增当前周报周期或未来周报周期。")
     report = _load_editable_report(
         user=user,
         role_code=role_code,
@@ -287,8 +285,6 @@ def create_or_update_report(
                 ) from exc
         else:
             if report.period_start != period_start:
-                if period_start < current_start:
-                    raise ReportError("只能选择当前周报周期或未来周报周期。")
                 if dao.report_period_exists(user.id, role_code, period_start, report.id):
                     raise ReportConflictError("该职位在此周报周期已有记录，请选择其他周期。")
                 dao.move_daily_task_dates(report.id, period_start - report.period_start)
@@ -355,6 +351,7 @@ def delete_report(*, user: UserAccount, role_code: str, report_id: int) -> dict[
     if _effective_report_status(report.status, report.period_start) == REPORT_STATUS_COMPLETED:
         raise ReportError("已完成的周报不支持删除。")
     with transaction.atomic():
+        WeeklyReportDailyTask.objects.filter(report_id=report.id).delete()
         WeeklyReportItemProgressHistory.objects.filter(report_id=report.id).delete()
         WeeklyReportItem.objects.filter(report_id=report.id).delete()
         remove_unused_texts(report.id)
@@ -367,6 +364,9 @@ def delete_report(*, user: UserAccount, role_code: str, report_id: int) -> dict[
         check_part(report)
         report.status = "deleted"
         sync_legacy(report, "weekly")
+        from .physical_delete import delete_legacy_parent
+
+        delete_legacy_parent(report.submission_id)
         report.delete()
     return {"id": report_id_text, "deleted": True}
 

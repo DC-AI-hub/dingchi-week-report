@@ -148,7 +148,9 @@ def submit(user, role_code, submission_id):
 def delete(user, role_code, submission_id):
     parent = read.accessible(user, role_code, submission_id, lock=True, editable=True)
     if (
-        parent.status in {"approved", "pending", "completed"}
+        parent.status not in (
+            {"draft"} if parent.kind == "monthly" else {"draft", "not_started", "in_progress"}
+        )
         or dao.pending_changes(parent.id).exists()
     ):
         raise ValueError("当前状态不允许删除。")
@@ -157,9 +159,16 @@ def delete(user, role_code, submission_id):
             monthly_write.delete(user, row.role_code, row.id)
         else:
             reports.delete_report(user=user, role_code=row.role_code, report_id=row.id)
-    parent.status, parent.active_key = "deleted", None
-    dao.save(parent)
-    return {"id": str(parent.id), "deleted": True}
+    if parent.kind == "monthly":
+        parent.status, parent.active_key = "deleted", None
+        dao.save(parent)
+        return {"id": str(parent.id), "deleted": True}
+    parent_id = str(parent.id)
+    from ..submission_models import ReportSubmissionChange
+
+    ReportSubmissionChange.objects.filter(submission_id=parent.id).delete()
+    parent.delete()
+    return {"id": parent_id, "deleted": True}
 
 
 def new_parent(user, kind, month, start, end):

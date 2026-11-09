@@ -120,8 +120,8 @@ python manage.py test --settings=config.settings.test
 
 
 本地测试账号：
-username	        display_name
-admin	            系统管理员
+username	        display_name    password
+admin	            系统管理员       Worker@123
 
 president	        周总
 

@@ -36,7 +36,7 @@ function display(field: TaskFieldDefinition) {
       <span v-else-if="readonly" class="text-value" :class="{'user-content':field.code!=='on_time_status'}">{{ display(field) }}</span>
       <button v-else-if="textFields.includes(field.code)" class="text-cell user-content" type="button" :aria-label="`编辑${field.label}`" @click="editing = field">{{ draft[field.code] || `点击填写${field.label}` }}</button>
       <TaskInlineField v-else :task="draft" :field="field.code" :label="field.label" :users="users" @patch="patch" />
-      <button v-if="field.code === 'work_content' && !readonly" class="cell-insert" type="button" aria-label="新增共用工作内容的成果" @click="emit('insertContent')"><Plus :size="16" /></button>
+      <button data-task-tip="新增输出成果" aria-label="新增输出成果" v-if="field.code === 'work_content' && !readonly" class="cell-insert" type="button" @click="emit('insertContent')"><Plus :size="16" /></button>
     </td>
   </template>
   <TaskTextFieldDialog :open="Boolean(editing)" :title="editing?.label || ''" :value="editing ? String(draft[editing.code] || '') : ''" :max-length="10000" @close="editing = null" @save="value => { if (editing) patch({ [editing.code]: value }); editing = null }" />

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { progressColor } from "@/utils/progress-color"
 defineProps<{
   plannedTasks: number
   completionRate: number
@@ -26,7 +27,7 @@ const cards: Array<{
       <span class="metric-icon" :class="`metric-icon--${card.tone}`" aria-hidden="true" />
       <div class="metric-copy">
         <h2>{{ card.label }}</h2>
-        <strong>{{ Math.round($props[card.key]) }}{{ card.suffix || "" }}</strong>
+        <strong :style="card.suffix ? { color: progressColor($props[card.key]) } : undefined">{{ Math.round($props[card.key]) }}{{ card.suffix || "" }}</strong>
         <span>{{ card.hint }}</span>
       </div>
       <span class="metric-glow" aria-hidden="true" />

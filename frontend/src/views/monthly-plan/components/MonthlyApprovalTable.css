@@ -23,3 +23,5 @@
 
 .approval-table { --monthly-row-divider: color-mix(in srgb, var(--accent) 32%, var(--surface-strong)); }
 .approval-table th { border-bottom: 1px solid var(--monthly-row-divider); }
+
+.approval-table :deep(.plan-status-tag) { background: transparent; padding: 0; border-radius: 0; }

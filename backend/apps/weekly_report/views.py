@@ -228,7 +228,7 @@ def report_detail_view(request: HttpRequest, report_id: str) -> JsonResponse:
 
     方法/路径：GET/PATCH/DELETE /api/v1/weekly-reports/{id}/；认证：Bearer；参数：路径 report_id。
     PATCH/DELETE 仅允许操作本人且未完成的周报；提交请调用独立的 submit 接口。
-    PATCH 调整周期时须选择当前或未来周，校验目标周期不重复、目标月份计划审批通过；
+    PATCH 调整周期时支持历史、当前或未来周，校验目标周期不重复、目标月份计划审批通过；
     日报按星期平移到新周期，校验失败则全部回滚；所有来源周报统一处理。
     成功响应：report/template/monthly_plan/monthly_plan_tasks/items/metrics/attachments/daily_tasks，
     monthly_plan_tasks 随周报保存本人当前角色当月计划；详见 docs/monthly-plan-tasks-api.md，

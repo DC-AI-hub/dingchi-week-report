@@ -146,8 +146,8 @@ def snapshot(parent, user, role_code):
     }
 
 
-def serialize(parent, user, role_code):
-    rows = dao.part_rows(parent)
+def serialize(parent, user, role_code, *, include_deleted=False):
+    rows = dao.part_rows(parent, include_deleted=include_deleted)
     codes = [row.role_code for row in rows]
     children = change_rows(parent, rows)
     profile = user_profiles([parent.employee_id]).get(parent.employee_id, {})
@@ -257,6 +257,7 @@ def change_rows(parent, rows):
         children += [
             {**change_row(change, include_snapshots=False), "plan_id": str(parent.id)}
             for change in old_changes.changes_for_plans([row.id for row in rows])
+            if change.status != "deleted"
         ]
     if (
         parent.kind == "weekly"

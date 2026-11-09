@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { progressColor } from "@/utils/progress-color"
 import * as echarts from "echarts"
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 
@@ -19,12 +20,12 @@ function renderChart() {
       max: 100,
       radius: "92%",
       pointer: { show: false },
-      progress: { show: true, roundCap: true, width: 17, itemStyle: { color: "#2d83ee" } },
+      progress: { show: true, roundCap: true, width: 17, itemStyle: { color: progressColor(props.value) } },
       axisLine: { lineStyle: { width: 17, color: [[1, "#dcecff"]] } },
       axisTick: { show: false },
       splitLine: { show: false },
       axisLabel: { show: false },
-      detail: { valueAnimation: true, offsetCenter: [0, "0%"], fontSize: 28, fontWeight: 700, color: "#102b59", formatter: "{value}%" },
+      detail: { valueAnimation: true, offsetCenter: [0, "0%"], fontSize: 28, fontWeight: 700, color: progressColor(props.value), formatter: "{value}%" },
       data: [{ value: Math.round(props.value) }],
     }],
   })

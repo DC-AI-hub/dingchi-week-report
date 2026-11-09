@@ -17,36 +17,44 @@ from .monthly_plans import write as old_write
 from .submission_scope import aggregate_write
 
 
-def parent_for(record):
+def parent_for(record, *, include_deleted=False):
     business_id = int(record["business_id"])
     if record["business_type"] == "monthly_submission":
-        return dao.find(business_id), None
+        return dao.find(business_id, include_deleted=include_deleted), None
     if record["business_type"] == "monthly_submission_change":
-        change = dao.find_change(business_id)
-        return (dao.find(change.submission_id), change) if change else (None, None)
+        change = dao.find_change(business_id, include_deleted=include_deleted)
+        return (
+            (dao.find(change.submission_id, include_deleted=include_deleted), change)
+            if change
+            else (None, None)
+        )
     if record["business_type"] == "monthly_plan_change":
         change = old_changes.find_change(business_id)
         part = old_plans.find_plan(change.monthly_plan_id) if change else None
     else:
         part = old_plans.find_plan(business_id)
-    return (dao.find(part.submission_id), None) if part and part.submission_id else (None, None)
+    return (
+        (dao.find(part.submission_id, include_deleted=include_deleted), None)
+        if part and part.submission_id
+        else (None, None)
+    )
 
 
 def detail(user, role_code, approval_id):
     record = assigned_record(user.id, approval_id, role_code)
     if record["business_type"] in {"monthly_plan", "monthly_plan_change"}:
         original = old_read.detail_assigned(user, role_code, approval_id)
-        parent, _ = parent_for(record)
+        parent, _ = parent_for(record, include_deleted=True)
         return {
             **original,
             "plan_id": str(parent.id) if parent else original["plan_id"],
             "legacy_plan_id": original["plan_id"],
             "legacy_change_id": original.get("change_id"),
         }
-    parent, change = parent_for(record)
+    parent, change = parent_for(record, include_deleted=True)
     if not parent:
         raise LookupError("月度计划不存在。")
-    row = read.serialize(parent, user, role_code)
+    row = read.serialize(parent, user, role_code, include_deleted=True)
     return {
         **record,
         "plan_id": str(parent.id),

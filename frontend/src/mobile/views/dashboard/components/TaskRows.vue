@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { progressColor } from "@/mobile/utils/progress-color"
 import type { DashboardItem } from "@/mobile/features/dashboard/types"
 
 defineProps<{ tasks: DashboardItem[] }>()
@@ -26,7 +27,7 @@ function percent(value: number | null) {
         <small>{{ task.progress_text || "尚未填写进展" }}</small>
       </div>
       <div class="task-progress">
-        <div class="progress-track"><span :style="{ width: `${task.progress_percent || 0}%` }" /></div>
+        <div class="progress-track"><span :style="{ background: progressColor(task.progress_percent), width: `${task.progress_percent || 0}%` }" /></div>
       </div>
       <span class="task-progress-value">{{ percent(task.progress_percent) }}</span>
       <span class="task-rate">{{ percent(task.completion_rate) }}</span>

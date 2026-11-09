@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { progressColor } from "@/utils/progress-color"
 import type { DashboardItem } from "@/features/dashboard/types"
 
 defineProps<{ tasks: DashboardItem[] }>()
@@ -26,10 +27,10 @@ function percent(value: number | null) {
         <small>{{ task.progress_text || "尚未填写进展" }}</small>
       </div>
       <div class="task-progress">
-        <div class="progress-track"><span :style="{ width: `${task.progress_percent || 0}%` }" /></div>
+        <div class="progress-track"><span :style="{ background: progressColor(task.progress_percent), width: `${task.progress_percent || 0}%` }" /></div>
       </div>
-      <span class="task-progress-value">{{ percent(task.progress_percent) }}</span>
-      <span class="task-rate">{{ percent(task.completion_rate) }}</span>
+      <span class="task-progress-value" :style="{ color: progressColor(task.progress_percent) }">{{ percent(task.progress_percent) }}</span>
+      <span class="task-rate" :style="{ color: progressColor(task.completion_rate) }">{{ percent(task.completion_rate) }}</span>
       <span class="status-pill" :class="`status-pill--${task.on_time_status}`">
         {{ task.on_time_status === "pending" ? "待完成" : task.on_time_status === "overdue" || task.on_time_status === "late" ? "延期" : task.on_time_status === "on_time" || task.on_time_status === "completed" ? "已完成" : "进行中" }}
       </span>

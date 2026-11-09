@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { progressColor } from "@/mobile/utils/progress-color"
 import * as echarts from "echarts"
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 
@@ -40,11 +41,11 @@ function renderChart() {
         smooth: true,
         symbol: "circle",
         symbolSize: 6,
-        data: props.points.map((item) => item.progress),
+        data: props.points.map((item) => ({ value: item.progress, itemStyle: { color: progressColor(item.progress) } })),
         lineStyle: { width: 2.5 },
         areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: "rgba(45,131,238,.22)" }, { offset: 1, color: "rgba(45,131,238,0)" }]) },
       },
-      { name: "完成率", type: "line", smooth: true, symbol: "circle", symbolSize: 6, data: props.points.map((item) => item.completion), lineStyle: { width: 2.5 } },
+      { name: "完成率", type: "line", smooth: true, symbol: "circle", symbolSize: 6, data: props.points.map((item) => ({ value: item.completion, itemStyle: { color: progressColor(item.completion) } })), lineStyle: { width: 2.5 } },
     ],
   })
 }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { progressColor } from "@/utils/progress-color"
 import * as echarts from "echarts"
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 
@@ -11,7 +12,7 @@ function renderChart() {
   chart ||= echarts.init(chartElement.value)
   chart.setOption({
     animationDuration: 600,
-    series: [{ type: "gauge", startAngle: 90, endAngle: -270, radius: "86%", pointer: { show: false }, progress: { show: true, roundCap: true, width: 16, itemStyle: { color: "#168cff" } }, axisLine: { lineStyle: { width: 16, color: [[1, "#e1efff"]] } }, axisTick: { show: false }, splitLine: { show: false }, axisLabel: { show: false }, anchor: { show: false }, detail: { valueAnimation: true, offsetCenter: [0, "4%"], fontSize: 32, fontWeight: 750, color: "#0c2e68", formatter: "{value}%" }, data: [{ value: Math.round(Math.min(100, Math.max(0, props.value))) }] }],
+    series: [{ type: "gauge", startAngle: 90, endAngle: -270, radius: "86%", pointer: { show: false }, progress: { show: true, roundCap: true, width: 16, itemStyle: { color: progressColor(props.value) } }, axisLine: { lineStyle: { width: 16, color: [[1, "#e1efff"]] } }, axisTick: { show: false }, splitLine: { show: false }, axisLabel: { show: false }, anchor: { show: false }, detail: { valueAnimation: true, offsetCenter: [0, "4%"], fontSize: 32, fontWeight: 750, color: progressColor(props.value), formatter: "{value}%" }, data: [{ value: Math.round(Math.min(100, Math.max(0, props.value))) }] }],
   })
 }
 

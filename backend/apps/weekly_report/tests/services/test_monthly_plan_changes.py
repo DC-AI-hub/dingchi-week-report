@@ -98,6 +98,7 @@ def test_change_permissions_validation_and_deleted_audit(people):
         },
     )
     change_write.delete(people[0], "delivery", change_id)
+    assert MonthlyPlanChange.objects.get(id=change_id).status == "deleted"
     assert read.gate(people[0], "delivery", "2026-10")["approved"]
     assert read.detail(people[0], "delivery", plan_id)["plan"]["summary"] == "原目标"
     audit = read.list_plans(people[1], "manager", {"view": "approvals"})
@@ -196,6 +197,7 @@ def test_status_filter_matches_children_before_root_pagination(people):
     assert read.list_plans(owner, "delivery", {"view": "mine", "status": "rejected"})["total"] == 1
     assert read.list_plans(owner, "delivery", {"view": "mine", "status": "pending"})["total"] == 0
     change_write.delete(owner, "delivery", change_id)
+    assert MonthlyPlanChange.objects.get(id=change_id).status == "deleted"
     assert read.list_plans(owner, "delivery", {"view": "mine", "status": "rejected"})["total"] == 0
     assert read.list_plans(owner, "delivery", {"view": "mine", "status": "approved"})["total"] == 1
 

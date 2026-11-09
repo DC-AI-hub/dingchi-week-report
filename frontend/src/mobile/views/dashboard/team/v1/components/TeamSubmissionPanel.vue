@@ -6,7 +6,7 @@ import type { TeamMemberSummary, TeamReportEntry } from "../types"
 import { latestMemberUpdates, memberSubmissionStatus } from "../report-submission"
 const props=defineProps<{members:TeamMemberSummary[];reports:TeamReportEntry[]}>()
 defineEmits<{open:[employeeId:string]}>()
-const labels={unwritten:'未填写',pending:'待提交',submitted:'已提交'}
+const labels={unwritten:'未填写',pending:'进行中',submitted:'已提交'}
 const statuses=computed(()=>props.members.map(member=>({...member,status:memberSubmissionStatus(props.reports,member.employeeId)})))
 const counts=computed(()=>({unwritten:statuses.value.filter(m=>m.status==='unwritten').length,pending:statuses.value.filter(m=>m.status==='pending').length,submitted:statuses.value.filter(m=>m.status==='submitted').length}))
 const updates=computed(()=>latestMemberUpdates(props.reports,props.members))

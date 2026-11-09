@@ -6,6 +6,7 @@ import { ApiError, normalizeApiError } from "./errors"
 import type { ApiEnvelope } from "./types"
 
 const timeout = Number(import.meta.env.VITE_API_TIMEOUT || 30000)
+let redirectingToLogin = false
 
 export const http = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "/api",
@@ -40,7 +41,22 @@ http.interceptors.request.use((config) => {
 
 http.interceptors.response.use(
   (response) => response,
-  (error: unknown) => Promise.reject(normalizeApiError(error)),
+  (error: unknown) => {
+    const normalized = normalizeApiError(error)
+    if (normalized.status === 401 && !/\/(?:mobile\/)?login\/?$/.test(window.location.pathname)) {
+      localStorage.removeItem("dingchi.access_token")
+      localStorage.removeItem("dingchi.session")
+      const mobile = window.location.pathname.startsWith("/mobile")
+      const login = `${import.meta.env.BASE_URL.replace(/\/$/, "")}${mobile ? "/mobile/login" : "/login"}`
+      const redirect = window.location.pathname + window.location.search + window.location.hash
+      if (!redirectingToLogin) {
+        redirectingToLogin = true
+        window.location.replace(`${login}?redirect=${encodeURIComponent(redirect)}`)
+      }
+      normalized.message = ""
+    }
+    return Promise.reject(normalized)
+  },
 )
 
 export async function request<T>(config: AxiosRequestConfig): Promise<T> {

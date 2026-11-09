@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { progressColor } from "@/utils/progress-color"
 import { BarChart3, CheckCircle2, FileText, ListChecks, Settings, Star } from "lucide-vue-next"
 
 import { isWorkTaskCompleted, taskCompletionText } from "@/features/dashboard/task-metrics"
@@ -40,7 +41,7 @@ function taskState(task: DashboardTeamTask) {
               <td :title="task.output_description || undefined">{{ task.output_description || "—" }}</td>
               <td>{{ formatDate(task.planned_completion_date) }}</td>
               <td :title="task.progress_text || undefined">{{ task.progress_text || "—" }}</td>
-              <td><span class="leader-progress"><i :style="{ width: `${Math.min(100, Math.max(0, Number(task.progress_percent) || 0))}%` }" /><b>{{ formatProgress(task.progress_percent) }}</b></span></td>
+              <td><span class="leader-progress"><i :style="{ background: progressColor(task.progress_percent), width: `${Math.min(100, Math.max(0, Number(task.progress_percent) || 0))}%` }" /><b>{{ formatProgress(task.progress_percent) }}</b></span></td>
               <td><span class="leader-status" :class="`leader-status--${taskState(task) === '进行中' ? 'progress' : taskState(task) === '已完成' ? 'done' : 'pending'}`">{{ taskState(task) }}</span><small v-if="task.detail_count" class="task-completion-count">{{ taskCompletionText(task) }}</small></td>
               <td>{{ task.employee_name || "—" }}</td>
               <td :title="task.collaborator_names || undefined">{{ task.collaborator_names || "—" }}</td>

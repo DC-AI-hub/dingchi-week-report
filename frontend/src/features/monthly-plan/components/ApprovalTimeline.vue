@@ -17,7 +17,7 @@ const current=computed(()=>nodes.value.find(node=>node.state==='current') || nod
         <div v-else class="flow-node">
           <div class="flow-node-heading"><h3>{{node.title}}</h3><span class="flow-result">{{node.result}}</span></div>
           <dl><div><dt>处理人</dt><dd>{{node.person}}</dd></div><div><dt>操作时间</dt><dd><time v-if="node.time" :datetime="node.time">{{formatDateTime(node.time)}}</time><span v-else>—</span></dd></div></dl>
-          <div v-if="node.reason" class="flow-reason"><strong>{{node.state==='rejected'?'驳回原因':'审批意见'}}</strong><p>{{node.reason}}</p></div>
+          <div v-if="node.reason" class="flow-reason"><strong>{{node.state==='rejected'?'驳回原因':'审批意见'}}</strong><p class="user-content">{{node.reason}}</p></div>
         </div>
       </li>
     </ol>

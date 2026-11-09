@@ -202,6 +202,8 @@ def delete(user, role_code, plan_id):
         raise ValueError("审批通过的月度计划不能删除，请申请变更。")
     if changes.active_change(plan.id):
         raise ValueError("存在未完成的变更申请，不能删除主流程。")
+    if plan.status != "draft":
+        raise ValueError("仅草稿状态的月度计划支持删除。")
     before = snapshot(plan)
     plan.status = "deleted"
     plan.revision += 1

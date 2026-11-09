@@ -83,16 +83,20 @@ def list_approvals(user, role_code, filters, page, size):
             [],
             {key: value for key, value in filters.items() if key != "status"},
             list(parent_ids),
+            include_deleted=True,
         )
     }
     allowed_ids = set(roots)
     for root in roots.values():
         allowed_ids.update(dao.merged_source_ids(root.id))
-        allowed_ids.update(row.id for row in dao.part_rows(root))
-        allowed_ids.update(row.id for row in dao.changes(root.id))
+        allowed_ids.update(row.id for row in dao.part_rows(root, include_deleted=True))
+        allowed_ids.update(row.id for row in dao.changes(root.id, include_deleted=True))
         allowed_ids.update(
             row.id
-            for row in old_changes.changes_for_plans([part.id for part in dao.part_rows(root)])
+            for row in old_changes.changes_for_plans(
+                [part.id for part in dao.part_rows(root, include_deleted=True)],
+                include_deleted=True,
+            )
         )
     result = assigned_approval_records(
         user.id,

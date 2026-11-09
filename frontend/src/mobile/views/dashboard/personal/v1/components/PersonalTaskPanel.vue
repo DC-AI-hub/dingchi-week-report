@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { progressColor } from "@/mobile/utils/progress-color"
 import { computed } from "vue"
 import { ListTodo, ArrowUpRight } from "lucide-vue-next"
 import { RouterLink } from "vue-router"
@@ -63,7 +64,7 @@ function statusLabel(status: string) {
         <div class="task-name" :title="task.task_name_snapshot">
           <strong>{{ task.task_name_snapshot }}</strong>
         </div>
-        <div class="task-progress-track" aria-hidden="true"><span :style="{ width: `${task.progress_percent || 0}%` }" /></div>
+        <div class="task-progress-track" aria-hidden="true"><span :style="{ background: progressColor(task.progress_percent), width: `${task.progress_percent || 0}%` }" /></div>
         <span class="task-number">{{ percent(task.progress_percent) }}</span>
         <span class="task-number task-number--green">{{ taskCompletionText(task) }}</span>
         <span class="task-status" :class="`task-status--${task.on_time_status}`">{{ statusLabel(task.on_time_status) }}</span>

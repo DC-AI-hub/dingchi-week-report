@@ -159,6 +159,10 @@ function saveText(value: string, templateIndex?: number) {
   }
   editingText.value = null
 }
+function addBlankTask() {
+  if (unavailable.value || props.readonly) return
+  emit("update:tasks", [...props.tasks, { id: `draft-${createId()}`, scope_name: activeCustomer.value, work_task: "", work_content: "", task_source: "custom" }])
+}
 function insertAfter(id: string) {
   if (unavailable.value || props.readonly) return
   const tasks = [...props.tasks]
@@ -206,7 +210,7 @@ function addPlans(customer: string, indexes: number[]) {
           <tbody>
             <tr v-for="(task, index) in entries" :key="task.id">
               <td class="serial">{{ (page - 1) * pageSize + index + 1 }}</td>
-              <td v-if="scopeLabel && !deliveryTemplate && monthlyRowSpan(entries, index, 'scope')" :rowspan="monthlyRowSpan(entries, index, 'scope')" class="customer-name shared-monthly-cell"><template v-if="salesTemplate"><span v-if="readonly || unavailable" class="monthly-task-plain user-content">{{ task.customer_source === 'template' ? previewTaskTemplate(task.customer_template || '', task.customer_values || []) : task.scope_name || '—' }}</span><TemplateCustomerCell :label="scopeLabel" v-else-if="task.customer_source === 'template'" :task="{ ...task, customer_name: task.scope_name }" @patch="patch(task.id, { scope_name: $event.customer_name, customer_values: $event.customer_values })" /><button v-else class="monthly-task-text-cell user-content" type="button" :aria-label="`编辑${scopeLabel}`" @click="openText(task, 'scope_name')">{{ task.scope_name || `点击填写${scopeLabel}` }}</button></template><template v-else><TemplateDimensionCell v-if="recruitmentTemplate && !readonly && !unavailable && task.dimension_source === 'template'" :task="{ ...task, dimension: task.scope_name }" @patch="patch(task.id, { scope_name: $event.dimension, dimension_values: $event.dimension_values })" /><span v-else-if="recruitmentTemplate && (readonly || unavailable)" class="monthly-task-plain user-content">{{ task.dimension_source === 'template' ? previewTaskTemplate(task.dimension_template || '', task.dimension_values || []) : task.scope_name || '—' }}</span><button v-else-if="recruitmentTemplate && !readonly" class="monthly-task-text-cell user-content" type="button" :disabled="unavailable" aria-label="编辑维度" @click="openText(task, 'scope_name')">{{ task.scope_name || '点击填写维度' }}</button><template v-else>{{ task.scope_name || "—" }}</template></template><button v-if="!readonly && !unavailable" class="cell-insert" type="button" :aria-label="`新增共用${scopeLabel}的工作任务`" @click="insertChild(task.id, 'scope')"><Plus :size="16" /></button></td>
+              <td v-if="scopeLabel && !deliveryTemplate && monthlyRowSpan(entries, index, 'scope')" :rowspan="monthlyRowSpan(entries, index, 'scope')" class="customer-name shared-monthly-cell"><template v-if="salesTemplate"><span v-if="readonly || unavailable" class="monthly-task-plain user-content">{{ task.customer_source === 'template' ? previewTaskTemplate(task.customer_template || '', task.customer_values || []) : task.scope_name || '—' }}</span><TemplateCustomerCell :label="scopeLabel" v-else-if="task.customer_source === 'template'" :task="{ ...task, customer_name: task.scope_name }" @patch="patch(task.id, { scope_name: $event.customer_name, customer_values: $event.customer_values })" /><button v-else class="monthly-task-text-cell user-content" type="button" :aria-label="`编辑${scopeLabel}`" @click="openText(task, 'scope_name')">{{ task.scope_name || `点击填写${scopeLabel}` }}</button></template><template v-else><TemplateDimensionCell v-if="recruitmentTemplate && !readonly && !unavailable && task.dimension_source === 'template'" :task="{ ...task, dimension: task.scope_name }" @patch="patch(task.id, { scope_name: $event.dimension, dimension_values: $event.dimension_values })" /><span v-else-if="recruitmentTemplate && (readonly || unavailable)" class="monthly-task-plain user-content">{{ task.dimension_source === 'template' ? previewTaskTemplate(task.dimension_template || '', task.dimension_values || []) : task.scope_name || '—' }}</span><button v-else-if="recruitmentTemplate && !readonly" class="monthly-task-text-cell user-content" type="button" :disabled="unavailable" aria-label="编辑维度" @click="openText(task, 'scope_name')">{{ task.scope_name || '点击填写维度' }}</button><template v-else>{{ task.scope_name || "—" }}</template></template><button data-task-tip="新增工作任务" aria-label="新增工作任务" v-if="!readonly && !unavailable" class="cell-insert" type="button" @click="insertChild(task.id, 'scope')"><Plus :size="16" /></button></td>
               <td v-if="monthlyRowSpan(entries, index, 'task')" :rowspan="monthlyRowSpan(entries, index, 'task')" class="shared-monthly-cell">
                 <template v-if="editableTemplate">
                   <span v-if="readonly || unavailable" class="monthly-task-plain user-content">{{ displayTask(task) || "—" }}</span>
@@ -216,12 +220,12 @@ function addPlans(customer: string, indexes: number[]) {
                   <button v-else class="monthly-task-text-cell user-content" type="button" @click="openText(task, 'work_task')">{{ task.work_task || "点击填写工作任务" }}</button>
                 </template>
                 <button v-else :class="editableTemplate && !readonly ? 'monthly-task-text-cell' : 'monthly-task-link'" type="button" :disabled="unavailable" @click="editableTemplate && !readonly ? openText(task, 'work_task') : open(task, true)">{{ task.work_task || "点击填写工作任务" }}</button>
-                <button v-if="!readonly && !unavailable" class="cell-insert" type="button" aria-label="新增共用工作任务的工作内容" @click="insertChild(task.id, 'task')"><Plus :size="16" /></button>
+                <button data-task-tip="新增工作内容" aria-label="新增工作内容" v-if="!readonly && !unavailable" class="cell-insert" type="button" @click="insertChild(task.id, 'task')"><Plus :size="16" /></button>
               </td>
               <td v-if="!dynamicTemplate && monthlyRowSpan(entries, index, 'content')" :rowspan="monthlyRowSpan(entries, index, 'content')" class="shared-monthly-cell">
                 <span v-if="readonly || unavailable" class="monthly-task-plain user-content">{{ task.work_content || "—" }}</span>
                 <button v-else class="monthly-task-text-cell user-content" type="button" @click="openText(task, 'work_content')">{{ task.work_content || "点击填写工作内容" }}</button>
-                <button v-if="!readonly && !unavailable" class="cell-insert" type="button" aria-label="新增共用工作内容的成果" @click="insertChild(task.id, 'content')"><Plus :size="16" /></button>
+                <button data-task-tip="新增输出成果" aria-label="新增输出成果" v-if="!readonly && !unavailable" class="cell-insert" type="button" @click="insertChild(task.id, 'content')"><Plus :size="16" /></button>
               </td>
               <MonthlyPlanTaskCells v-if="dynamicTemplate" :task="task" :fields="selectedFields" :users="users" :readonly="readonly || unavailable" :content-span="monthlyRowSpan(entries, index, 'content')" @patch="patch(task.id, $event)" @insert-content="insertChild(task.id, 'content')" />
               <td v-if="dynamicTemplate">{{ formatDateTime(task.updated_at) }}</td>
@@ -230,10 +234,10 @@ function addPlans(customer: string, indexes: number[]) {
                 <button v-if="!editableTemplate" class="link-button" type="button" :disabled="unavailable" @click="open(task, true)">查看</button>
                 <button v-if="!editableTemplate" class="link-button" type="button" :disabled="unavailable" @click="open(task)">编辑</button>
                 <button class="link-button danger" type="button" :disabled="unavailable" @click="remove(task.id)">删除</button>
-                <button v-if="editableTemplate" class="link-button insert-button" type="button" :disabled="unavailable" aria-label="在此计划后新增一行" title="在此计划后新增一行" @click="insertAfter(task.id)"><Plus :size="18" aria-hidden="true" /></button>
+                <button data-task-tip="新增自定义计划" aria-label="新增自定义计划" v-if="editableTemplate" class="link-button insert-button" type="button" :disabled="unavailable" @click="insertAfter(task.id)"><Plus :size="18" aria-hidden="true" /></button>
               </td>
             </tr>
-            <tr v-if="!filteredTasks.length"><td :colspan="(dynamicTemplate ? selectedFields.length + 3 + (scopeLabel && !deliveryTemplate ? 1 : 0) : 5 + (scopeLabel ? 1 : 0)) + (readonly ? 0 : 1)" class="monthly-task-empty">{{ readonly ? "暂无月度计划" : "暂无月度计划，请新增计划" }}</td></tr>
+            <tr v-if="!filteredTasks.length"><td :colspan="(dynamicTemplate ? selectedFields.length + 3 + (scopeLabel && !deliveryTemplate ? 1 : 0) : 5 + (scopeLabel ? 1 : 0)) + (readonly ? 0 : 1)" class="monthly-task-empty"><div class="monthly-empty-content"><p>暂无月度计划</p><button v-if="!readonly" class="ghost-button" type="button" :disabled="unavailable" @click="addBlankTask"><Plus :size="18" aria-hidden="true" />新增自定义计划</button></div></td></tr>
           </tbody>
         </table>
       </div>
